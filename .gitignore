@@ -1,0 +1,10 @@
+# frontend
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# backend
+backend/log/*
+backend/tmp/*
+backend/storage/*
+backend/config/master.key
