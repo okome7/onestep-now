@@ -32,7 +32,7 @@ jobs:
           bundler-cache: true
           working-directory: backend
       - name: Set up database schema
-        run: bundle exec rails db:schema:load
+        run: bundle exec rails db:migrate
       - name: Run tests
         run: bundle exec rake
 
