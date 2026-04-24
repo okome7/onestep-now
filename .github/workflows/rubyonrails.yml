@@ -1,15 +1,10 @@
-# This workflow uses actions that are not certified by GitHub.  They are
-# provided by a third-party and are governed by separate terms of service,
-# privacy policy, and support documentation.
-#
-# This workflow will install a prebuilt Ruby version, install dependencies, and
-# run tests and linters.
 name: "Ruby on Rails CI"
 on:
   push:
     branches: ["develop"]
   pull_request:
     branches: ["develop"]
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -19,8 +14,7 @@ jobs:
     services:
       postgres:
         image: postgres:11-alpine
-        ports:
-          - "5432:5432"
+        ports: ["5432:5432"]
         env:
           POSTGRES_DB: rails_test
           POSTGRES_USER: rails
@@ -38,9 +32,9 @@ jobs:
           bundler-cache: true
           working-directory: backend
       - name: Set up database schema
-        run: bin/rails db:schema:load
+        run: bundle exec rails db:schema:load
       - name: Run tests
-        run: bin/rake
+        run: bundle exec rake
 
   lint:
     runs-on: ubuntu-latest
@@ -56,11 +50,9 @@ jobs:
           ruby-version: "3.3"
           bundler-cache: true
           working-directory: backend
-      - name: Generate binstubs
-        run: bundle binstubs bundler-audit brakeman rubocop
       - name: Security audit dependencies
-        run: bin/bundler-audit --update
+        run: bundle exec bundler-audit --update
       - name: Security audit application code
-        run: bin/brakeman -q -w2
+        run: bundle exec brakeman -q -w2
       - name: Lint Ruby files
-        run: bin/rubocop --parallel
+        run: bundle exec rubocop --parallel
