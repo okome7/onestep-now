@@ -26,7 +26,7 @@ Rails.application.configure do
 
   # 3. Renderのホストを許可
   config.hosts << ".onrender.com"
-  
+
   # その他基本設定
   config.i18n.fallbacks = true
   config.active_record.dump_schema_after_migration = false
