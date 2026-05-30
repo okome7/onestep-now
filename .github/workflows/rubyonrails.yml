@@ -32,9 +32,9 @@ jobs:
           bundler-cache: true
           working-directory: backend
       - name: Set up database schema
-        run: bundle exec rails db:migrate
+        run: bundle exec rails db:prepare
       - name: Run tests
-        run: bundle exec rake
+        run: bundle exec rspec
 
   lint:
     runs-on: ubuntu-latest
