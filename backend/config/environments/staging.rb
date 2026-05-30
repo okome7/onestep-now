@@ -2,7 +2,7 @@ require "active_support/core_ext/integer/time"
 
 Rails.application.configure do
   config.enable_reloading = false
-  config.eager_load = true
+  config.eager_load = false
   config.consider_all_requests_local = false
 
   # 1. ログを強制的に標準出力へ（これでようやく本当のエラーが見えるはずです）
