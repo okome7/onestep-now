@@ -1,0 +1,6 @@
+* text=auto
+
+*.rb text eol=lf
+*.rake text eol=lf
+backend/bin/* text eol=lf
+backend/bin/docker-entrypoint text eol=lf
