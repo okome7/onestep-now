@@ -1,120 +1,145 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { type FormEvent, useState } from 'react'
 import './App.css'
+import { signup, type SignupSuccessResponse } from './signupApi'
+
+type FormState = {
+  name: string
+  email: string
+  password: string
+  passwordConfirmation: string
+}
+
+const initialFormState: FormState = {
+  name: '',
+  email: '',
+  password: '',
+  passwordConfirmation: '',
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [form, setForm] = useState<FormState>(initialFormState)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [success, setSuccess] = useState<SignupSuccessResponse['data'] | null>(null)
+  const [errors, setErrors] = useState<string[]>([])
+
+  const updateField = (field: keyof FormState, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setSuccess(null)
+    setErrors([])
+
+    try {
+      const response = await signup({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        passwordConfirmation: form.passwordConfirmation,
+      })
+
+      if (response.status === 'success') {
+        setSuccess(response.data)
+        setForm(initialFormState)
+      } else {
+        setErrors(response.errors)
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'ユーザー登録に失敗しました。'
+      setErrors([message])
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+    <main className="signup-page">
+      <section className="signup-intro" aria-labelledby="signup-title">
+        <p className="eyebrow">OneStep Now</p>
+        <h1 id="signup-title">まず1歩を登録する</h1>
+        <p className="lead">
+          アカウントを作成して、今日の最初の行動をすぐ始めましょう。
+        </p>
       </section>
 
-      <div className="ticks"></div>
+      <section className="signup-panel" aria-label="ユーザー登録">
+        <form className="signup-form" onSubmit={handleSubmit}>
+          <label>
+            名前
+            <input
+              autoComplete="name"
+              name="name"
+              onChange={(event) => updateField('name', event.target.value)}
+              required
+              type="text"
+              value={form.name}
+            />
+          </label>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
+          <label>
+            メールアドレス
+            <input
+              autoComplete="email"
+              name="email"
+              onChange={(event) => updateField('email', event.target.value)}
+              required
+              type="email"
+              value={form.email}
+            />
+          </label>
+
+          <label>
+            パスワード
+            <input
+              autoComplete="new-password"
+              name="password"
+              onChange={(event) => updateField('password', event.target.value)}
+              required
+              type="password"
+              value={form.password}
+            />
+          </label>
+
+          <label>
+            パスワード確認
+            <input
+              autoComplete="new-password"
+              name="passwordConfirmation"
+              onChange={(event) =>
+                updateField('passwordConfirmation', event.target.value)
+              }
+              required
+              type="password"
+              value={form.passwordConfirmation}
+            />
+          </label>
+
+          <button className="primary-action" disabled={isSubmitting} type="submit">
+            {isSubmitting ? '登録中' : '登録する'}
+          </button>
+        </form>
+
+        {success ? (
+          <div className="notice success" role="status">
+            <strong>{success.name}</strong> さんを登録しました。
+          </div>
+        ) : null}
+
+        {errors.length > 0 ? (
+          <div className="notice error" role="alert">
+            <strong>登録できませんでした</strong>
+            <ul>
+              {errors.map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
 }
 
