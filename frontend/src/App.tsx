@@ -9,7 +9,7 @@ type FormState = {
   passwordConfirmation: string
 }
 
-type Screen = 'home' | 'signup' | 'icon' | 'complete'
+type Screen = 'home' | 'authRequired' | 'signup' | 'icon' | 'complete'
 
 const initialFormState: FormState = {
   name: '',
@@ -76,59 +76,64 @@ function App() {
 
   return (
     <main className="app-page">
-      <section className="desktop-copy" aria-labelledby="app-title">
-        <p className="eyebrow">OneStep Now</p>
-        <h1 id="app-title">最初は登録なしで、まず見られる。</h1>
-        <p>
-          体験を先に見て、必要になったタイミングで新規登録へ進める画面です。
-        </p>
-      </section>
-
       <section className="app-frame" aria-label="OneStep Now">
         <header className="app-header">
-          {screen === 'home' ? (
+          {screen === 'home' || screen === 'authRequired' ? (
             <span className="header-space" />
           ) : (
             <button
               aria-label="前の画面に戻る"
               className="back-button"
-              onClick={() => setScreen(screen === 'signup' ? 'home' : 'signup')}
+              onClick={() =>
+                setScreen(screen === 'signup' ? 'authRequired' : 'signup')
+              }
               type="button"
             >
               &lt;
             </button>
           )}
-          <strong>{screen === 'home' ? 'マイページ' : '新規登録'}</strong>
-          <div className="floating-avatar" aria-hidden="true">
-            Y
-          </div>
+          <strong>
+            {screen === 'home'
+              ? 'ホーム'
+              : screen === 'authRequired'
+                ? 'マイページ'
+                : '新規登録'}
+          </strong>
+          {screen === 'home' ? null : (
+            <div className="floating-avatar" aria-hidden="true">
+              Y
+            </div>
+          )}
         </header>
 
         <div className="app-body">
           {screen === 'home' ? (
             <section className="home-screen">
-              <div className="experience-preview">
-                <h2>今日の一歩</h2>
-                <p>登録しなくても、まずはアプリの流れを確認できます。</p>
-                <button className="primary-action" type="button">
-                  最初の一歩を見る
-                </button>
+              <div className="hero-mark" aria-hidden="true">
+                1
               </div>
+              <h1>今日の一歩</h1>
+              <p>登録しなくても、まずは行動開始の画面を確認できます。</p>
+              <button className="primary-action" type="button">
+                最初の一歩を見る
+              </button>
+            </section>
+          ) : null}
 
-              <div className="account-box">
-                <h2>この操作をするにはアカウントが必要です</h2>
-                <p>続けるには新規登録またはログインしてください</p>
-                <button
-                  className="primary-action"
-                  onClick={() => setScreen('signup')}
-                  type="button"
-                >
-                  新規登録
-                </button>
-                <button className="text-action" type="button">
-                  ログイン
-                </button>
-              </div>
+          {screen === 'authRequired' ? (
+            <section className="auth-required-screen">
+              <h2>この操作をするにはアカウントが必要です</h2>
+              <p>続けるには新規登録またはログインしてください</p>
+              <button
+                className="primary-action wide-action"
+                onClick={() => setScreen('signup')}
+                type="button"
+              >
+                新規登録
+              </button>
+              <button className="text-action" type="button">
+                ログイン
+              </button>
             </section>
           ) : null}
 
@@ -274,13 +279,23 @@ function App() {
         </div>
 
         <nav className="bottom-nav" aria-label="主要ナビゲーション">
-          <button aria-label="ホーム" type="button">
+          <button
+            aria-label="ホーム"
+            className={screen === 'home' ? 'active' : undefined}
+            onClick={() => setScreen('home')}
+            type="button"
+          >
             □
           </button>
           <button aria-label="メッセージ" type="button">
             ▤
           </button>
-          <button aria-label="マイページ" type="button">
+          <button
+            aria-label="マイページ"
+            className={screen !== 'home' ? 'active' : undefined}
+            onClick={() => setScreen('authRequired')}
+            type="button"
+          >
             ●
           </button>
         </nav>
