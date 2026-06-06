@@ -19,6 +19,8 @@ type SignupSuccessResponse = {
 type SignupErrorResponse = {
   status: 'error'
   errors?: string[]
+  error?: string
+  message?: string
 }
 
 type SignupResponse = SignupSuccessResponse | SignupErrorResponse
@@ -42,6 +44,10 @@ function translateSignupError(message: string) {
   }
 
   return japaneseErrorMessages[message] ?? message
+}
+
+function isPresentString(message: string | undefined): message is string {
+  return Boolean(message)
 }
 
 export async function signup(
@@ -84,9 +90,15 @@ export async function signup(
   const result = (await response.json()) as SignupResponse
 
   if (!response.ok || result.status === 'error') {
+    const errors =
+      result.status === 'error'
+        ? (result.errors ??
+          [result.error, result.message].filter(isPresentString))
+        : []
+
     throw new Error(
-      result.status === 'error' && result.errors?.length
-        ? result.errors.map(translateSignupError).join('\n')
+      errors.length
+        ? errors.map(translateSignupError).join('\n')
         : '登録に失敗しました。',
     )
   }

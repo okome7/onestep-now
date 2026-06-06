@@ -82,6 +82,25 @@ test('APIのバリデーションメッセージを日本語で返す', async ()
   )
 })
 
+test('APIのエラーメッセージがmessageで返った場合も表示する', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'error',
+          message: 'APIの接続先が設定されていません。',
+        }),
+    }),
+  )
+
+  await expect(signup(form, '/api')).rejects.toThrow(
+    'APIの接続先が設定されていません。',
+  )
+})
+
 test('APIに接続できない場合は接続エラーを返す', async () => {
   vi.stubGlobal(
     'fetch',
