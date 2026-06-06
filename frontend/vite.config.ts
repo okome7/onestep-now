@@ -7,8 +7,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:3000',
-        changeOrigin: true,
+        target:
+          process.env.API_BASE_URL ||
+          process.env.VITE_API_BASE_URL ||
+          'http://localhost:3000',
+        changeOrigin: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
