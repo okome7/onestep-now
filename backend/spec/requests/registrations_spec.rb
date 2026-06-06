@@ -41,12 +41,45 @@ RSpec.describe "Registrations", type: :request do
         # password_digestが含まれていないことを検証
         expect(json_response["data"]).not_to have_key("password_digest")
       end
+
+      it "emailを正規化して保存すること" do
+        valid_attributes[:user][:email] = " RSpec_Test@Example.COM "
+
+        post "/signup", params: valid_attributes, as: :json
+
+        expect(response).to have_http_status(:created)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response["data"]["email"]).to eq("rspec_test@example.com")
+        expect(User.last.email).to eq("rspec_test@example.com")
+      end
     end
 
     context "無効なパラメータの場合" do
       it "ユーザーは作成されず、422ステータスとエラーメッセージが返ること" do
         expect {
           post "/signup", params: invalid_attributes, as: :json
+        }.not_to change(User, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response["status"]).to eq("error")
+        expect(json_response["errors"]).to be_present
+      end
+
+      it "大文字小文字が異なる同じemailではユーザーを重複作成しないこと" do
+        User.create!(
+          name: "Existing User",
+          email: "rspec_test@example.com",
+          password: "password",
+          password_confirmation: "password"
+        )
+
+        valid_attributes[:user][:email] = "RSPEC_TEST@example.com"
+
+        expect {
+          post "/signup", params: valid_attributes, as: :json
         }.not_to change(User, :count)
 
         expect(response).to have_http_status(:unprocessable_entity)
