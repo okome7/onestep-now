@@ -3,13 +3,13 @@ class RegistrationsController < ApplicationController
     user = User.new(user_params)
     if user.save
       render json: {
-    status: "success",
-    data: {
-      id: user.id,
-      name: user.name,
-      email: user.email
-    }
-}, status: :created
+        status: "success",
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }
+      }, status: :created
     else
       render json: { status: "error", errors: user.errors.full_messages }, status: :unprocessable_entity
     end
