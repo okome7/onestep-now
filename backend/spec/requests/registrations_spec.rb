@@ -31,13 +31,13 @@ RSpec.describe "Registrations", type: :request do
         }.to change(User, :count).by(1)
 
         expect(response).to have_http_status(:created)
-        
+
         json_response = JSON.parse(response.body)
         expect(json_response["status"]).to eq("success")
         expect(json_response["data"]).to have_key("id")
         expect(json_response["data"]["name"]).to eq("Test User")
         expect(json_response["data"]["email"]).to eq("rspec_test@example.com")
-        
+
         # password_digestが含まれていないことを検証
         expect(json_response["data"]).not_to have_key("password_digest")
       end
@@ -50,7 +50,7 @@ RSpec.describe "Registrations", type: :request do
         }.not_to change(User, :count)
 
         expect(response).to have_http_status(:unprocessable_entity)
-        
+
         json_response = JSON.parse(response.body)
         expect(json_response["status"]).to eq("error")
         expect(json_response["errors"]).to be_present
