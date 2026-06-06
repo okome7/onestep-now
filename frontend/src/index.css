@@ -1,13 +1,15 @@
 :root {
-  --text: #5a6270;
-  --text-h: #10151f;
-  --bg: #f7f8fb;
+  --text: #5f6773;
+  --text-h: #20242b;
+  --bg: #f1f1f1;
   --panel: #ffffff;
+  --screen: #f7f8fb;
   --field-bg: #ffffff;
-  --border: #d8dee8;
-  --accent: #136f63;
-  --accent-bg: rgba(19, 111, 99, 0.08);
-  --accent-ring: rgba(19, 111, 99, 0.18);
+  --border: #e3e7ee;
+  --accent: #4a90e2;
+  --accent-bg: rgba(74, 144, 226, 0.1);
+  --accent-ring: rgba(74, 144, 226, 0.22);
+  --muted: #9aa3af;
   --success-bg: #edf8f1;
   --success-border: #9ac9aa;
   --error-bg: #fff0f0;
@@ -37,13 +39,15 @@
   :root {
     --text: #a5adba;
     --text-h: #f4f7fb;
-    --bg: #11151c;
+    --bg: #10141b;
     --panel: #171d27;
+    --screen: #121821;
     --field-bg: #111821;
     --border: #2f3947;
-    --accent: #33b69d;
-    --accent-bg: rgba(51, 182, 157, 0.14);
-    --accent-ring: rgba(51, 182, 157, 0.22);
+    --accent: #5aa6f2;
+    --accent-bg: rgba(90, 166, 242, 0.14);
+    --accent-ring: rgba(90, 166, 242, 0.24);
+    --muted: #8993a3;
     --success-bg: #10291f;
     --success-border: #286d52;
     --error-bg: #341b1d;
@@ -68,9 +72,9 @@ h2 {
 }
 
 h1 {
-  font-size: 48px;
+  font-size: 34px;
   letter-spacing: 0;
-  line-height: 110%;
+  line-height: 120%;
   margin: 0;
   @media (max-width: 1024px) {
     font-size: 36px;
