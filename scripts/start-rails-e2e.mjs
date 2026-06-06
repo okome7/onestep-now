@@ -1,5 +1,8 @@
 import { spawn } from "node:child_process";
 
+const bundleCommand = "bundle";
+const useShell = process.platform === "win32";
+
 const env = {
   ...process.env,
   RAILS_ENV: process.env.RAILS_ENV || "test",
@@ -7,10 +10,10 @@ const env = {
 
 const run = (args) =>
   new Promise((resolve, reject) => {
-    const child = spawn("bundle", ["exec", "rails", ...args], {
+    const child = spawn(bundleCommand, ["exec", "rails", ...args], {
       cwd: "backend",
       env,
-      shell: true,
+      shell: useShell,
       stdio: "inherit",
     });
 
@@ -26,12 +29,12 @@ const run = (args) =>
 await run(["db:prepare"]);
 
 const server = spawn(
-  "bundle",
+  bundleCommand,
   ["exec", "rails", "s", "-p", "3001", "-b", "127.0.0.1"],
   {
     cwd: "backend",
     env,
-    shell: true,
+    shell: useShell,
     stdio: "inherit",
   },
 );
