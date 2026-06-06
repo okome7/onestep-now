@@ -1,13 +1,17 @@
+default_origins = Rails.env.production? || Rails.env.staging? ? "" : "http://localhost:5173"
+allowed_origins = ENV.fetch("FRONTEND_ORIGINS", default_origins).split(",").map(&:strip).reject(&:empty?)
+
+if (Rails.env.production? || Rails.env.staging?) && allowed_origins.empty?
+  raise "FRONTEND_ORIGINS must be set in #{Rails.env}"
+end
+
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-# 開発環境（localhost）と本番環境（Render）の両方を許可する
-origins "http://localhost:5173",
-        /\Ahttps:\/\/.*\.onrender\.com\z/,
-        /\Ahttps:\/\/.*\.vercel\.app\z/
+    origins(*allowed_origins)
 
     resource "*",
       headers: :any,
       methods: [ :get, :post, :put, :patch, :delete, :options, :head ],
-      credentials: true
+      credentials: ENV.fetch("CORS_CREDENTIALS", "false") == "true"
   end
 end
