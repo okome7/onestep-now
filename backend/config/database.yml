@@ -17,8 +17,9 @@ test:
 production:
   <<: *default
   database: onestep_now_production
+  url: <%= ENV["DATABASE_URL"] %>
 
 staging:
   <<: *default
   database: onestep_now_staging
-  url: <%= ENV['DATABASE_URL'] %>
+  url: <%= ENV["DATABASE_URL"] %>
