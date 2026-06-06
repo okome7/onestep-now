@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
+import App from './App'
 
-test('CI環境の動作確認用テスト（後で消す）', () => {
-  expect(true).toBe(true)
+test('App component is available for rendering', () => {
+  expect(App).toBeTypeOf('function')
 })
