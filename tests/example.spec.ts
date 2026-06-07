@@ -103,6 +103,9 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
     "aria-checked",
     "true",
   );
+  await expect(page.getByRole("radio", { name: "写真未選択" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "写真を撮る" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "写真を選ぶ" })).toBeVisible();
   await expect(page.getByLabel("撮影する写真")).toHaveAttribute(
     "accept",
     "image/*",
@@ -115,6 +118,17 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
     "accept",
     "image/*",
   );
+  await page.getByLabel("選択する写真").setInputFiles({
+    name: "avatar.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await expect(
+    page.getByRole("radio", { name: "選択した写真" }),
+  ).toHaveAttribute("aria-checked", "true");
 
   const pageSize = await page.evaluate(() => ({
     height: window.innerHeight,
@@ -122,4 +136,28 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   }));
 
   expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
+});
+
+test("スマホでは右下のアイコンから写真を撮れる", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/signup", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: { id: 1, name: "おこめ", email: "okome@example.com" },
+      }),
+    });
+  });
+
+  await page.goto("/");
+
+  await page.getByLabel("名前").fill("おこめ");
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード", { exact: true }).fill("password1");
+  await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
+  await page.getByRole("button", { name: "登録" }).click();
+
+  await expect(page.getByRole("radio", { name: "写真を撮る" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "写真を撮る" })).toHaveCount(0);
 });

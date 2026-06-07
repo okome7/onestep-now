@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import './App.css'
 import { signup } from './signupApi'
@@ -16,7 +16,6 @@ import avatarFive from './assets/avatars/avatar-5.svg'
 import avatarSix from './assets/avatars/avatar-6.svg'
 import avatarSeven from './assets/avatars/avatar-7.svg'
 import avatarEight from './assets/avatars/avatar-8.svg'
-import avatarNine from './assets/avatars/avatar-9.svg'
 
 const initialForm: SignupForm = {
   name: '',
@@ -28,6 +27,7 @@ const initialForm: SignupForm = {
 const passwordPattern = '[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
 type Screen = 'signup' | 'icon'
+const customPhotoIconId = 'custom-photo'
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -38,7 +38,7 @@ const avatarOptions = [
   { id: 'avatar-6', src: avatarSix, label: 'アイコン6' },
   { id: 'avatar-7', src: avatarSeven, label: 'アイコン7' },
   { id: 'avatar-8', src: avatarEight, label: 'アイコン8' },
-  { id: 'avatar-9', src: avatarNine, label: 'アイコン9' },
+  { id: customPhotoIconId, src: '', label: '選択した写真' },
 ]
 
 function formatPasswordInput(value: string) {
@@ -107,11 +107,31 @@ function App() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [selectedIconId, setSelectedIconId] = useState(avatarOptions[0].id)
+  const [customPhotoUrl, setCustomPhotoUrl] = useState('')
+  const [canUseCameraSlot, setCanUseCameraSlot] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
   const firstError = firstFieldError(fieldErrors)
   const noticeText = message || error
+
+  useEffect(() => {
+    return () => {
+      if (customPhotoUrl) {
+        URL.revokeObjectURL(customPhotoUrl)
+      }
+    }
+  }, [customPhotoUrl])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 639px)')
+    const updateCameraSlot = () => setCanUseCameraSlot(mediaQuery.matches)
+
+    updateCameraSlot()
+    mediaQuery.addEventListener('change', updateCameraSlot)
+
+    return () => mediaQuery.removeEventListener('change', updateCameraSlot)
+  }, [])
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
@@ -168,8 +188,30 @@ function App() {
   }
 
   function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
-    if (event.target.files?.[0]) {
-      setMessage('写真を選択しました。')
+    const selectedFile = event.target.files?.[0]
+
+    if (selectedFile) {
+      const photoUrl = URL.createObjectURL(selectedFile)
+      setCustomPhotoUrl((current) => {
+        if (current) {
+          URL.revokeObjectURL(current)
+        }
+
+        return photoUrl
+      })
+      setSelectedIconId(customPhotoIconId)
+      setMessage('')
+    }
+  }
+
+  function handleAvatarClick(avatarId: string) {
+    if (avatarId !== customPhotoIconId || customPhotoUrl) {
+      setSelectedIconId(avatarId)
+      return
+    }
+
+    if (canUseCameraSlot) {
+      cameraInputRef.current?.click()
     }
   }
 
@@ -197,35 +239,43 @@ function App() {
           </p>
 
           <div className="avatar-grid" role="radiogroup" aria-label="アイコン">
-            {avatarOptions.map((avatar) => (
-              <button
-                key={avatar.id}
-                className={`avatar-option ${
-                  selectedIconId === avatar.id ? 'selected' : ''
-                }`}
-                type="button"
-                role="radio"
-                aria-checked={selectedIconId === avatar.id}
-                aria-label={avatar.label}
-                onClick={() => setSelectedIconId(avatar.id)}
-              >
-                <img src={avatar.src} alt="" aria-hidden="true" />
-              </button>
-            ))}
+            {avatarOptions.map((avatar) => {
+              const isCustomPhoto = avatar.id === customPhotoIconId
+              const hasCustomPhoto = isCustomPhoto && customPhotoUrl
+              const isCameraSlot = isCustomPhoto && !hasCustomPhoto
+
+              return (
+                <button
+                  key={avatar.id}
+                  className={`avatar-option ${
+                    selectedIconId === avatar.id ? 'selected' : ''
+                  } ${isCameraSlot ? 'photo-slot-empty' : ''}`}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedIconId === avatar.id}
+                  aria-label={
+                    isCameraSlot && canUseCameraSlot
+                      ? '写真を撮る'
+                      : isCameraSlot
+                        ? '写真未選択'
+                        : avatar.label
+                  }
+                  disabled={isCameraSlot && !canUseCameraSlot}
+                  onClick={() => handleAvatarClick(avatar.id)}
+                >
+                  {hasCustomPhoto ? (
+                    <img src={customPhotoUrl} alt="" aria-hidden="true" />
+                  ) : (
+                    !isCustomPhoto && (
+                      <img src={avatar.src} alt="" aria-hidden="true" />
+                    )
+                  )}
+                </button>
+              )
+            })}
           </div>
 
           <div className="photo-actions">
-            <button
-              className="photo-button"
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-            >
-              <span
-                className="photo-button-icon camera-icon"
-                aria-hidden="true"
-              />
-              写真を撮る
-            </button>
             <button
               className="photo-button"
               type="button"
