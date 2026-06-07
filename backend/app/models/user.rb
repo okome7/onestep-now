@@ -13,7 +13,10 @@ class User < ApplicationRecord
     format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password,
     length: { minimum: 8 },
-    format: { with: /\A[A-Za-z0-9]+\z/, message: "は英数字で入力してください" },
+    format: {
+      with: /\A(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]+\z/,
+      message: "は英字と数字を両方含めてください"
+    },
     allow_blank: true
 
   private

@@ -69,6 +69,30 @@ test("パスワードに英数字以外は入力できない", async ({ page }) 
   await expect(confirmationInput).toHaveValue("pass456");
 });
 
+test("パスワードは英字と数字の両方が必要", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByLabel("名前").fill("おこめ");
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード", { exact: true }).fill("password");
+  await page.getByLabel("パスワード確認", { exact: true }).fill("password");
+  await page.getByRole("button", { name: "登録" }).click();
+
+  await expect(page.getByText("英字と数字を両方含めてください")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "アイコンを選ぼう！" }),
+  ).toHaveCount(0);
+
+  await page.getByLabel("パスワード", { exact: true }).fill("12345678");
+  await page.getByLabel("パスワード確認", { exact: true }).fill("12345678");
+  await page.getByRole("button", { name: "登録" }).click();
+
+  await expect(page.getByText("英字と数字を両方含めてください")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "アイコンを選ぼう！" }),
+  ).toHaveCount(0);
+});
+
 test("入力エラーをフォーム内に表示する", async ({ page }) => {
   await page.goto("/");
 

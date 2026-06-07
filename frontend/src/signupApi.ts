@@ -38,6 +38,8 @@ const japaneseErrorMessages: Record<string, string> = {
   "Password can't be blank": 'パスワードを入力してください。',
   'Password は英数字で入力してください':
     'パスワードは英数字で入力してください。',
+  'Password は英字と数字を両方含めてください':
+    'パスワードは英字と数字を両方含めてください。',
   "Password confirmation doesn't match Password":
     'パスワード確認が一致していません。',
 }

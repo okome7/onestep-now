@@ -128,6 +128,25 @@ test('パスワードの英数字エラーを日本語で返す', async () => {
   )
 })
 
+test('パスワードに英字と数字の両方が必要なエラーを日本語で返す', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'error',
+          errors: ['Password は英字と数字を両方含めてください'],
+        }),
+    }),
+  )
+
+  await expect(signup(form, 'http://localhost:3000/')).rejects.toThrow(
+    'パスワードは英字と数字を両方含めてください。',
+  )
+})
+
 test('APIに接続できない場合は接続エラーを返す', async () => {
   vi.stubGlobal(
     'fetch',

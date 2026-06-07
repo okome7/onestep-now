@@ -24,7 +24,7 @@ const initialForm: SignupForm = {
   passwordConfirmation: '',
 }
 
-const passwordPattern = '[A-Za-z0-9]{8,}'
+const passwordPattern = '(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
 type Screen = 'signup' | 'icon'
 const customPhotoIconId = 'custom-photo'
@@ -69,7 +69,7 @@ function validateForm(form: SignupForm) {
   } else if (form.password.length < 8) {
     nextErrors.password = '8文字以上の英数字を入力してください'
   } else if (!new RegExp(`^${passwordPattern}$`).test(form.password)) {
-    nextErrors.password = '英数字で入力してください'
+    nextErrors.password = '英字と数字を両方含めてください'
   }
 
   if (!form.passwordConfirmation) {
@@ -567,7 +567,9 @@ function App() {
               </label>
             </div>
 
-            <p className="password-note">*パスワードは8文字以上の英数字</p>
+            <p className="password-note">
+              *パスワードは8文字以上で英字と数字を含めてください
+            </p>
 
             <p
               id="field-error-message"

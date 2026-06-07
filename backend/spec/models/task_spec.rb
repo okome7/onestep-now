@@ -5,8 +5,8 @@ RSpec.describe Task, type: :model do
     User.new(
       name: "Task User",
       email: email,
-      password: "password",
-      password_confirmation: "password"
+      password: "password1",
+      password_confirmation: "password1"
     )
   end
 
