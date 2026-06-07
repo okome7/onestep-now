@@ -21,6 +21,12 @@ body {
   background: #f4f7fb;
 }
 
+.signup-page.complete-page {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
 .signup-header {
   position: relative;
   display: flex;
@@ -400,6 +406,109 @@ body {
 
 .icon-content .notice {
   margin-top: 10px;
+}
+
+.complete-content {
+  width: min(100%, 360px);
+  padding: 88px 32px 40px;
+  text-align: center;
+}
+
+.complete-content h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.complete-description {
+  margin: 20px 0 24px;
+  color: #9aa6b8;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.complete-profile {
+  position: relative;
+  width: 190px;
+  margin: 0 auto;
+  padding: 8px 0 0;
+}
+
+.complete-avatar {
+  display: block;
+  width: 112px;
+  height: 112px;
+  margin: 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+  filter: saturate(1.16) contrast(1.06);
+}
+
+.complete-name {
+  margin: 8px 0 0;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sparkle {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+}
+
+.sparkle::before,
+.sparkle::after {
+  position: absolute;
+  background: #fbbf24;
+  border-radius: 999px;
+  content: '';
+}
+
+.sparkle::before {
+  top: 0;
+  left: 12px;
+  width: 4px;
+  height: 28px;
+}
+
+.sparkle::after {
+  top: 12px;
+  left: 0;
+  width: 28px;
+  height: 4px;
+}
+
+.sparkle-one {
+  top: 14px;
+  left: 8px;
+  transform: rotate(8deg) scale(0.9);
+}
+
+.sparkle-two {
+  top: 20px;
+  right: 10px;
+  transform: rotate(8deg) scale(0.72);
+}
+
+.sparkle-three {
+  bottom: 36px;
+  left: 22px;
+  transform: rotate(28deg) scale(0.68);
+}
+
+.sparkle-four {
+  right: 18px;
+  bottom: 38px;
+  transform: rotate(4deg) scale(0.78);
+}
+
+.start-button {
+  width: min(100%, 208px);
+  margin: 36px auto 0;
+  font-size: 17px;
 }
 
 .notice {

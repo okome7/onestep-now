@@ -26,7 +26,7 @@ const initialForm: SignupForm = {
 
 const passwordPattern = '(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
-type Screen = 'signup' | 'icon'
+type Screen = 'signup' | 'icon' | 'complete'
 const customPhotoIconId = 'custom-photo'
 const signupScreenStorageKey = 'onestep-signup-screen'
 const signupDraftStorageKey = 'onestep-signup-draft'
@@ -178,6 +178,8 @@ function App() {
   const [error, setError] = useState('')
   const [selectedIconId, setSelectedIconId] = useState(avatarOptions[0].id)
   const [customPhotoUrl, setCustomPhotoUrl] = useState('')
+  const [completedName, setCompletedName] = useState('')
+  const [completedIconSrc, setCompletedIconSrc] = useState(avatarOptions[0].src)
   const [isMobilePhotoMenu, setIsMobilePhotoMenu] = useState(false)
   const [isPhotoChoiceOpen, setIsPhotoChoiceOpen] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
@@ -259,12 +261,22 @@ function App() {
     setIsSubmitting(true)
 
     try {
+      const selectedAvatar = avatarOptions.find(
+        (avatar) => avatar.id === selectedIconId,
+      )
+      const nextCompletedName = form.name.trim()
+      const nextCompletedIconSrc =
+        selectedIconId === customPhotoIconId && customPhotoUrl
+          ? customPhotoUrl
+          : (selectedAvatar?.src ?? avatarOptions[0].src)
+
       await signup({ ...form, avatarKey: selectedIconId })
-      setForm(initialForm)
+      setCompletedName(nextCompletedName)
+      setCompletedIconSrc(nextCompletedIconSrc)
       setFieldErrors({})
       window.sessionStorage.removeItem(signupDraftStorageKey)
       window.sessionStorage.removeItem(signupScreenStorageKey)
-      setMessage('登録が完了しました。')
+      setScreen('complete')
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -310,11 +322,46 @@ function App() {
     photoInputRef.current?.click()
   }
 
-  return (
-    <main className="signup-page">
-      <SignupHeader title="新規登録" onBack={handleBack} />
+  function handleStart() {
+    window.location.href = '/home'
+  }
 
-      {screen === 'icon' ? (
+  return (
+    <main
+      className={`signup-page ${screen === 'complete' ? 'complete-page' : ''}`}
+    >
+      {screen === 'complete' ? null : (
+        <SignupHeader title="新規登録" onBack={handleBack} />
+      )}
+
+      {screen === 'complete' ? (
+        <section className="complete-content" aria-labelledby="complete-title">
+          <h2 id="complete-title">登録が完了しました！</h2>
+          <p className="complete-description">早速始めましょう！</p>
+
+          <div className="complete-profile">
+            <span className="sparkle sparkle-one" aria-hidden="true" />
+            <span className="sparkle sparkle-two" aria-hidden="true" />
+            <span className="sparkle sparkle-three" aria-hidden="true" />
+            <span className="sparkle sparkle-four" aria-hidden="true" />
+            <img
+              className="complete-avatar"
+              src={completedIconSrc}
+              alt=""
+              aria-hidden="true"
+            />
+            <p className="complete-name">{completedName}</p>
+          </div>
+
+          <button
+            className="submit-button start-button"
+            type="button"
+            onClick={handleStart}
+          >
+            最初の一歩を始める
+          </button>
+        </section>
+      ) : screen === 'icon' ? (
         <section className="icon-content" aria-labelledby="icon-title">
           <h2 id="icon-title">アイコンを選ぼう！</h2>
           <p className="icon-description">

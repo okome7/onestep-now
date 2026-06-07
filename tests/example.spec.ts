@@ -187,7 +187,13 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   await expect(page.getByRole("radio", { name: "写真未選択" })).toBeDisabled();
   await page.getByRole("radio", { name: "アイコン5" }).click();
   await page.getByRole("button", { name: "決定" }).click();
-  await expect(page.getByText("登録が完了しました。")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "登録が完了しました！" }),
+  ).toBeVisible();
+  await expect(page.getByText("おこめ")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "最初の一歩を始める" }),
+  ).toBeVisible();
 
   expect(signupRequests).toEqual([
     {
@@ -207,6 +213,9 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   }));
 
   expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
+
+  await page.getByRole("button", { name: "最初の一歩を始める" }).click();
+  await expect(page).toHaveURL(/\/home$/);
 });
 
 test("スマホでは写真の選び方を分けて表示する", async ({ page }) => {
