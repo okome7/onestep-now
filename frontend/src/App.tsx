@@ -344,12 +344,18 @@ function App() {
             <span className="sparkle sparkle-two" aria-hidden="true" />
             <span className="sparkle sparkle-three" aria-hidden="true" />
             <span className="sparkle sparkle-four" aria-hidden="true" />
+            <span className="sparkle sparkle-five" aria-hidden="true" />
+            <span className="sparkle sparkle-six" aria-hidden="true" />
+            <span className="celebration-dot dot-one" aria-hidden="true" />
+            <span className="celebration-dot dot-two" aria-hidden="true" />
+            <span className="celebration-dot dot-three" aria-hidden="true" />
             <img
               className="complete-avatar"
               src={completedIconSrc}
               alt=""
               aria-hidden="true"
             />
+            <span className="complete-check" aria-hidden="true" />
             <p className="complete-name">{completedName}</p>
           </div>
 
