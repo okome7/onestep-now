@@ -11,10 +11,10 @@ test("フロントエンドの新規登録画面が表示される", async ({ pa
 
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
-  await expect(page.getByPlaceholder("名前を入力")).toBeVisible();
-  await expect(page.getByPlaceholder("メールアドレスを入力")).toBeVisible();
-  await expect(page.getByPlaceholder("パスワードを入力")).toBeVisible();
-  await expect(page.getByPlaceholder("パスワード確認を入力")).toBeVisible();
+  await expect(page.getByLabel("名前")).toBeVisible();
+  await expect(page.getByLabel("メールアドレス")).toBeVisible();
+  await expect(page.getByLabel("パスワード", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("パスワード確認")).toBeVisible();
   await expect(page.getByRole("button", { name: "登録" })).toBeVisible();
 });
 

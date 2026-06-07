@@ -81,6 +81,7 @@ function App() {
               <input
                 name="name"
                 type="text"
+                aria-label="名前"
                 autoComplete="name"
                 placeholder="名前を入力"
                 value={form.name}
@@ -96,6 +97,7 @@ function App() {
               <input
                 name="email"
                 type="email"
+                aria-label="メールアドレス"
                 autoComplete="email"
                 placeholder="メールアドレスを入力"
                 value={form.email}
@@ -111,6 +113,7 @@ function App() {
               <input
                 name="password"
                 type={isPasswordVisible ? 'text' : 'password'}
+                aria-label="パスワード"
                 autoComplete="new-password"
                 inputMode="text"
                 placeholder="パスワードを入力"
@@ -146,6 +149,7 @@ function App() {
               <input
                 name="passwordConfirmation"
                 type={isPasswordConfirmationVisible ? 'text' : 'password'}
+                aria-label="パスワード確認"
                 autoComplete="new-password"
                 inputMode="text"
                 placeholder="パスワード確認を入力"
