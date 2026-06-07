@@ -6,6 +6,7 @@ class User < ApplicationRecord
   before_validation :normalize_email
 
   validates :name, presence: true
+  validates :avatar_key, presence: true
   validates :email,
     presence: true,
     uniqueness: { case_sensitive: false },

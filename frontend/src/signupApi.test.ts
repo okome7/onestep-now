@@ -6,6 +6,7 @@ const form = {
   email: 'test@example.com',
   password: 'password123',
   passwordConfirmation: 'password123',
+  avatarKey: 'avatar-5',
 }
 
 afterEach(() => {
@@ -19,7 +20,12 @@ test('登録フォームの値をAPIに送信する', async () => {
     json: () =>
       Promise.resolve({
         status: 'success',
-        data: { id: 1, name: form.name, email: form.email },
+        data: {
+          id: 1,
+          name: form.name,
+          email: form.email,
+          avatar_key: form.avatarKey,
+        },
       }),
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -28,6 +34,7 @@ test('登録フォームの値をAPIに送信する', async () => {
     id: 1,
     name: form.name,
     email: form.email,
+    avatar_key: form.avatarKey,
   })
 
   expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/signup', {
@@ -41,6 +48,7 @@ test('登録フォームの値をAPIに送信する', async () => {
         email: form.email,
         password: form.password,
         password_confirmation: form.passwordConfirmation,
+        avatar_key: form.avatarKey,
       },
     }),
   })

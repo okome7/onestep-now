@@ -8,7 +8,8 @@ RSpec.describe "Registrations", type: :request do
           name: "Test User",
           email: "rspec_test@example.com",
           password: "password",
-          password_confirmation: "password"
+          password_confirmation: "password",
+          avatar_key: "avatar-5"
         }
       }
     end
@@ -37,6 +38,8 @@ RSpec.describe "Registrations", type: :request do
         expect(json_response["data"]).to have_key("id")
         expect(json_response["data"]["name"]).to eq("Test User")
         expect(json_response["data"]["email"]).to eq("rspec_test@example.com")
+        expect(json_response["data"]["avatar_key"]).to eq("avatar-5")
+        expect(User.last.avatar_key).to eq("avatar-5")
 
         # password_digestが含まれていないことを検証
         expect(json_response["data"]).not_to have_key("password_digest")

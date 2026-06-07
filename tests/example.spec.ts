@@ -73,7 +73,9 @@ test("入力エラーをフォーム内に表示する", async ({ page }) => {
 });
 
 test("登録後にアイコン選択画面へ進む", async ({ page }) => {
+  const signupRequests: unknown[] = [];
   await page.route("**/api/signup", async (route) => {
+    signupRequests.push(route.request().postDataJSON());
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -91,6 +93,7 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
   await page.getByRole("button", { name: "登録" }).click();
 
+  expect(signupRequests).toHaveLength(0);
   await expect(
     page.getByRole("heading", { name: "アイコンを選ぼう！" }),
   ).toBeVisible();
@@ -137,6 +140,21 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
     page.getByRole("heading", { name: "アイコンを選ぼう！" }),
   ).toBeVisible();
   await expect(page.getByRole("radio", { name: "写真未選択" })).toBeDisabled();
+  await page.getByRole("radio", { name: "アイコン5" }).click();
+  await page.getByRole("button", { name: "決定" }).click();
+  await expect(page.getByText("登録が完了しました。")).toBeVisible();
+
+  expect(signupRequests).toEqual([
+    {
+      user: {
+        name: "おこめ",
+        email: "okome@example.com",
+        password: "password1",
+        password_confirmation: "password1",
+        avatar_key: "avatar-5",
+      },
+    },
+  ]);
 
   const pageSize = await page.evaluate(() => ({
     height: window.innerHeight,

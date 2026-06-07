@@ -29,6 +29,7 @@ type FieldErrors = Partial<Record<keyof SignupForm, string>>
 type Screen = 'signup' | 'icon'
 const customPhotoIconId = 'custom-photo'
 const signupScreenStorageKey = 'onestep-signup-screen'
+const signupDraftStorageKey = 'onestep-signup-draft'
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -99,9 +100,23 @@ function errorFieldClass(error: string | undefined) {
 }
 
 function getInitialScreen(): Screen {
-  return window.localStorage.getItem(signupScreenStorageKey) === 'icon'
+  return window.sessionStorage.getItem(signupScreenStorageKey) === 'icon'
     ? 'icon'
     : 'signup'
+}
+
+function getInitialForm(): SignupForm {
+  const savedForm = window.sessionStorage.getItem(signupDraftStorageKey)
+
+  if (!savedForm) {
+    return initialForm
+  }
+
+  try {
+    return { ...initialForm, ...JSON.parse(savedForm) }
+  } catch {
+    return initialForm
+  }
 }
 
 type SignupHeaderProps = {
@@ -129,7 +144,7 @@ function App() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [screen, setScreen] = useState<Screen>(getInitialScreen)
-  const [form, setForm] = useState<SignupForm>(initialForm)
+  const [form, setForm] = useState<SignupForm>(getInitialForm)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState('')
@@ -188,14 +203,33 @@ function App() {
       return
     }
 
+    window.sessionStorage.setItem(signupDraftStorageKey, JSON.stringify(form))
+    window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
+    setScreen('icon')
+  }
+
+  function handleBack() {
+    if (screen === 'icon') {
+      window.sessionStorage.setItem(signupScreenStorageKey, 'signup')
+      setScreen('signup')
+      return
+    }
+
+    window.history.back()
+  }
+
+  async function handleIconSubmit() {
+    setMessage('')
+    setError('')
     setIsSubmitting(true)
 
     try {
-      await signup(form)
+      await signup({ ...form, avatarKey: selectedIconId })
       setForm(initialForm)
       setFieldErrors({})
-      window.localStorage.setItem(signupScreenStorageKey, 'icon')
-      setScreen('icon')
+      window.sessionStorage.removeItem(signupDraftStorageKey)
+      window.sessionStorage.removeItem(signupScreenStorageKey)
+      setMessage('登録が完了しました。')
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -205,20 +239,6 @@ function App() {
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  function handleBack() {
-    if (screen === 'icon') {
-      window.localStorage.removeItem(signupScreenStorageKey)
-      setScreen('signup')
-      return
-    }
-
-    window.history.back()
-  }
-
-  function handleIconSubmit() {
-    setMessage('アイコンを設定しました。')
   }
 
   function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
@@ -360,13 +380,19 @@ function App() {
           <button
             className="submit-button icon-submit-button"
             type="button"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
             onClick={handleIconSubmit}
           >
             決定
           </button>
 
-          <p className="notice success" aria-live="polite">
-            {message}
+          <p
+            className={`notice ${message ? 'success' : ''} ${error ? 'error' : ''}`}
+            role={error ? 'alert' : undefined}
+            aria-live="polite"
+          >
+            {noticeText}
           </p>
         </section>
       ) : (

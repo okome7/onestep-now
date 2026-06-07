@@ -3,12 +3,14 @@ export type SignupForm = {
   email: string
   password: string
   passwordConfirmation: string
+  avatarKey?: string
 }
 
 export type SignupUser = {
   id: number
   name: string
   email: string
+  avatar_key?: string
 }
 
 type SignupSuccessResponse = {
@@ -72,6 +74,7 @@ export async function signup(
           email: form.email,
           password: form.password,
           password_confirmation: form.passwordConfirmation,
+          avatar_key: form.avatarKey,
         },
       }),
     })
