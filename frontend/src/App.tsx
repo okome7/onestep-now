@@ -61,6 +61,16 @@ function hasErrors(errors: FieldErrors) {
   return Object.keys(errors).length > 0
 }
 
+function firstFieldError(errors: FieldErrors) {
+  return (
+    errors.name ??
+    errors.email ??
+    errors.password ??
+    errors.passwordConfirmation ??
+    ''
+  )
+}
+
 function errorFieldClass(error: string | undefined) {
   return error ? 'field-error' : undefined
 }
@@ -74,6 +84,7 @@ function App() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
+  const firstError = firstFieldError(fieldErrors)
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
@@ -141,7 +152,9 @@ function App() {
                 value={form.name}
                 onChange={handleChange}
                 aria-invalid={Boolean(fieldErrors.name)}
-                aria-describedby={fieldErrors.name ? 'name-error' : undefined}
+                aria-describedby={
+                  fieldErrors.name ? 'field-error-message' : undefined
+                }
                 required
               />
             </label>
@@ -159,7 +172,9 @@ function App() {
                 value={form.email}
                 onChange={handleChange}
                 aria-invalid={Boolean(fieldErrors.email)}
-                aria-describedby={fieldErrors.email ? 'email-error' : undefined}
+                aria-describedby={
+                  fieldErrors.email ? 'field-error-message' : undefined
+                }
                 required
               />
             </label>
@@ -181,7 +196,7 @@ function App() {
                 onChange={handleChange}
                 aria-invalid={Boolean(fieldErrors.password)}
                 aria-describedby={
-                  fieldErrors.password ? 'password-error' : undefined
+                  fieldErrors.password ? 'field-error-message' : undefined
                 }
                 required
               />
@@ -224,7 +239,7 @@ function App() {
                 aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
                 aria-describedby={
                   fieldErrors.passwordConfirmation
-                    ? 'password-confirmation-error'
+                    ? 'field-error-message'
                     : undefined
                 }
                 required
@@ -257,20 +272,13 @@ function App() {
 
           <p className="password-note">*8文字以上の英数字を入力してください</p>
 
-          {hasErrors(fieldErrors) && (
-            <div className="field-error-messages" role="alert">
-              {fieldErrors.name && <p id="name-error">{fieldErrors.name}</p>}
-              {fieldErrors.email && <p id="email-error">{fieldErrors.email}</p>}
-              {fieldErrors.password && (
-                <p id="password-error">{fieldErrors.password}</p>
-              )}
-              {fieldErrors.passwordConfirmation && (
-                <p id="password-confirmation-error">
-                  {fieldErrors.passwordConfirmation}
-                </p>
-              )}
-            </div>
-          )}
+          <p
+            id="field-error-message"
+            className="field-error-message"
+            role="alert"
+          >
+            {firstError}
+          </p>
 
           <button
             className="submit-button"
