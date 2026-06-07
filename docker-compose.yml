@@ -44,6 +44,7 @@ services:
       - "5173:5173"
     environment:
       API_BASE_URL: http://backend:3000
+      CHOKIDAR_USEPOLLING: "true"
     depends_on:
       - backend
 
