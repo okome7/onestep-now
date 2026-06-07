@@ -174,3 +174,36 @@ test("スマホでは写真の選び方を分けて表示する", async ({ page 
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "写真を選択" })).toBeVisible();
 });
+
+test("スマホで写真の選択肢を開いても決定ボタンの位置は変わらない", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/signup", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: { id: 1, name: "おこめ", email: "okome@example.com" },
+      }),
+    });
+  });
+
+  await page.goto("/");
+
+  await page.getByLabel("名前").fill("おこめ");
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード", { exact: true }).fill("password1");
+  await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
+  await page.getByRole("button", { name: "登録" }).click();
+
+  const submitButton = page.getByRole("button", { name: "決定" });
+  const beforeOpenBox = await submitButton.boundingBox();
+  await page.getByRole("button", { name: "写真を選ぶ" }).click();
+  await expect(
+    page.getByRole("button", { name: "カメラで撮影" }),
+  ).toBeVisible();
+  const afterOpenBox = await submitButton.boundingBox();
+
+  expect(afterOpenBox?.y).toBeCloseTo(beforeOpenBox?.y ?? 0, 0);
+});

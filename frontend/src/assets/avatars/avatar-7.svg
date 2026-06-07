@@ -5,8 +5,8 @@
   xmlns="http://www.w3.org/2000/svg"
 >
   <circle cx="128" cy="128" r="128" fill="#F2F4F7" />
-  <path d="M52 180L108 96L164 180Z" fill="#B8C0CC" />
-  <path d="M92 180L148 82L204 180Z" fill="#8F9AA8" />
+  <path d="M52 180L108 96L164 180Z" fill="#A7B0BD" />
+  <path d="M92 180L148 82L204 180Z" fill="#768394" />
   <path d="M148 82L130 114L148 104L166 114Z" fill="#FFFFFF" />
   <path d="M108 96L96 116L108 110L120 116Z" fill="#FFFFFF" opacity="0.9" />
   <circle cx="190" cy="74" r="5" fill="#FFFFFF" opacity="0.8" />

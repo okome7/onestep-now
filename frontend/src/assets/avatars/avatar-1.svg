@@ -5,7 +5,7 @@
   xmlns="http://www.w3.org/2000/svg"
 >
   <circle cx="128" cy="128" r="128" fill="#FFE4EC" />
-  <g>
+  <g transform="translate(128 128) scale(0.86) translate(-128 -128)">
     <ellipse
       cx="82"
       cy="88"

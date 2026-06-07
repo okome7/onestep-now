@@ -24,6 +24,7 @@ body {
 .signup-header {
   position: relative;
   display: flex;
+  flex: 0 0 64px;
   align-items: center;
   justify-content: center;
   height: 64px;
@@ -80,8 +81,17 @@ body {
 .avatar-grid {
   display: grid;
   grid-template-columns: repeat(3, 52px);
+  align-content: center;
   justify-content: center;
-  gap: 10px 26px;
+  gap: 12px 24px;
+  inline-size: 248px;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border: 1px solid #dde7f3;
+  border-radius: 20px;
+  padding: 0 14px;
+  background: #fffefe;
+  box-shadow: 0 6px 14px rgb(30 41 59 / 6%);
 }
 
 .avatar-option {
@@ -100,7 +110,9 @@ body {
   display: block;
   width: 52px;
   height: 52px;
+  border: 1px solid rgb(30 41 59 / 12%);
   border-radius: 50%;
+  filter: saturate(1.18) contrast(1.08);
   object-fit: cover;
 }
 
@@ -111,6 +123,7 @@ body {
 
 .avatar-option.photo-slot-empty {
   position: relative;
+  border: 1px solid rgb(30 41 59 / 12%);
   background: #d9d9d9;
 }
 
@@ -166,6 +179,7 @@ body {
   color: #111827;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -173,7 +187,15 @@ body {
   display: flex;
   justify-content: center;
   gap: 8px;
+  height: 28px;
   margin-top: 8px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.photo-choice-panel.is-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .photo-choice-button {
@@ -194,7 +216,7 @@ body {
   flex: 0 0 18px;
   width: 18px;
   height: 18px;
-  margin-right: 4px;
+  margin-right: 5px;
 }
 
 .camera-icon {
@@ -226,24 +248,10 @@ body {
 }
 
 .folder-icon {
-  border: 2px solid #111827;
-  border-radius: 2px;
-}
-
-.folder-icon::before {
-  position: absolute;
-  top: -4px;
-  left: -2px;
-  width: 8px;
-  height: 5px;
-  border: 2px solid #111827;
-  border-bottom: 0;
-  border-radius: 2px 2px 0 0;
-  content: '';
-}
-
-.icon-submit-button {
-  margin-top: 18px;
+  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='3' y='5' width='18' height='14' rx='3' stroke='%231E293B' stroke-width='2'/%3E%3Ccircle cx='16.5' cy='9' r='1.5' fill='%231E293B'/%3E%3Cpath d='M6 16L10 12L13 14.5L16 11L18 16' stroke='%231E293B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center 52%;
+  background-size: 17px 17px;
 }
 
 .photo-input {
@@ -383,6 +391,15 @@ body {
 .submit-button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.icon-submit-button {
+  width: min(100%, 168px);
+  margin: 16px auto 0;
+}
+
+.icon-content .notice {
+  margin-top: 10px;
 }
 
 .notice {

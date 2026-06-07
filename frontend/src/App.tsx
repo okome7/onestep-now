@@ -104,6 +104,27 @@ function getInitialScreen(): Screen {
     : 'signup'
 }
 
+type SignupHeaderProps = {
+  title: string
+  onBack: () => void
+}
+
+function SignupHeader({ title, onBack }: SignupHeaderProps) {
+  return (
+    <header className="signup-header">
+      <button
+        className="back-button"
+        type="button"
+        aria-label="戻る"
+        onClick={onBack}
+      >
+        &lt;
+      </button>
+      <h1>{title}</h1>
+    </header>
+  )
+}
+
 function App() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -236,17 +257,7 @@ function App() {
 
   return (
     <main className="signup-page">
-      <header className="signup-header">
-        <button
-          className="back-button"
-          type="button"
-          aria-label="戻る"
-          onClick={handleBack}
-        >
-          &lt;
-        </button>
-        <h1>新規登録</h1>
-      </header>
+      <SignupHeader title="新規登録" onBack={handleBack} />
 
       {screen === 'icon' ? (
         <section className="icon-content" aria-labelledby="icon-title">
@@ -303,11 +314,16 @@ function App() {
             </button>
           </div>
 
-          {isMobilePhotoMenu && isPhotoChoiceOpen ? (
-            <div className="photo-choice-panel">
+          {isMobilePhotoMenu ? (
+            <div
+              className={`photo-choice-panel ${
+                isPhotoChoiceOpen ? 'is-open' : ''
+              }`}
+            >
               <button
                 className="photo-choice-button"
                 type="button"
+                tabIndex={isPhotoChoiceOpen ? 0 : -1}
                 onClick={() => cameraInputRef.current?.click()}
               >
                 カメラで撮影
@@ -315,6 +331,7 @@ function App() {
               <button
                 className="photo-choice-button"
                 type="button"
+                tabIndex={isPhotoChoiceOpen ? 0 : -1}
                 onClick={() => photoInputRef.current?.click()}
               >
                 写真を選択
@@ -345,7 +362,7 @@ function App() {
             type="button"
             onClick={handleIconSubmit}
           >
-            アイコンを設定する
+            決定
           </button>
 
           <p className="notice success" aria-live="polite">
