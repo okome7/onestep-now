@@ -85,6 +85,7 @@ function App() {
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
   const firstError = firstFieldError(fieldErrors)
+  const noticeText = message || error
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
@@ -284,17 +285,19 @@ function App() {
             className="submit-button"
             type="submit"
             disabled={isSubmitting}
+            aria-busy={isSubmitting}
           >
-            {isSubmitting ? '登録中...' : '登録'}
+            登録
           </button>
         </form>
 
-        {message && <p className="notice success">{message}</p>}
-        {error && (
-          <p className="notice error" role="alert">
-            {error}
-          </p>
-        )}
+        <p
+          className={`notice ${message ? 'success' : ''} ${error ? 'error' : ''}`}
+          role={error ? 'alert' : undefined}
+          aria-live="polite"
+        >
+          {noticeText}
+        </p>
 
         <div className="login-link-area">
           <p>すでにアカウントをお持ちですか？</p>

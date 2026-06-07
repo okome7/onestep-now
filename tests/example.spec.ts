@@ -71,3 +71,33 @@ test("入力エラーをフォーム内に表示する", async ({ page }) => {
     "true",
   );
 });
+
+test("登録後のメッセージで画面がずれない", async ({ page }) => {
+  await page.route("**/api/signup", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: { id: 1, name: "おこめ", email: "okome@example.com" },
+      }),
+    });
+  });
+
+  await page.goto("/");
+
+  const loginLink = page.getByRole("link", { name: "ログイン" });
+  const beforeLoginBox = await loginLink.boundingBox();
+
+  await page.getByLabel("名前").fill("おこめ");
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード", { exact: true }).fill("password1");
+  await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
+  await page.getByRole("button", { name: "登録" }).click();
+
+  await expect(
+    page.getByText("おこめ さんの登録が完了しました。"),
+  ).toBeVisible();
+  const afterLoginBox = await loginLink.boundingBox();
+
+  expect(afterLoginBox?.y).toBeCloseTo(beforeLoginBox?.y ?? 0, 0);
+});
