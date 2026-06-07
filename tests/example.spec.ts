@@ -14,7 +14,9 @@ test("フロントエンドの新規登録画面が表示される", async ({ pa
   await expect(page.getByLabel("名前")).toBeVisible();
   await expect(page.getByLabel("メールアドレス")).toBeVisible();
   await expect(page.getByLabel("パスワード", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("パスワード確認")).toBeVisible();
+  await expect(
+    page.getByLabel("パスワード確認", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "登録" })).toBeVisible();
 });
 
