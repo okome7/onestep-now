@@ -72,7 +72,7 @@ test("入力エラーをフォーム内に表示する", async ({ page }) => {
   );
 });
 
-test("登録後のメッセージで画面がずれない", async ({ page }) => {
+test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   await page.route("**/api/signup", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -85,9 +85,6 @@ test("登録後のメッセージで画面がずれない", async ({ page }) => 
 
   await page.goto("/");
 
-  const loginLink = page.getByRole("link", { name: "ログイン" });
-  const beforeLoginBox = await loginLink.boundingBox();
-
   await page.getByLabel("名前").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
   await page.getByLabel("パスワード", { exact: true }).fill("password1");
@@ -95,9 +92,15 @@ test("登録後のメッセージで画面がずれない", async ({ page }) => 
   await page.getByRole("button", { name: "登録" }).click();
 
   await expect(
-    page.getByText("おこめ さんの登録が完了しました。"),
+    page.getByRole("heading", { name: "アイコンを選ぼう！" }),
   ).toBeVisible();
-  const afterLoginBox = await loginLink.boundingBox();
-
-  expect(afterLoginBox?.y).toBeCloseTo(beforeLoginBox?.y ?? 0, 0);
+  await expect(page.getByRole("radio", { name: "アイコン1" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await page.getByRole("radio", { name: "アイコン5" }).click();
+  await expect(page.getByRole("radio", { name: "アイコン5" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
 });
