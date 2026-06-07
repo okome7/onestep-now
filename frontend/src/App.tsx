@@ -28,6 +28,7 @@ const passwordPattern = '[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
 type Screen = 'signup' | 'icon'
 const customPhotoIconId = 'custom-photo'
+const signupScreenStorageKey = 'onestep-signup-screen'
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -97,10 +98,16 @@ function errorFieldClass(error: string | undefined) {
   return error ? 'field-error' : undefined
 }
 
+function getInitialScreen(): Screen {
+  return window.localStorage.getItem(signupScreenStorageKey) === 'icon'
+    ? 'icon'
+    : 'signup'
+}
+
 function App() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
-  const [screen, setScreen] = useState<Screen>('signup')
+  const [screen, setScreen] = useState<Screen>(getInitialScreen)
   const [form, setForm] = useState<SignupForm>(initialForm)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -166,6 +173,7 @@ function App() {
       await signup(form)
       setForm(initialForm)
       setFieldErrors({})
+      window.localStorage.setItem(signupScreenStorageKey, 'icon')
       setScreen('icon')
     } catch (caughtError) {
       setError(
@@ -180,6 +188,7 @@ function App() {
 
   function handleBack() {
     if (screen === 'icon') {
+      window.localStorage.removeItem(signupScreenStorageKey)
       setScreen('signup')
       return
     }

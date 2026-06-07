@@ -132,6 +132,11 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   await expect(
     page.getByRole("radio", { name: "選択した写真" }),
   ).toHaveAttribute("aria-checked", "true");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "アイコンを選ぼう！" }),
+  ).toBeVisible();
+  await expect(page.getByRole("radio", { name: "写真未選択" })).toBeDisabled();
 
   const pageSize = await page.evaluate(() => ({
     height: window.innerHeight,
