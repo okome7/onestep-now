@@ -16,6 +16,12 @@ const initialForm: SignupForm = {
   passwordConfirmation: '',
 }
 
+const passwordPattern = '[A-Za-z0-9]{8,}'
+
+function formatPasswordInput(value: string) {
+  return value.replace(/[^A-Za-z0-9]/g, '')
+}
+
 function App() {
   const [form, setForm] = useState<SignupForm>(initialForm)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -27,7 +33,12 @@ function App() {
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
+    const nextValue =
+      name === 'password' || name === 'passwordConfirmation'
+        ? formatPasswordInput(value)
+        : value
+
+    setForm((current) => ({ ...current, [name]: nextValue }))
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -101,8 +112,9 @@ function App() {
                 name="password"
                 type={isPasswordVisible ? 'text' : 'password'}
                 autoComplete="new-password"
+                inputMode="text"
                 placeholder="パスワードを入力"
-                pattern="[A-Za-z0-9]{8,}"
+                pattern={passwordPattern}
                 title="8文字以上の英数字で入力してください"
                 value={form.password}
                 onChange={handleChange}
@@ -135,8 +147,9 @@ function App() {
                 name="passwordConfirmation"
                 type={isPasswordConfirmationVisible ? 'text' : 'password'}
                 autoComplete="new-password"
+                inputMode="text"
                 placeholder="パスワード確認を入力"
-                pattern="[A-Za-z0-9]{8,}"
+                pattern={passwordPattern}
                 title="8文字以上の英数字で入力してください"
                 value={form.passwordConfirmation}
                 onChange={handleChange}

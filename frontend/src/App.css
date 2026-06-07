@@ -69,6 +69,7 @@ body {
   align-items: center;
   height: 32px;
   border-bottom: 1px solid #d6dce6;
+  background: #ffffff;
 }
 
 .input-group label:last-child {
@@ -94,11 +95,21 @@ body {
   outline: 0;
   color: #374151;
   font-size: 14px;
-  background: transparent;
+  background: #ffffff;
 }
 
 .input-group input::placeholder {
   color: #a0a9b8;
+}
+
+.input-group input:autofill,
+.input-group input:-webkit-autofill {
+  box-shadow: 0 0 0 1000px #ffffff inset;
+  -webkit-text-fill-color: #374151;
+}
+
+.input-group input::selection {
+  background: transparent;
 }
 
 .visibility-button {

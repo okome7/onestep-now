@@ -29,8 +29,19 @@ test("パスワードの表示と非表示を切り替えられる", async ({ pa
   await expect(passwordInput).toHaveAttribute("type", "password");
   await toggleButton.click();
   await expect(passwordInput).toHaveAttribute("type", "text");
-  await page
-    .getByRole("button", { name: "パスワードを非表示にする" })
-    .click();
+  await page.getByRole("button", { name: "パスワードを非表示にする" }).click();
   await expect(passwordInput).toHaveAttribute("type", "password");
+});
+
+test("パスワードに英数字以外は入力できない", async ({ page }) => {
+  await page.goto("/");
+
+  const passwordInput = page.getByPlaceholder("パスワードを入力");
+  const confirmationInput = page.getByPlaceholder("パスワード確認を入力");
+
+  await passwordInput.fill("あああabc123");
+  await confirmationInput.fill("テストpass456");
+
+  await expect(passwordInput).toHaveValue("abc123");
+  await expect(confirmationInput).toHaveValue("pass456");
 });
