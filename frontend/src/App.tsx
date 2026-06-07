@@ -271,7 +271,7 @@ function App() {
             </label>
           </div>
 
-          <p className="password-note">*8文字以上の英数字を入力してください</p>
+          <p className="password-note">*パスワードは8文字以上の英数字</p>
 
           <p
             id="field-error-message"

@@ -151,14 +151,14 @@ body {
 }
 
 .password-note {
-  margin: 8px 0 0;
+  margin: 5px 0 0;
   color: #9aa6b8;
   font-size: 12px;
 }
 
 .field-error-message {
   position: absolute;
-  top: 166px;
+  top: 162px;
   left: 0;
   width: 100%;
   margin: 0;
