@@ -15,7 +15,9 @@ body {
 }
 
 .signup-page {
+  height: 100dvh;
   min-height: 100vh;
+  overflow: hidden;
   background: #f4f7fb;
 }
 
@@ -55,7 +57,7 @@ body {
 .icon-content {
   width: min(100%, 360px);
   margin: 0 auto;
-  padding: 20px 38px 48px;
+  padding: 18px 38px 24px;
   text-align: center;
 }
 
@@ -68,7 +70,7 @@ body {
 }
 
 .icon-description {
-  margin: 14px 0 26px;
+  margin: 12px 0 20px;
   color: #9aa6b8;
   font-size: 13px;
   font-weight: 600;
@@ -79,7 +81,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 52px);
   justify-content: center;
-  gap: 12px 26px;
+  gap: 10px 26px;
 }
 
 .avatar-option {
@@ -109,7 +111,7 @@ body {
   display: flex;
   justify-content: center;
   gap: 24px;
-  margin-top: 24px;
+  margin-top: 18px;
 }
 
 .photo-button {
@@ -181,7 +183,11 @@ body {
 }
 
 .icon-submit-button {
-  margin-top: 28px;
+  margin-top: 18px;
+}
+
+.photo-input {
+  display: none;
 }
 
 .signup-form {

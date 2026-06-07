@@ -103,4 +103,23 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
     "aria-checked",
     "true",
   );
+  await expect(page.getByLabel("撮影する写真")).toHaveAttribute(
+    "accept",
+    "image/*",
+  );
+  await expect(page.getByLabel("撮影する写真")).toHaveAttribute(
+    "capture",
+    "user",
+  );
+  await expect(page.getByLabel("選択する写真")).toHaveAttribute(
+    "accept",
+    "image/*",
+  );
+
+  const pageSize = await page.evaluate(() => ({
+    height: window.innerHeight,
+    scrollHeight: document.documentElement.scrollHeight,
+  }));
+
+  expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
 });

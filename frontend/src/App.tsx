@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import './App.css'
 import { signup } from './signupApi'
@@ -98,6 +98,8 @@ function errorFieldClass(error: string | undefined) {
 }
 
 function App() {
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const [screen, setScreen] = useState<Screen>('signup')
   const [form, setForm] = useState<SignupForm>(initialForm)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -165,6 +167,12 @@ function App() {
     setMessage('アイコンを設定しました。')
   }
 
+  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    if (event.target.files?.[0]) {
+      setMessage('写真を選択しました。')
+    }
+  }
+
   return (
     <main className="signup-page">
       <header className="signup-header">
@@ -207,14 +215,22 @@ function App() {
           </div>
 
           <div className="photo-actions">
-            <button className="photo-button" type="button">
+            <button
+              className="photo-button"
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+            >
               <span
                 className="photo-button-icon camera-icon"
                 aria-hidden="true"
               />
               写真を撮る
             </button>
-            <button className="photo-button" type="button">
+            <button
+              className="photo-button"
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+            >
               <span
                 className="photo-button-icon folder-icon"
                 aria-hidden="true"
@@ -222,6 +238,24 @@ function App() {
               写真を選ぶ
             </button>
           </div>
+
+          <input
+            ref={cameraInputRef}
+            className="photo-input"
+            type="file"
+            accept="image/*"
+            capture="user"
+            aria-label="撮影する写真"
+            onChange={handlePhotoChange}
+          />
+          <input
+            ref={photoInputRef}
+            className="photo-input"
+            type="file"
+            accept="image/*"
+            aria-label="選択する写真"
+            onChange={handlePhotoChange}
+          />
 
           <button
             className="submit-button icon-submit-button"
