@@ -20,6 +20,27 @@ test("フロントエンドの新規登録画面が表示される", async ({ pa
   await expect(page.getByRole("button", { name: "登録" })).toBeVisible();
 });
 
+test("新規登録画面のリロード後も名前とメールアドレスを保持する", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page.getByLabel("名前").fill("おこめ");
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード", { exact: true }).fill("password1");
+  await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
+  await page.reload();
+
+  await expect(page.getByLabel("名前")).toHaveValue("おこめ");
+  await expect(page.getByLabel("メールアドレス")).toHaveValue(
+    "okome@example.com",
+  );
+  await expect(page.getByLabel("パスワード", { exact: true })).toHaveValue("");
+  await expect(page.getByLabel("パスワード確認", { exact: true })).toHaveValue(
+    "",
+  );
+});
+
 test("パスワードの表示と非表示を切り替えられる", async ({ page }) => {
   await page.goto("/");
 

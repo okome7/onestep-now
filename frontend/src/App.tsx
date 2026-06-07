@@ -105,7 +105,7 @@ function getInitialScreen(): Screen {
     : 'signup'
 }
 
-function getInitialForm(): SignupForm {
+function getInitialForm(screen: Screen): SignupForm {
   const savedForm = window.sessionStorage.getItem(signupDraftStorageKey)
 
   if (!savedForm) {
@@ -113,10 +113,35 @@ function getInitialForm(): SignupForm {
   }
 
   try {
-    return { ...initialForm, ...JSON.parse(savedForm) }
+    const parsedForm = JSON.parse(savedForm) as Partial<SignupForm>
+
+    return {
+      ...initialForm,
+      name: parsedForm.name ?? '',
+      email: parsedForm.email ?? '',
+      password: screen === 'icon' ? (parsedForm.password ?? '') : '',
+      passwordConfirmation:
+        screen === 'icon' ? (parsedForm.passwordConfirmation ?? '') : '',
+    }
   } catch {
     return initialForm
   }
+}
+
+function saveSignupDraft(form: SignupForm, includePassword = false) {
+  window.sessionStorage.setItem(
+    signupDraftStorageKey,
+    JSON.stringify({
+      name: form.name,
+      email: form.email,
+      ...(includePassword
+        ? {
+            password: form.password,
+            passwordConfirmation: form.passwordConfirmation,
+          }
+        : {}),
+    }),
+  )
 }
 
 type SignupHeaderProps = {
@@ -144,7 +169,9 @@ function App() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [screen, setScreen] = useState<Screen>(getInitialScreen)
-  const [form, setForm] = useState<SignupForm>(getInitialForm)
+  const [form, setForm] = useState<SignupForm>(() =>
+    getInitialForm(getInitialScreen()),
+  )
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState('')
@@ -187,7 +214,15 @@ function App() {
         ? formatPasswordInput(value)
         : value
 
-    setForm((current) => ({ ...current, [name]: nextValue }))
+    setForm((current) => {
+      const nextForm = { ...current, [name]: nextValue }
+
+      if (name === 'name' || name === 'email') {
+        saveSignupDraft(nextForm)
+      }
+
+      return nextForm
+    })
     setFieldErrors((current) => ({ ...current, [name]: undefined }))
   }
 
@@ -203,7 +238,7 @@ function App() {
       return
     }
 
-    window.sessionStorage.setItem(signupDraftStorageKey, JSON.stringify(form))
+    saveSignupDraft(form, true)
     window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
     setScreen('icon')
   }
