@@ -87,11 +87,6 @@ body {
   display: block;
 }
 
-.input-icon.right {
-  width: 30px;
-  padding-right: 8px;
-}
-
 .input-group input {
   width: 100%;
   min-width: 0;
@@ -104,6 +99,28 @@ body {
 
 .input-group input::placeholder {
   color: #a0a9b8;
+}
+
+.visibility-button {
+  display: grid;
+  flex: 0 0 34px;
+  place-items: center;
+  align-self: stretch;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.visibility-button:focus-visible {
+  outline: 2px solid #4d95e5;
+  outline-offset: -2px;
+}
+
+.visibility-button img {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .password-note {

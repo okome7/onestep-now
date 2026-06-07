@@ -6,6 +6,8 @@ import type { SignupForm } from './signupApi'
 import userIcon from './assets/icons/user.svg'
 import mailIcon from './assets/icons/mail.svg'
 import passwordIcon from './assets/icons/password.svg'
+import passwordShowIcon from './assets/icons/password_show.svg'
+import passwordHideIcon from './assets/icons/password_hide.svg'
 
 const initialForm: SignupForm = {
   name: '',
@@ -19,6 +21,9 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false)
+  const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
+    useState(false)
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
@@ -94,14 +99,30 @@ function App() {
               </span>
               <input
                 name="password"
-                type="password"
+                type={isPasswordVisible ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="パスワードを入力"
                 value={form.password}
                 onChange={handleChange}
                 required
               />
-              <span className="input-icon right">×</span>
+              <button
+                className="visibility-button"
+                type="button"
+                aria-label={
+                  isPasswordVisible
+                    ? 'パスワードを非表示にする'
+                    : 'パスワードを表示する'
+                }
+                aria-pressed={isPasswordVisible}
+                onClick={() => setIsPasswordVisible((current) => !current)}
+              >
+                <img
+                  src={isPasswordVisible ? passwordShowIcon : passwordHideIcon}
+                  alt=""
+                  aria-hidden="true"
+                />
+              </button>
             </label>
 
             <label>
@@ -110,14 +131,36 @@ function App() {
               </span>
               <input
                 name="passwordConfirmation"
-                type="password"
+                type={isPasswordConfirmationVisible ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="パスワード確認を入力"
                 value={form.passwordConfirmation}
                 onChange={handleChange}
                 required
               />
-              <span className="input-icon right">×</span>
+              <button
+                className="visibility-button"
+                type="button"
+                aria-label={
+                  isPasswordConfirmationVisible
+                    ? 'パスワード確認を非表示にする'
+                    : 'パスワード確認を表示する'
+                }
+                aria-pressed={isPasswordConfirmationVisible}
+                onClick={() =>
+                  setIsPasswordConfirmationVisible((current) => !current)
+                }
+              >
+                <img
+                  src={
+                    isPasswordConfirmationVisible
+                      ? passwordShowIcon
+                      : passwordHideIcon
+                  }
+                  alt=""
+                  aria-hidden="true"
+                />
+              </button>
             </label>
           </div>
 
