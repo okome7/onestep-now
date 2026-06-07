@@ -195,10 +195,17 @@ body {
 }
 
 @media (min-width: 640px) {
+  #root {
+    width: 100%;
+    border-inline: 0;
+    text-align: initial;
+  }
+
   .signup-page {
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 100%;
   }
 
   .signup-header {
@@ -206,7 +213,11 @@ body {
   }
 
   .signup-content {
-    width: 360px;
-    padding-top: 40px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    width: min(100%, 450px);
+    padding: 40px 30px 80px;
   }
 }
