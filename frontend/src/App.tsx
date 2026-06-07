@@ -17,13 +17,57 @@ const initialForm: SignupForm = {
 }
 
 const passwordPattern = '[A-Za-z0-9]{8,}'
+type FieldErrors = Partial<Record<keyof SignupForm, string>>
 
 function formatPasswordInput(value: string) {
   return value.replace(/[^A-Za-z0-9]/g, '')
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function validateForm(form: SignupForm) {
+  const nextErrors: FieldErrors = {}
+
+  if (!form.name.trim()) {
+    nextErrors.name = '名前を入力してください'
+  }
+
+  if (!form.email.trim()) {
+    nextErrors.email = 'メールアドレスを入力してください'
+  } else if (!isValidEmail(form.email)) {
+    nextErrors.email = '@を含む正しいメールアドレスを入力してください'
+  }
+
+  if (!form.password) {
+    nextErrors.password = 'パスワードを入力してください'
+  } else if (form.password.length < 8) {
+    nextErrors.password = '8文字以上の英数字を入力してください'
+  } else if (!new RegExp(`^${passwordPattern}$`).test(form.password)) {
+    nextErrors.password = '英数字で入力してください'
+  }
+
+  if (!form.passwordConfirmation) {
+    nextErrors.passwordConfirmation = 'パスワード確認を入力してください'
+  } else if (form.password !== form.passwordConfirmation) {
+    nextErrors.passwordConfirmation = 'パスワード確認が一致していません'
+  }
+
+  return nextErrors
+}
+
+function hasErrors(errors: FieldErrors) {
+  return Object.keys(errors).length > 0
+}
+
+function errorFieldClass(error: string | undefined) {
+  return error ? 'field-error' : undefined
+}
+
 function App() {
   const [form, setForm] = useState<SignupForm>(initialForm)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -39,18 +83,28 @@ function App() {
         : value
 
     setForm((current) => ({ ...current, [name]: nextValue }))
+    setFieldErrors((current) => ({ ...current, [name]: undefined }))
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setIsSubmitting(true)
     setMessage('')
     setError('')
+
+    const nextErrors = validateForm(form)
+    setFieldErrors(nextErrors)
+
+    if (hasErrors(nextErrors)) {
+      return
+    }
+
+    setIsSubmitting(true)
 
     try {
       const user = await signup(form)
       setMessage(`${user.name} さんの登録が完了しました。`)
       setForm(initialForm)
+      setFieldErrors({})
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -72,9 +126,9 @@ function App() {
       </header>
 
       <section className="signup-content">
-        <form className="signup-form" onSubmit={handleSubmit}>
+        <form className="signup-form" onSubmit={handleSubmit} noValidate>
           <div className="input-group">
-            <label>
+            <label className={errorFieldClass(fieldErrors.name)}>
               <span className="input-icon">
                 <img src={userIcon} alt="" aria-hidden="true" />
               </span>
@@ -86,11 +140,13 @@ function App() {
                 placeholder="名前を入力"
                 value={form.name}
                 onChange={handleChange}
+                aria-invalid={Boolean(fieldErrors.name)}
+                aria-describedby={fieldErrors.name ? 'name-error' : undefined}
                 required
               />
             </label>
 
-            <label>
+            <label className={errorFieldClass(fieldErrors.email)}>
               <span className="input-icon">
                 <img src={mailIcon} alt="" aria-hidden="true" />
               </span>
@@ -102,11 +158,13 @@ function App() {
                 placeholder="メールアドレスを入力"
                 value={form.email}
                 onChange={handleChange}
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={fieldErrors.email ? 'email-error' : undefined}
                 required
               />
             </label>
 
-            <label>
+            <label className={errorFieldClass(fieldErrors.password)}>
               <span className="input-icon">
                 <img src={passwordIcon} alt="" aria-hidden="true" />
               </span>
@@ -121,6 +179,10 @@ function App() {
                 title="8文字以上の英数字で入力してください"
                 value={form.password}
                 onChange={handleChange}
+                aria-invalid={Boolean(fieldErrors.password)}
+                aria-describedby={
+                  fieldErrors.password ? 'password-error' : undefined
+                }
                 required
               />
               <button
@@ -142,7 +204,9 @@ function App() {
               </button>
             </label>
 
-            <label>
+            <label
+              className={errorFieldClass(fieldErrors.passwordConfirmation)}
+            >
               <span className="input-icon">
                 <img src={passwordIcon} alt="" aria-hidden="true" />
               </span>
@@ -157,6 +221,12 @@ function App() {
                 title="8文字以上の英数字で入力してください"
                 value={form.passwordConfirmation}
                 onChange={handleChange}
+                aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
+                aria-describedby={
+                  fieldErrors.passwordConfirmation
+                    ? 'password-confirmation-error'
+                    : undefined
+                }
                 required
               />
               <button
@@ -186,6 +256,21 @@ function App() {
           </div>
 
           <p className="password-note">*8文字以上の英数字を入力してください</p>
+
+          {hasErrors(fieldErrors) && (
+            <div className="field-error-messages" role="alert">
+              {fieldErrors.name && <p id="name-error">{fieldErrors.name}</p>}
+              {fieldErrors.email && <p id="email-error">{fieldErrors.email}</p>}
+              {fieldErrors.password && (
+                <p id="password-error">{fieldErrors.password}</p>
+              )}
+              {fieldErrors.passwordConfirmation && (
+                <p id="password-confirmation-error">
+                  {fieldErrors.passwordConfirmation}
+                </p>
+              )}
+            </div>
+          )}
 
           <button
             className="submit-button"

@@ -47,3 +47,21 @@ test("パスワードに英数字以外は入力できない", async ({ page }) 
   await expect(passwordInput).toHaveValue("abc123");
   await expect(confirmationInput).toHaveValue("pass456");
 });
+
+test("入力エラーをフォーム内に表示する", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByLabel("名前").fill("おこめ");
+  await page.getByLabel("メールアドレス").fill("example.com");
+  await page.getByLabel("パスワード", { exact: true }).fill("password1");
+  await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
+  await page.getByRole("button", { name: "登録" }).click();
+
+  await expect(
+    page.getByText("@を含む正しいメールアドレスを入力してください"),
+  ).toBeVisible();
+  await expect(page.getByLabel("メールアドレス")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+});
