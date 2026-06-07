@@ -101,6 +101,25 @@ test('APIのエラーメッセージがmessageで返った場合も表示する'
   )
 })
 
+test('パスワードの英数字エラーを日本語で返す', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'error',
+          errors: ['Password は英数字で入力してください'],
+        }),
+    }),
+  )
+
+  await expect(signup(form, 'http://localhost:3000/')).rejects.toThrow(
+    'パスワードは英数字で入力してください。',
+  )
+})
+
 test('APIに接続できない場合は接続エラーを返す', async () => {
   vi.stubGlobal(
     'fetch',

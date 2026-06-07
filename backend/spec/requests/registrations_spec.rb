@@ -88,6 +88,21 @@ RSpec.describe "Registrations", type: :request do
         expect(json_response["status"]).to eq("error")
         expect(json_response["errors"]).to be_present
       end
+
+      it "パスワードが英数字以外の場合はユーザーを作成しないこと" do
+        valid_attributes[:user][:password] = "パスワード123"
+        valid_attributes[:user][:password_confirmation] = "パスワード123"
+
+        expect {
+          post "/signup", params: valid_attributes, as: :json
+        }.not_to change(User, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response["status"]).to eq("error")
+        expect(json_response["errors"]).to include("Password は英数字で入力してください")
+      end
     end
   end
 end

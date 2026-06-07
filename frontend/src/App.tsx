@@ -102,6 +102,8 @@ function App() {
                 type={isPasswordVisible ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="パスワードを入力"
+                pattern="[A-Za-z0-9]{8,}"
+                title="8文字以上の英数字で入力してください"
                 value={form.password}
                 onChange={handleChange}
                 required
@@ -134,6 +136,8 @@ function App() {
                 type={isPasswordConfirmationVisible ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="パスワード確認を入力"
+                pattern="[A-Za-z0-9]{8,}"
+                title="8文字以上の英数字で入力してください"
                 value={form.passwordConfirmation}
                 onChange={handleChange}
                 required

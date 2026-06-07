@@ -34,6 +34,8 @@ const japaneseErrorMessages: Record<string, string> = {
   'Email has already been taken':
     'このメールアドレスはすでに登録されています。',
   "Password can't be blank": 'パスワードを入力してください。',
+  'Password は英数字で入力してください':
+    'パスワードは英数字で入力してください。',
   "Password confirmation doesn't match Password":
     'パスワード確認が一致していません。',
 }

@@ -10,6 +10,10 @@ class User < ApplicationRecord
     presence: true,
     uniqueness: { case_sensitive: false },
     format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :password,
+    length: { minimum: 8 },
+    format: { with: /\A[A-Za-z0-9]+\z/, message: "は英数字で入力してください" },
+    allow_blank: true
 
   private
 
