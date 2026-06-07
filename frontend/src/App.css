@@ -217,7 +217,7 @@ body {
     flex: 1;
     flex-direction: column;
     justify-content: center;
-    width: min(100%, 450px);
+    width: min(100%, 360px);
     padding: 40px 30px 80px;
   }
 }
