@@ -108,7 +108,8 @@ function App() {
   const [error, setError] = useState('')
   const [selectedIconId, setSelectedIconId] = useState(avatarOptions[0].id)
   const [customPhotoUrl, setCustomPhotoUrl] = useState('')
-  const [canUseCameraSlot, setCanUseCameraSlot] = useState(false)
+  const [isMobilePhotoMenu, setIsMobilePhotoMenu] = useState(false)
+  const [isPhotoChoiceOpen, setIsPhotoChoiceOpen] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
@@ -125,12 +126,15 @@ function App() {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 639px)')
-    const updateCameraSlot = () => setCanUseCameraSlot(mediaQuery.matches)
+    const updatePhotoMenu = () => {
+      setIsMobilePhotoMenu(mediaQuery.matches)
+      setIsPhotoChoiceOpen(false)
+    }
 
-    updateCameraSlot()
-    mediaQuery.addEventListener('change', updateCameraSlot)
+    updatePhotoMenu()
+    mediaQuery.addEventListener('change', updatePhotoMenu)
 
-    return () => mediaQuery.removeEventListener('change', updateCameraSlot)
+    return () => mediaQuery.removeEventListener('change', updatePhotoMenu)
   }, [])
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -200,6 +204,7 @@ function App() {
         return photoUrl
       })
       setSelectedIconId(customPhotoIconId)
+      setIsPhotoChoiceOpen(false)
       setMessage('')
     }
   }
@@ -209,10 +214,15 @@ function App() {
       setSelectedIconId(avatarId)
       return
     }
+  }
 
-    if (canUseCameraSlot) {
-      cameraInputRef.current?.click()
+  function handlePhotoButtonClick() {
+    if (isMobilePhotoMenu) {
+      setIsPhotoChoiceOpen((current) => !current)
+      return
     }
+
+    photoInputRef.current?.click()
   }
 
   return (
@@ -253,14 +263,8 @@ function App() {
                   type="button"
                   role="radio"
                   aria-checked={selectedIconId === avatar.id}
-                  aria-label={
-                    isCameraSlot && canUseCameraSlot
-                      ? '写真を撮る'
-                      : isCameraSlot
-                        ? '写真未選択'
-                        : avatar.label
-                  }
-                  disabled={isCameraSlot && !canUseCameraSlot}
+                  aria-label={isCameraSlot ? '写真未選択' : avatar.label}
+                  disabled={isCameraSlot}
                   onClick={() => handleAvatarClick(avatar.id)}
                 >
                   {hasCustomPhoto ? (
@@ -279,7 +283,8 @@ function App() {
             <button
               className="photo-button"
               type="button"
-              onClick={() => photoInputRef.current?.click()}
+              aria-expanded={isMobilePhotoMenu ? isPhotoChoiceOpen : undefined}
+              onClick={handlePhotoButtonClick}
             >
               <span
                 className="photo-button-icon folder-icon"
@@ -288,6 +293,25 @@ function App() {
               写真を選ぶ
             </button>
           </div>
+
+          {isMobilePhotoMenu && isPhotoChoiceOpen ? (
+            <div className="photo-choice-panel">
+              <button
+                className="photo-choice-button"
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+              >
+                カメラで撮影
+              </button>
+              <button
+                className="photo-choice-button"
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+              >
+                写真を選択
+              </button>
+            </div>
+          ) : null}
 
           <input
             ref={cameraInputRef}

@@ -103,9 +103,12 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
     "aria-checked",
     "true",
   );
-  await expect(page.getByRole("radio", { name: "写真未選択" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "写真を撮る" })).toHaveCount(0);
+  await expect(page.getByRole("radio", { name: "写真未選択" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "写真を選ぶ" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "カメラで撮影" })).toHaveCount(
+    0,
+  );
+  await expect(page.getByRole("button", { name: "写真を選択" })).toHaveCount(0);
   await expect(page.getByLabel("撮影する写真")).toHaveAttribute(
     "accept",
     "image/*",
@@ -138,7 +141,7 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
 });
 
-test("スマホでは右下のアイコンから写真を撮れる", async ({ page }) => {
+test("スマホでは写真の選び方を分けて表示する", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.route("**/api/signup", async (route) => {
     await route.fulfill({
@@ -158,6 +161,11 @@ test("スマホでは右下のアイコンから写真を撮れる", async ({ pa
   await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
   await page.getByRole("button", { name: "登録" }).click();
 
-  await expect(page.getByRole("radio", { name: "写真を撮る" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "写真を撮る" })).toHaveCount(0);
+  await expect(page.getByRole("radio", { name: "写真未選択" })).toBeDisabled();
+  await page.getByRole("button", { name: "写真を選ぶ" }).click();
+
+  await expect(
+    page.getByRole("button", { name: "カメラで撮影" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "写真を選択" })).toBeVisible();
 });
