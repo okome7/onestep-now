@@ -4,7 +4,6 @@ export type SignupForm = {
   password: string
   passwordConfirmation: string
   avatarKey?: string
-  avatarImage?: string
 }
 
 export type SignupUser = {
@@ -12,7 +11,6 @@ export type SignupUser = {
   name: string
   email: string
   avatar_key?: string
-  avatar_image?: string | null
 }
 
 type SignupSuccessResponse = {
@@ -37,7 +35,6 @@ const japaneseErrorMessages: Record<string, string> = {
   "Email can't be blank": 'メールアドレスを入力してください。',
   'Email has already been taken':
     'このメールアドレスはすでに登録されています。',
-  'Avatar image is too long': '写真のサイズが大きすぎます。',
   "Password can't be blank": 'パスワードを入力してください。',
   'Password は英数字で入力してください':
     'パスワードは英数字で入力してください。',
@@ -80,7 +77,6 @@ export async function signup(
           password: form.password,
           password_confirmation: form.passwordConfirmation,
           avatar_key: form.avatarKey,
-          avatar_image: form.avatarImage,
         },
       }),
     })

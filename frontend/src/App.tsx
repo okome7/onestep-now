@@ -105,10 +105,17 @@ function errorFieldClass(error: string | undefined) {
 type CompleteProfile = {
   name: string
   avatarId: string
-  avatarImage?: string
+}
+
+function isAvatarImageDataUrl(value: string | undefined) {
+  return Boolean(value?.startsWith('data:image/'))
 }
 
 function getAvatarSrc(avatarId: string) {
+  if (isAvatarImageDataUrl(avatarId)) {
+    return avatarId
+  }
+
   return (
     avatarOptions.find((avatar) => avatar.id === avatarId)?.src ??
     avatarOptions[0].src
@@ -184,7 +191,6 @@ function getInitialCompleteProfile(): CompleteProfile {
     return {
       name: parsedProfile.name ?? '',
       avatarId: parsedProfile.avatarId ?? avatarOptions[0].id,
-      avatarImage: parsedProfile.avatarImage,
     }
   } catch {
     return { name: '', avatarId: avatarOptions[0].id }
@@ -196,7 +202,7 @@ function saveCompleteProfile(profile: CompleteProfile) {
 }
 
 function getCompleteAvatarSrc(profile: CompleteProfile) {
-  return profile.avatarImage ?? getAvatarSrc(profile.avatarId)
+  return getAvatarSrc(profile.avatarId)
 }
 
 function readBlobAsDataUrl(blob: Blob) {
@@ -419,16 +425,18 @@ function App() {
       }
 
       const nextCompletedName = form.name.trim()
+      const avatarKeyToSave = isCustomPhotoSelected
+        ? customPhotoDataUrl
+        : selectedIconId
       const createdUser = await signup({
         ...form,
-        avatarKey: selectedIconId,
-        avatarImage: isCustomPhotoSelected ? customPhotoDataUrl : undefined,
+        avatarKey: avatarKeyToSave,
       })
-      const nextCompletedAvatarImage =
-        createdUser.avatar_image ??
-        (isCustomPhotoSelected ? customPhotoDataUrl : undefined)
+      const nextCompletedAvatarId = createdUser.avatar_key ?? avatarKeyToSave
       const nextCompletedIconSrc =
-        nextCompletedAvatarImage ?? selectedAvatar?.src ?? avatarOptions[0].src
+        getAvatarSrc(nextCompletedAvatarId) ??
+        selectedAvatar?.src ??
+        avatarOptions[0].src
 
       setCompletedName(nextCompletedName)
       setCompletedIconSrc(nextCompletedIconSrc)
@@ -437,8 +445,7 @@ function App() {
       window.sessionStorage.setItem(signupScreenStorageKey, 'complete')
       saveCompleteProfile({
         name: nextCompletedName,
-        avatarId: selectedIconId,
-        avatarImage: nextCompletedAvatarImage,
+        avatarId: nextCompletedAvatarId,
       })
       setScreen('complete')
     } catch (caughtError) {

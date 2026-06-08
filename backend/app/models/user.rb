@@ -7,7 +7,6 @@ class User < ApplicationRecord
 
   validates :name, presence: true
   validates :avatar_key, presence: true
-  validates :avatar_image, length: { maximum: 2.megabytes }, allow_blank: true
   validates :email,
     presence: true,
     uniqueness: { case_sensitive: false },

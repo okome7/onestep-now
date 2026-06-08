@@ -14,6 +14,34 @@ test("バックエンドのヘルスチェックが成功する", async ({ reque
   expect(response.status()).toBe(200);
 });
 
+test("バックエンドにデフォルトアイコンで登録できる", async ({ request }) => {
+  const email = `e2e+${Date.now()}@example.com`;
+  const response = await request.post("http://127.0.0.1:3001/signup", {
+    data: {
+      user: {
+        name: "E2E登録",
+        email,
+        password: "password1",
+        password_confirmation: "password1",
+        avatar_key: "avatar-1",
+      },
+    },
+  });
+
+  expect(response.status()).toBe(201);
+  await expect(response).toBeOK();
+
+  const body = await response.json();
+  expect(body).toMatchObject({
+    status: "success",
+    data: {
+      name: "E2E登録",
+      email,
+      avatar_key: "avatar-1",
+    },
+  });
+});
+
 test("フロントエンドの新規登録画面が表示される", async ({ page }) => {
   const response = await page.goto("/");
 
@@ -305,8 +333,7 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
           id: 1,
           name: "おこめ",
           email: "okome-photo@example.com",
-          avatar_key: "custom-photo",
-          avatar_image: requestBody.user.avatar_image,
+          avatar_key: requestBody.user.avatar_key,
         },
       }),
     });
@@ -346,10 +373,7 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
       email: "okome-photo@example.com",
       password: "password1",
       password_confirmation: "password1",
-      avatar_key: "custom-photo",
+      avatar_key: expect.stringMatching(/^data:image\/jpeg;base64,/),
     },
   });
-  expect(signupRequests[0].user.avatar_image).toMatch(
-    /^data:image\/jpeg;base64,/,
-  );
 });
