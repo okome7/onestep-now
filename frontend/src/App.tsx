@@ -103,6 +103,7 @@ function errorFieldClass(error: string | undefined) {
 type CompleteProfile = {
   name: string
   avatarId: string
+  avatarImage?: string
 }
 
 function getAvatarSrc(avatarId: string) {
@@ -114,9 +115,16 @@ function getAvatarSrc(avatarId: string) {
 
 function getInitialScreen(): Screen {
   const savedScreen = window.sessionStorage.getItem(signupScreenStorageKey)
+  const savedCompleteProfile = window.localStorage.getItem(
+    signupCompleteStorageKey,
+  )
 
   if (savedScreen === 'complete' || savedScreen === 'icon') {
     return savedScreen
+  }
+
+  if (savedCompleteProfile) {
+    return 'complete'
   }
 
   return 'signup'
@@ -162,7 +170,7 @@ function saveSignupDraft(form: SignupForm, includePassword = false) {
 }
 
 function getInitialCompleteProfile(): CompleteProfile {
-  const savedProfile = window.sessionStorage.getItem(signupCompleteStorageKey)
+  const savedProfile = window.localStorage.getItem(signupCompleteStorageKey)
 
   if (!savedProfile) {
     return { name: '', avatarId: avatarOptions[0].id }
@@ -173,10 +181,8 @@ function getInitialCompleteProfile(): CompleteProfile {
 
     return {
       name: parsedProfile.name ?? '',
-      avatarId:
-        parsedProfile.avatarId && parsedProfile.avatarId !== customPhotoIconId
-          ? parsedProfile.avatarId
-          : avatarOptions[0].id,
+      avatarId: parsedProfile.avatarId ?? avatarOptions[0].id,
+      avatarImage: parsedProfile.avatarImage,
     }
   } catch {
     return { name: '', avatarId: avatarOptions[0].id }
@@ -184,10 +190,24 @@ function getInitialCompleteProfile(): CompleteProfile {
 }
 
 function saveCompleteProfile(profile: CompleteProfile) {
-  window.sessionStorage.setItem(
-    signupCompleteStorageKey,
-    JSON.stringify(profile),
-  )
+  window.localStorage.setItem(signupCompleteStorageKey, JSON.stringify(profile))
+}
+
+function getCompleteAvatarSrc(profile: CompleteProfile) {
+  return profile.avatarImage ?? getAvatarSrc(profile.avatarId)
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () =>
+      reject(
+        new Error('写真の読み込みに失敗しました。もう一度選択してください。'),
+      )
+    reader.readAsDataURL(file)
+  })
 }
 
 type SignupHeaderProps = {
@@ -224,11 +244,12 @@ function App() {
   const [error, setError] = useState('')
   const [selectedIconId, setSelectedIconId] = useState(avatarOptions[0].id)
   const [customPhotoUrl, setCustomPhotoUrl] = useState('')
+  const [customPhotoDataUrl, setCustomPhotoDataUrl] = useState('')
   const [completedName, setCompletedName] = useState(
     () => getInitialCompleteProfile().name,
   )
   const [completedIconSrc, setCompletedIconSrc] = useState(() =>
-    getAvatarSrc(getInitialCompleteProfile().avatarId),
+    getCompleteAvatarSrc(getInitialCompleteProfile()),
   )
   const [isMobilePhotoMenu, setIsMobilePhotoMenu] = useState(false)
   const [isPhotoChoiceOpen, setIsPhotoChoiceOpen] = useState(false)
@@ -292,7 +313,7 @@ function App() {
 
     saveSignupDraft(form, true)
     window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
-    window.sessionStorage.removeItem(signupCompleteStorageKey)
+    window.localStorage.removeItem(signupCompleteStorageKey)
     setScreen('icon')
   }
 
@@ -315,17 +336,24 @@ function App() {
       const selectedAvatar = avatarOptions.find(
         (avatar) => avatar.id === selectedIconId,
       )
-      const nextCompletedName = form.name.trim()
-      const nextCompletedAvatarId =
-        selectedIconId === customPhotoIconId
-          ? avatarOptions[0].id
-          : selectedIconId
-      const nextCompletedIconSrc =
-        selectedIconId === customPhotoIconId && customPhotoUrl
-          ? customPhotoUrl
-          : (selectedAvatar?.src ?? avatarOptions[0].src)
+      const isCustomPhotoSelected = selectedIconId === customPhotoIconId
 
-      await signup({ ...form, avatarKey: selectedIconId })
+      if (isCustomPhotoSelected && !customPhotoDataUrl) {
+        throw new Error('写真をもう一度選択してください。')
+      }
+
+      const nextCompletedName = form.name.trim()
+      const createdUser = await signup({
+        ...form,
+        avatarKey: selectedIconId,
+        avatarImage: isCustomPhotoSelected ? customPhotoDataUrl : undefined,
+      })
+      const nextCompletedAvatarImage =
+        createdUser.avatar_image ??
+        (isCustomPhotoSelected ? customPhotoDataUrl : undefined)
+      const nextCompletedIconSrc =
+        nextCompletedAvatarImage ?? selectedAvatar?.src ?? avatarOptions[0].src
+
       setCompletedName(nextCompletedName)
       setCompletedIconSrc(nextCompletedIconSrc)
       setFieldErrors({})
@@ -333,7 +361,8 @@ function App() {
       window.sessionStorage.setItem(signupScreenStorageKey, 'complete')
       saveCompleteProfile({
         name: nextCompletedName,
-        avatarId: nextCompletedAvatarId,
+        avatarId: selectedIconId,
+        avatarImage: nextCompletedAvatarImage,
       })
       setScreen('complete')
     } catch (caughtError) {
@@ -347,21 +376,32 @@ function App() {
     }
   }
 
-  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0]
 
     if (selectedFile) {
-      const photoUrl = URL.createObjectURL(selectedFile)
-      setCustomPhotoUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current)
-        }
+      try {
+        const photoDataUrl = await readFileAsDataUrl(selectedFile)
+        const photoUrl = URL.createObjectURL(selectedFile)
+        setCustomPhotoDataUrl(photoDataUrl)
+        setCustomPhotoUrl((current) => {
+          if (current) {
+            URL.revokeObjectURL(current)
+          }
 
-        return photoUrl
-      })
-      setSelectedIconId(customPhotoIconId)
-      setIsPhotoChoiceOpen(false)
-      setMessage('')
+          return photoUrl
+        })
+        setSelectedIconId(customPhotoIconId)
+        setIsPhotoChoiceOpen(false)
+        setMessage('')
+        setError('')
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : '写真の読み込みに失敗しました。',
+        )
+      }
     }
   }
 
@@ -382,7 +422,7 @@ function App() {
   }
 
   function handleStart() {
-    window.sessionStorage.removeItem(signupCompleteStorageKey)
+    window.localStorage.removeItem(signupCompleteStorageKey)
     window.sessionStorage.removeItem(signupScreenStorageKey)
     window.location.href = '/home'
   }

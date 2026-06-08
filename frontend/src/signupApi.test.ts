@@ -7,6 +7,7 @@ const form = {
   password: 'password123',
   passwordConfirmation: 'password123',
   avatarKey: 'avatar-5',
+  avatarImage: 'data:image/png;base64,avatar-image',
 }
 
 afterEach(() => {
@@ -25,6 +26,7 @@ test('登録フォームの値をAPIに送信する', async () => {
           name: form.name,
           email: form.email,
           avatar_key: form.avatarKey,
+          avatar_image: form.avatarImage,
         },
       }),
   })
@@ -35,6 +37,7 @@ test('登録フォームの値をAPIに送信する', async () => {
     name: form.name,
     email: form.email,
     avatar_key: form.avatarKey,
+    avatar_image: form.avatarImage,
   })
 
   expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/signup', {
@@ -49,6 +52,7 @@ test('登録フォームの値をAPIに送信する', async () => {
         password: form.password,
         password_confirmation: form.passwordConfirmation,
         avatar_key: form.avatarKey,
+        avatar_image: form.avatarImage,
       },
     }),
   })

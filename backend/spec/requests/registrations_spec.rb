@@ -56,6 +56,22 @@ RSpec.describe "Registrations", type: :request do
         expect(json_response["data"]["email"]).to eq("rspec_test@example.com")
         expect(User.last.email).to eq("rspec_test@example.com")
       end
+
+      it "選択した写真を保存して返すこと" do
+        avatar_image = "data:image/png;base64,avatar-image"
+        valid_attributes[:user][:avatar_key] = "custom-photo"
+        valid_attributes[:user][:avatar_image] = avatar_image
+
+        post "/signup", params: valid_attributes, as: :json
+
+        expect(response).to have_http_status(:created)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response["data"]["avatar_key"]).to eq("custom-photo")
+        expect(json_response["data"]["avatar_image"]).to eq(avatar_image)
+        expect(User.last.avatar_key).to eq("custom-photo")
+        expect(User.last.avatar_image).to eq(avatar_image)
+      end
     end
 
     context "無効なパラメータの場合" do

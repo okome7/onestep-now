@@ -8,7 +8,8 @@ class RegistrationsController < ApplicationController
           id: user.id,
           name: user.name,
           email: user.email,
-          avatar_key: user.avatar_key
+          avatar_key: user.avatar_key,
+          avatar_image: user.avatar_image
         }
       }, status: :created
     else
@@ -19,6 +20,6 @@ class RegistrationsController < ApplicationController
   private
 
   def user_params
-    params.require(:user).permit(:name, :email, :password, :password_confirmation, :avatar_key)
+    params.require(:user).permit(:name, :email, :password, :password_confirmation, :avatar_key, :avatar_image)
   end
 end
