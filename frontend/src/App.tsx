@@ -31,6 +31,8 @@ const customPhotoIconId = 'custom-photo'
 const signupScreenStorageKey = 'onestep-signup-screen'
 const signupDraftStorageKey = 'onestep-signup-draft'
 const signupCompleteStorageKey = 'onestep-signup-complete'
+const avatarImageSize = 256
+const avatarImageQuality = 0.82
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -197,7 +199,7 @@ function getCompleteAvatarSrc(profile: CompleteProfile) {
   return profile.avatarImage ?? getAvatarSrc(profile.avatarId)
 }
 
-function readFileAsDataUrl(file: File) {
+function readBlobAsDataUrl(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
 
@@ -206,8 +208,82 @@ function readFileAsDataUrl(file: File) {
       reject(
         new Error('写真の読み込みに失敗しました。もう一度選択してください。'),
       )
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(blob)
   })
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+
+    image.onload = () => resolve(image)
+    image.onerror = () =>
+      reject(
+        new Error('写真の読み込みに失敗しました。もう一度選択してください。'),
+      )
+    image.src = src
+  })
+}
+
+async function createAvatarImageDataUrl(file: File) {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('画像ファイルを選択してください。')
+  }
+
+  const objectUrl = URL.createObjectURL(file)
+
+  try {
+    const image = await loadImage(objectUrl)
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('写真の変換に失敗しました。もう一度選択してください。')
+    }
+
+    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight)
+    const sourceX = (image.naturalWidth - sourceSize) / 2
+    const sourceY = (image.naturalHeight - sourceSize) / 2
+
+    canvas.width = avatarImageSize
+    canvas.height = avatarImageSize
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, avatarImageSize, avatarImageSize)
+    context.imageSmoothingEnabled = true
+    context.imageSmoothingQuality = 'high'
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceSize,
+      sourceSize,
+      0,
+      0,
+      avatarImageSize,
+      avatarImageSize,
+    )
+
+    const avatarBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob)
+            return
+          }
+
+          reject(
+            new Error('写真の変換に失敗しました。もう一度選択してください。'),
+          )
+        },
+        'image/jpeg',
+        avatarImageQuality,
+      )
+    })
+
+    return readBlobAsDataUrl(avatarBlob)
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
 }
 
 type SignupHeaderProps = {
@@ -261,7 +337,7 @@ function App() {
 
   useEffect(() => {
     return () => {
-      if (customPhotoUrl) {
+      if (customPhotoUrl.startsWith('blob:')) {
         URL.revokeObjectURL(customPhotoUrl)
       }
     }
@@ -381,16 +457,9 @@ function App() {
 
     if (selectedFile) {
       try {
-        const photoDataUrl = await readFileAsDataUrl(selectedFile)
-        const photoUrl = URL.createObjectURL(selectedFile)
+        const photoDataUrl = await createAvatarImageDataUrl(selectedFile)
         setCustomPhotoDataUrl(photoDataUrl)
-        setCustomPhotoUrl((current) => {
-          if (current) {
-            URL.revokeObjectURL(current)
-          }
-
-          return photoUrl
-        })
+        setCustomPhotoUrl(photoDataUrl)
         setSelectedIconId(customPhotoIconId)
         setIsPhotoChoiceOpen(false)
         setMessage('')

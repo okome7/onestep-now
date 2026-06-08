@@ -37,6 +37,7 @@ const japaneseErrorMessages: Record<string, string> = {
   "Email can't be blank": 'メールアドレスを入力してください。',
   'Email has already been taken':
     'このメールアドレスはすでに登録されています。',
+  'Avatar image is too long': '写真のサイズが大きすぎます。',
   "Password can't be blank": 'パスワードを入力してください。',
   'Password は英数字で入力してください':
     'パスワードは英数字で入力してください。',

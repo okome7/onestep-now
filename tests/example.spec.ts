@@ -350,6 +350,6 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
     },
   });
   expect(signupRequests[0].user.avatar_image).toMatch(
-    /^data:image\/png;base64,/,
+    /^data:image\/jpeg;base64,/,
   );
 });
