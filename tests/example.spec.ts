@@ -54,6 +54,89 @@ test("フロントエンドの新規登録画面が表示される", async ({ pa
   await expect(page.getByRole("button", { name: "登録" })).toBeVisible();
 });
 
+test("ログイン画面が表示される", async ({ page }) => {
+  const response = await page.goto("/login");
+
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { name: "ログイン" })).toBeVisible();
+  await expect(page.getByLabel("メールアドレス")).toBeVisible();
+  await expect(page.getByLabel("パスワード")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "パスワードをお忘れですか？" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "ログイン" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "新規登録" })).toHaveAttribute(
+    "href",
+    /\/$/,
+  );
+});
+
+test("ログインエラーをフォーム内に表示する", async ({ page }) => {
+  await page.route("**/api/login", async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "error",
+        errors: ["メールアドレスまたはパスワードが正しくありません。"],
+      }),
+    });
+  });
+
+  await page.goto("/login");
+
+  await page.getByLabel("メールアドレス").fill("wrong@example.com");
+  await page.getByLabel("パスワード").fill("password1");
+  await page.getByRole("button", { name: "ログイン" }).click();
+
+  await expect(
+    page.getByText("メールアドレスまたはパスワードが正しくありません。"),
+  ).toBeVisible();
+  await expect(page.getByLabel("メールアドレス")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(page.getByLabel("パスワード")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+});
+
+test("ログインに成功したらホーム画面へ進む", async ({ page }) => {
+  const loginRequests: unknown[] = [];
+  await page.route("**/api/login", async (route) => {
+    loginRequests.push(route.request().postDataJSON());
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: 1,
+          name: "おこめ",
+          email: "okome@example.com",
+          avatar_key: "avatar-1",
+        },
+      }),
+    });
+  });
+
+  await page.goto("/login");
+
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード").fill("password1");
+  await page.getByRole("button", { name: "ログイン" }).click();
+
+  await expect(page).toHaveURL(/\/home$/);
+  expect(loginRequests).toEqual([
+    {
+      user: {
+        email: "okome@example.com",
+        password: "password1",
+      },
+    },
+  ]);
+});
+
 test("新規登録画面のリロード後も名前とメールアドレスを保持する", async ({
   page,
 }) => {
