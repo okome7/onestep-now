@@ -30,6 +30,7 @@ type Screen = 'signup' | 'icon' | 'complete'
 const customPhotoIconId = 'custom-photo'
 const signupScreenStorageKey = 'onestep-signup-screen'
 const signupDraftStorageKey = 'onestep-signup-draft'
+const signupCompleteStorageKey = 'onestep-signup-complete'
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -99,10 +100,26 @@ function errorFieldClass(error: string | undefined) {
   return error ? 'field-error' : undefined
 }
 
+type CompleteProfile = {
+  name: string
+  avatarId: string
+}
+
+function getAvatarSrc(avatarId: string) {
+  return (
+    avatarOptions.find((avatar) => avatar.id === avatarId)?.src ??
+    avatarOptions[0].src
+  )
+}
+
 function getInitialScreen(): Screen {
-  return window.sessionStorage.getItem(signupScreenStorageKey) === 'icon'
-    ? 'icon'
-    : 'signup'
+  const savedScreen = window.sessionStorage.getItem(signupScreenStorageKey)
+
+  if (savedScreen === 'complete' || savedScreen === 'icon') {
+    return savedScreen
+  }
+
+  return 'signup'
 }
 
 function getInitialForm(screen: Screen): SignupForm {
@@ -144,6 +161,35 @@ function saveSignupDraft(form: SignupForm, includePassword = false) {
   )
 }
 
+function getInitialCompleteProfile(): CompleteProfile {
+  const savedProfile = window.sessionStorage.getItem(signupCompleteStorageKey)
+
+  if (!savedProfile) {
+    return { name: '', avatarId: avatarOptions[0].id }
+  }
+
+  try {
+    const parsedProfile = JSON.parse(savedProfile) as Partial<CompleteProfile>
+
+    return {
+      name: parsedProfile.name ?? '',
+      avatarId:
+        parsedProfile.avatarId && parsedProfile.avatarId !== customPhotoIconId
+          ? parsedProfile.avatarId
+          : avatarOptions[0].id,
+    }
+  } catch {
+    return { name: '', avatarId: avatarOptions[0].id }
+  }
+}
+
+function saveCompleteProfile(profile: CompleteProfile) {
+  window.sessionStorage.setItem(
+    signupCompleteStorageKey,
+    JSON.stringify(profile),
+  )
+}
+
 type SignupHeaderProps = {
   title: string
   onBack: () => void
@@ -178,8 +224,12 @@ function App() {
   const [error, setError] = useState('')
   const [selectedIconId, setSelectedIconId] = useState(avatarOptions[0].id)
   const [customPhotoUrl, setCustomPhotoUrl] = useState('')
-  const [completedName, setCompletedName] = useState('')
-  const [completedIconSrc, setCompletedIconSrc] = useState(avatarOptions[0].src)
+  const [completedName, setCompletedName] = useState(
+    () => getInitialCompleteProfile().name,
+  )
+  const [completedIconSrc, setCompletedIconSrc] = useState(() =>
+    getAvatarSrc(getInitialCompleteProfile().avatarId),
+  )
   const [isMobilePhotoMenu, setIsMobilePhotoMenu] = useState(false)
   const [isPhotoChoiceOpen, setIsPhotoChoiceOpen] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
@@ -242,6 +292,7 @@ function App() {
 
     saveSignupDraft(form, true)
     window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
+    window.sessionStorage.removeItem(signupCompleteStorageKey)
     setScreen('icon')
   }
 
@@ -265,6 +316,10 @@ function App() {
         (avatar) => avatar.id === selectedIconId,
       )
       const nextCompletedName = form.name.trim()
+      const nextCompletedAvatarId =
+        selectedIconId === customPhotoIconId
+          ? avatarOptions[0].id
+          : selectedIconId
       const nextCompletedIconSrc =
         selectedIconId === customPhotoIconId && customPhotoUrl
           ? customPhotoUrl
@@ -275,7 +330,11 @@ function App() {
       setCompletedIconSrc(nextCompletedIconSrc)
       setFieldErrors({})
       window.sessionStorage.removeItem(signupDraftStorageKey)
-      window.sessionStorage.removeItem(signupScreenStorageKey)
+      window.sessionStorage.setItem(signupScreenStorageKey, 'complete')
+      saveCompleteProfile({
+        name: nextCompletedName,
+        avatarId: nextCompletedAvatarId,
+      })
       setScreen('complete')
     } catch (caughtError) {
       setError(
@@ -323,6 +382,8 @@ function App() {
   }
 
   function handleStart() {
+    window.sessionStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
     window.location.href = '/home'
   }
 
