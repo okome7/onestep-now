@@ -7,8 +7,9 @@ RSpec.describe "Registrations", type: :request do
         user: {
           name: "Test User",
           email: "rspec_test@example.com",
-          password: "password",
-          password_confirmation: "password"
+          password: "password1",
+          password_confirmation: "password1",
+          avatar_key: "avatar-5"
         }
       }
     end
@@ -37,6 +38,8 @@ RSpec.describe "Registrations", type: :request do
         expect(json_response["data"]).to have_key("id")
         expect(json_response["data"]["name"]).to eq("Test User")
         expect(json_response["data"]["email"]).to eq("rspec_test@example.com")
+        expect(json_response["data"]["avatar_key"]).to eq("avatar-5")
+        expect(User.last.avatar_key).to eq("avatar-5")
 
         # password_digestが含まれていないことを検証
         expect(json_response["data"]).not_to have_key("password_digest")
@@ -52,6 +55,19 @@ RSpec.describe "Registrations", type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response["data"]["email"]).to eq("rspec_test@example.com")
         expect(User.last.email).to eq("rspec_test@example.com")
+      end
+
+      it "選択した写真をavatar_keyとして保存して返すこと" do
+        avatar_key = "data:image/jpeg;base64,avatar-image"
+        valid_attributes[:user][:avatar_key] = avatar_key
+
+        post "/signup", params: valid_attributes, as: :json
+
+        expect(response).to have_http_status(:created)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response["data"]["avatar_key"]).to eq(avatar_key)
+        expect(User.last.avatar_key).to eq(avatar_key)
       end
     end
 
@@ -72,8 +88,8 @@ RSpec.describe "Registrations", type: :request do
         User.create!(
           name: "Existing User",
           email: "rspec_test@example.com",
-          password: "password",
-          password_confirmation: "password"
+          password: "password1",
+          password_confirmation: "password1"
         )
 
         valid_attributes[:user][:email] = "RSPEC_TEST@example.com"
@@ -101,7 +117,37 @@ RSpec.describe "Registrations", type: :request do
 
         json_response = JSON.parse(response.body)
         expect(json_response["status"]).to eq("error")
-        expect(json_response["errors"]).to include("Password は英数字で入力してください")
+        expect(json_response["errors"]).to include("Password は英字と数字を両方含めてください")
+      end
+
+      it "パスワードが英字だけの場合はユーザーを作成しないこと" do
+        valid_attributes[:user][:password] = "password"
+        valid_attributes[:user][:password_confirmation] = "password"
+
+        expect {
+          post "/signup", params: valid_attributes, as: :json
+        }.not_to change(User, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response["status"]).to eq("error")
+        expect(json_response["errors"]).to include("Password は英字と数字を両方含めてください")
+      end
+
+      it "パスワードが数字だけの場合はユーザーを作成しないこと" do
+        valid_attributes[:user][:password] = "12345678"
+        valid_attributes[:user][:password_confirmation] = "12345678"
+
+        expect {
+          post "/signup", params: valid_attributes, as: :json
+        }.not_to change(User, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+
+        json_response = JSON.parse(response.body)
+        expect(json_response["status"]).to eq("error")
+        expect(json_response["errors"]).to include("Password は英字と数字を両方含めてください")
       end
     end
   end

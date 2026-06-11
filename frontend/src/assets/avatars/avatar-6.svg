@@ -1,0 +1,17 @@
+<svg
+  width="256"
+  height="256"
+  viewBox="0 0 256 256"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <circle cx="128" cy="128" r="128" fill="#EAF4FF" />
+  <g transform="translate(128 128) scale(1.16) translate(-128 -128)">
+    <circle cx="128" cy="128" r="62" fill="#FFFFFF" />
+    <circle cx="128" cy="128" r="52" fill="#B8D8FF" />
+    <path d="M128 84L152 128L128 116Z" fill="#3B82F6" />
+    <path d="M128 172L104 128L128 140Z" fill="#93C5FD" />
+    <circle cx="128" cy="128" r="8" fill="#FFFFFF" />
+    <circle cx="184" cy="88" r="5" fill="#D6E9FF" />
+    <circle cx="78" cy="176" r="4" fill="#D6E9FF" />
+  </g>
+</svg>
