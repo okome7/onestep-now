@@ -104,7 +104,7 @@ test("新規登録画面の入力欄の幅が揃っている", async ({ page }) 
     });
   });
 
-  expect(new Set(inputWidths)).toHaveSize(1);
+  expect(new Set(inputWidths).size).toBe(1);
 });
 
 test("新規登録画面のリロード後も名前とメールアドレスを保持する", async ({
