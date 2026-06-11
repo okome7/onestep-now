@@ -6,4 +6,7 @@ Rails.application.routes.draw do
   post "signup", to: "registrations#create"
   post "signup/email_check", to: "registrations#email_check"
   post "login", to: "sessions#create"
+  post "password_reset", to: "password_resets#create"
+  post "password_reset/verify", to: "password_resets#verify"
+  patch "password_reset", to: "password_resets#update"
 end

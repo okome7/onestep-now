@@ -688,7 +688,7 @@ body {
 }
 
 .notice {
-  height: 22px;
+  min-height: 22px;
   margin: 20px 0 0;
   overflow: hidden;
   white-space: pre-line;

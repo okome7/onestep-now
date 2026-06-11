@@ -28,6 +28,47 @@ async function mockLogin(
   });
 }
 
+async function mockPasswordReset(page: Page) {
+  await page.route(/.*\/(?:api\/)?password_reset$/, async (route) => {
+    const method = route.request().method();
+
+    if (method === "POST") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "success",
+          message:
+            "登録されているメールアドレスの場合、再設定用コードを送信しました",
+        }),
+      });
+      return;
+    }
+
+    if (method === "PATCH") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "success",
+          message: "パスワードを再設定しました",
+        }),
+      });
+      return;
+    }
+
+    await route.fallback();
+  });
+
+  await page.route(/.*\/(?:api\/)?password_reset\/verify$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        message: "認証コードを確認しました",
+      }),
+    });
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
@@ -315,6 +356,40 @@ test("ログイン情報が違う場合はエラーを表示する", async ({ pa
     "aria-invalid",
     "true",
   );
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+test("ログイン画面からパスワードを再設定できる", async ({ page }) => {
+  await mockPasswordReset(page);
+  await page.goto("/login");
+
+  await page
+    .getByRole("link", { name: "パスワードを忘れた方はこちら" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "パスワード再設定" }),
+  ).toBeVisible();
+
+  await page.getByLabel("メールアドレス").fill("reset@example.com");
+  await page.getByRole("button", { name: "コードを送信" }).click();
+  await expect(
+    page.getByText(
+      "登録されているメールアドレスの場合、再設定用コードを送信しました",
+    ),
+  ).toBeVisible();
+
+  await page.getByLabel("認証コード").fill("123456");
+  await page.getByRole("button", { name: "コードを確認" }).click();
+  await expect(
+    page.getByLabel("新しいパスワード", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByLabel("新しいパスワード", { exact: true }).fill("newpass1");
+  await page
+    .getByLabel("新しいパスワード確認", { exact: true })
+    .fill("newpass1");
+  await page.getByRole("button", { name: "再設定" }).click();
+
   await expect(page).toHaveURL(/\/login$/);
 });
 
