@@ -15,9 +15,7 @@ body {
 }
 
 .signup-page {
-  height: 100dvh;
-  min-height: 100vh;
-  overflow: hidden;
+  min-height: 100dvh;
   background: #f4f7fb;
 }
 
@@ -693,6 +691,10 @@ body {
   line-height: 22px;
 }
 
+.notice:empty {
+  display: none;
+}
+
 .notice.success {
   color: #2563eb;
 }
@@ -702,12 +704,12 @@ body {
 }
 
 .login-link-area {
-  margin-top: 20px;
+  margin-top: 32px;
   text-align: center;
 }
 
 .login-link-area p {
-  margin: 0 0 8px;
+  margin: 0 0 14px;
   color: #9aa6b8;
   font-size: 13px;
   font-weight: 600;
@@ -718,6 +720,19 @@ body {
   font-size: 16px;
   font-weight: 500;
   text-decoration: none;
+}
+
+.login-link-area .login-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 156px;
+  height: 36px;
+  border: 1px solid #4d95e5;
+  border-radius: 8px;
+  color: #2f8bea;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 12%);
 }
 
 @media (min-width: 640px) {
@@ -744,7 +759,15 @@ body {
     flex-direction: column;
     justify-content: flex-start;
     width: min(100%, 360px);
-    padding: 24px 30px 80px;
+    padding: 20px 30px 40px;
+  }
+
+  .signup-form .form-fields {
+    gap: 12px;
+  }
+
+  .signup-form .submit-button {
+    margin-top: 20px;
   }
 
   .photo-actions {

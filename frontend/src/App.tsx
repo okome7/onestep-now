@@ -895,7 +895,9 @@ function SignupPage() {
 
           <div className="login-link-area">
             <p>すでにアカウントをお持ちですか？</p>
-            <a href="/login">ログイン</a>
+            <a className="login-action-link" href="/login">
+              ログイン
+            </a>
           </div>
         </section>
       )}
@@ -905,7 +907,7 @@ function SignupPage() {
 
 function LoginPage() {
   return (
-    <main className="signup-page">
+    <main className="signup-page login-page">
       <header className="signup-header">
         <a className="back-button" href="/" aria-label="戻る">
           &lt;
@@ -946,7 +948,9 @@ function LoginPage() {
 
         <div className="login-link-area">
           <p>アカウントをお持ちでないですか？</p>
-          <a href="/">新規登録</a>
+          <a className="login-action-link" href="/">
+            新規登録
+          </a>
         </div>
       </section>
     </main>
