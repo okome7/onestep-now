@@ -7,7 +7,8 @@ class RegistrationsController < ApplicationController
         data: {
           id: user.id,
           name: user.name,
-          email: user.email
+          email: user.email,
+          avatar_key: user.avatar_key
         }
       }, status: :created
     else
@@ -18,6 +19,6 @@ class RegistrationsController < ApplicationController
   private
 
   def user_params
-    params.require(:user).permit(:name, :email, :password, :password_confirmation)
+    params.require(:user).permit(:name, :email, :password, :password_confirmation, :avatar_key)
   end
 end

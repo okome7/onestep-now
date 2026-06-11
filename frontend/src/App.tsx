@@ -24,11 +24,15 @@ const initialForm: SignupForm = {
   passwordConfirmation: '',
 }
 
-const passwordPattern = '[A-Za-z0-9]{8,}'
+const passwordPattern = '(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
-type Screen = 'signup' | 'icon'
+type Screen = 'signup' | 'icon' | 'complete'
 const customPhotoIconId = 'custom-photo'
 const signupScreenStorageKey = 'onestep-signup-screen'
+const signupDraftStorageKey = 'onestep-signup-draft'
+const signupCompleteStorageKey = 'onestep-signup-complete'
+const avatarImageSize = 256
+const avatarImageQuality = 0.82
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -68,7 +72,7 @@ function validateForm(form: SignupForm) {
   } else if (form.password.length < 8) {
     nextErrors.password = '8文字以上の英数字を入力してください'
   } else if (!new RegExp(`^${passwordPattern}$`).test(form.password)) {
-    nextErrors.password = '英数字で入力してください'
+    nextErrors.password = '英字と数字を両方含めてください'
   }
 
   if (!form.passwordConfirmation) {
@@ -98,10 +102,194 @@ function errorFieldClass(error: string | undefined) {
   return error ? 'field-error' : undefined
 }
 
+type CompleteProfile = {
+  name: string
+  avatarId: string
+}
+
+function isAvatarImageDataUrl(value: string | undefined) {
+  return Boolean(value?.startsWith('data:image/'))
+}
+
+function getAvatarSrc(avatarId: string) {
+  if (isAvatarImageDataUrl(avatarId)) {
+    return avatarId
+  }
+
+  return (
+    avatarOptions.find((avatar) => avatar.id === avatarId)?.src ??
+    avatarOptions[0].src
+  )
+}
+
 function getInitialScreen(): Screen {
-  return window.localStorage.getItem(signupScreenStorageKey) === 'icon'
-    ? 'icon'
-    : 'signup'
+  const savedScreen = window.sessionStorage.getItem(signupScreenStorageKey)
+  const savedCompleteProfile = window.localStorage.getItem(
+    signupCompleteStorageKey,
+  )
+
+  if (savedScreen === 'complete' || savedScreen === 'icon') {
+    return savedScreen
+  }
+
+  if (savedCompleteProfile) {
+    return 'complete'
+  }
+
+  return 'signup'
+}
+
+function getInitialForm(screen: Screen): SignupForm {
+  const savedForm = window.sessionStorage.getItem(signupDraftStorageKey)
+
+  if (!savedForm) {
+    return initialForm
+  }
+
+  try {
+    const parsedForm = JSON.parse(savedForm) as Partial<SignupForm>
+
+    return {
+      ...initialForm,
+      name: parsedForm.name ?? '',
+      email: parsedForm.email ?? '',
+      password: screen === 'icon' ? (parsedForm.password ?? '') : '',
+      passwordConfirmation:
+        screen === 'icon' ? (parsedForm.passwordConfirmation ?? '') : '',
+    }
+  } catch {
+    return initialForm
+  }
+}
+
+function saveSignupDraft(form: SignupForm, includePassword = false) {
+  window.sessionStorage.setItem(
+    signupDraftStorageKey,
+    JSON.stringify({
+      name: form.name,
+      email: form.email,
+      ...(includePassword
+        ? {
+            password: form.password,
+            passwordConfirmation: form.passwordConfirmation,
+          }
+        : {}),
+    }),
+  )
+}
+
+function getInitialCompleteProfile(): CompleteProfile {
+  const savedProfile = window.localStorage.getItem(signupCompleteStorageKey)
+
+  if (!savedProfile) {
+    return { name: '', avatarId: avatarOptions[0].id }
+  }
+
+  try {
+    const parsedProfile = JSON.parse(savedProfile) as Partial<CompleteProfile>
+
+    return {
+      name: parsedProfile.name ?? '',
+      avatarId: parsedProfile.avatarId ?? avatarOptions[0].id,
+    }
+  } catch {
+    return { name: '', avatarId: avatarOptions[0].id }
+  }
+}
+
+function saveCompleteProfile(profile: CompleteProfile) {
+  window.localStorage.setItem(signupCompleteStorageKey, JSON.stringify(profile))
+}
+
+function getCompleteAvatarSrc(profile: CompleteProfile) {
+  return getAvatarSrc(profile.avatarId)
+}
+
+function readBlobAsDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () =>
+      reject(
+        new Error('写真の読み込みに失敗しました。もう一度選択してください。'),
+      )
+    reader.readAsDataURL(blob)
+  })
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+
+    image.onload = () => resolve(image)
+    image.onerror = () =>
+      reject(
+        new Error('写真の読み込みに失敗しました。もう一度選択してください。'),
+      )
+    image.src = src
+  })
+}
+
+async function createAvatarImageDataUrl(file: File) {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('画像ファイルを選択してください。')
+  }
+
+  const objectUrl = URL.createObjectURL(file)
+
+  try {
+    const image = await loadImage(objectUrl)
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+
+    if (!context) {
+      throw new Error('写真の変換に失敗しました。もう一度選択してください。')
+    }
+
+    const sourceSize = Math.min(image.naturalWidth, image.naturalHeight)
+    const sourceX = (image.naturalWidth - sourceSize) / 2
+    const sourceY = (image.naturalHeight - sourceSize) / 2
+
+    canvas.width = avatarImageSize
+    canvas.height = avatarImageSize
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, avatarImageSize, avatarImageSize)
+    context.imageSmoothingEnabled = true
+    context.imageSmoothingQuality = 'high'
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceSize,
+      sourceSize,
+      0,
+      0,
+      avatarImageSize,
+      avatarImageSize,
+    )
+
+    const avatarBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob)
+            return
+          }
+
+          reject(
+            new Error('写真の変換に失敗しました。もう一度選択してください。'),
+          )
+        },
+        'image/jpeg',
+        avatarImageQuality,
+      )
+    })
+
+    return readBlobAsDataUrl(avatarBlob)
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
 }
 
 type SignupHeaderProps = {
@@ -129,13 +317,22 @@ function App() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [screen, setScreen] = useState<Screen>(getInitialScreen)
-  const [form, setForm] = useState<SignupForm>(initialForm)
+  const [form, setForm] = useState<SignupForm>(() =>
+    getInitialForm(getInitialScreen()),
+  )
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [selectedIconId, setSelectedIconId] = useState(avatarOptions[0].id)
   const [customPhotoUrl, setCustomPhotoUrl] = useState('')
+  const [customPhotoDataUrl, setCustomPhotoDataUrl] = useState('')
+  const [completedName, setCompletedName] = useState(
+    () => getInitialCompleteProfile().name,
+  )
+  const [completedIconSrc, setCompletedIconSrc] = useState(() =>
+    getCompleteAvatarSrc(getInitialCompleteProfile()),
+  )
   const [isMobilePhotoMenu, setIsMobilePhotoMenu] = useState(false)
   const [isPhotoChoiceOpen, setIsPhotoChoiceOpen] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
@@ -146,7 +343,7 @@ function App() {
 
   useEffect(() => {
     return () => {
-      if (customPhotoUrl) {
+      if (customPhotoUrl.startsWith('blob:')) {
         URL.revokeObjectURL(customPhotoUrl)
       }
     }
@@ -172,7 +369,15 @@ function App() {
         ? formatPasswordInput(value)
         : value
 
-    setForm((current) => ({ ...current, [name]: nextValue }))
+    setForm((current) => {
+      const nextForm = { ...current, [name]: nextValue }
+
+      if (name === 'name' || name === 'email') {
+        saveSignupDraft(nextForm)
+      }
+
+      return nextForm
+    })
     setFieldErrors((current) => ({ ...current, [name]: undefined }))
   }
 
@@ -188,14 +393,61 @@ function App() {
       return
     }
 
+    saveSignupDraft(form, true)
+    window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    setScreen('icon')
+  }
+
+  function handleBack() {
+    if (screen === 'icon') {
+      window.sessionStorage.setItem(signupScreenStorageKey, 'signup')
+      setScreen('signup')
+      return
+    }
+
+    window.history.back()
+  }
+
+  async function handleIconSubmit() {
+    setMessage('')
+    setError('')
     setIsSubmitting(true)
 
     try {
-      await signup(form)
-      setForm(initialForm)
+      const selectedAvatar = avatarOptions.find(
+        (avatar) => avatar.id === selectedIconId,
+      )
+      const isCustomPhotoSelected = selectedIconId === customPhotoIconId
+
+      if (isCustomPhotoSelected && !customPhotoDataUrl) {
+        throw new Error('写真をもう一度選択してください。')
+      }
+
+      const nextCompletedName = form.name.trim()
+      const avatarKeyToSave = isCustomPhotoSelected
+        ? customPhotoDataUrl
+        : selectedIconId
+      const createdUser = await signup({
+        ...form,
+        avatarKey: avatarKeyToSave,
+      })
+      const nextCompletedAvatarId = createdUser.avatar_key ?? avatarKeyToSave
+      const nextCompletedIconSrc =
+        getAvatarSrc(nextCompletedAvatarId) ??
+        selectedAvatar?.src ??
+        avatarOptions[0].src
+
+      setCompletedName(nextCompletedName)
+      setCompletedIconSrc(nextCompletedIconSrc)
       setFieldErrors({})
-      window.localStorage.setItem(signupScreenStorageKey, 'icon')
-      setScreen('icon')
+      window.sessionStorage.removeItem(signupDraftStorageKey)
+      window.sessionStorage.setItem(signupScreenStorageKey, 'complete')
+      saveCompleteProfile({
+        name: nextCompletedName,
+        avatarId: nextCompletedAvatarId,
+      })
+      setScreen('complete')
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -207,35 +459,25 @@ function App() {
     }
   }
 
-  function handleBack() {
-    if (screen === 'icon') {
-      window.localStorage.removeItem(signupScreenStorageKey)
-      setScreen('signup')
-      return
-    }
-
-    window.history.back()
-  }
-
-  function handleIconSubmit() {
-    setMessage('アイコンを設定しました。')
-  }
-
-  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0]
 
     if (selectedFile) {
-      const photoUrl = URL.createObjectURL(selectedFile)
-      setCustomPhotoUrl((current) => {
-        if (current) {
-          URL.revokeObjectURL(current)
-        }
-
-        return photoUrl
-      })
-      setSelectedIconId(customPhotoIconId)
-      setIsPhotoChoiceOpen(false)
-      setMessage('')
+      try {
+        const photoDataUrl = await createAvatarImageDataUrl(selectedFile)
+        setCustomPhotoDataUrl(photoDataUrl)
+        setCustomPhotoUrl(photoDataUrl)
+        setSelectedIconId(customPhotoIconId)
+        setIsPhotoChoiceOpen(false)
+        setMessage('')
+        setError('')
+      } catch (caughtError) {
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : '写真の読み込みに失敗しました。',
+        )
+      }
     }
   }
 
@@ -255,11 +497,54 @@ function App() {
     photoInputRef.current?.click()
   }
 
-  return (
-    <main className="signup-page">
-      <SignupHeader title="新規登録" onBack={handleBack} />
+  function handleStart() {
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
+    window.location.href = '/home'
+  }
 
-      {screen === 'icon' ? (
+  return (
+    <main
+      className={`signup-page ${screen === 'complete' ? 'complete-page' : ''}`}
+    >
+      {screen === 'complete' ? null : (
+        <SignupHeader title="新規登録" onBack={handleBack} />
+      )}
+
+      {screen === 'complete' ? (
+        <section className="complete-content" aria-labelledby="complete-title">
+          <h2 id="complete-title">登録が完了しました！</h2>
+          <p className="complete-description">早速始めましょう！</p>
+
+          <div className="complete-profile">
+            <span className="sparkle sparkle-one" aria-hidden="true" />
+            <span className="sparkle sparkle-two" aria-hidden="true" />
+            <span className="sparkle sparkle-three" aria-hidden="true" />
+            <span className="sparkle sparkle-four" aria-hidden="true" />
+            <span className="sparkle sparkle-five" aria-hidden="true" />
+            <span className="sparkle sparkle-six" aria-hidden="true" />
+            <span className="celebration-dot dot-one" aria-hidden="true" />
+            <span className="celebration-dot dot-two" aria-hidden="true" />
+            <span className="celebration-dot dot-three" aria-hidden="true" />
+            <img
+              className="complete-avatar"
+              src={completedIconSrc}
+              alt=""
+              aria-hidden="true"
+            />
+            <span className="complete-check" aria-hidden="true" />
+            <p className="complete-name">{completedName}</p>
+          </div>
+
+          <button
+            className="submit-button start-button"
+            type="button"
+            onClick={handleStart}
+          >
+            最初の一歩を始める
+          </button>
+        </section>
+      ) : screen === 'icon' ? (
         <section className="icon-content" aria-labelledby="icon-title">
           <h2 id="icon-title">アイコンを選ぼう！</h2>
           <p className="icon-description">
@@ -360,13 +645,19 @@ function App() {
           <button
             className="submit-button icon-submit-button"
             type="button"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
             onClick={handleIconSubmit}
           >
             決定
           </button>
 
-          <p className="notice success" aria-live="polite">
-            {message}
+          <p
+            className={`notice ${message ? 'success' : ''} ${error ? 'error' : ''}`}
+            role={error ? 'alert' : undefined}
+            aria-live="polite"
+          >
+            {noticeText}
           </p>
         </section>
       ) : (
@@ -506,7 +797,9 @@ function App() {
               </label>
             </div>
 
-            <p className="password-note">*パスワードは8文字以上の英数字</p>
+            <p className="password-note">
+              *パスワードは8文字以上で英字と数字を含めてください
+            </p>
 
             <p
               id="field-error-message"

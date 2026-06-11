@@ -21,6 +21,13 @@ body {
   background: #f4f7fb;
 }
 
+.signup-page.complete-page {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: center;
+}
+
 .signup-header {
   position: relative;
   display: flex;
@@ -374,7 +381,9 @@ body {
 }
 
 .submit-button {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: min(100%, 212px);
   height: 40px;
   margin: 68px auto 0;
@@ -384,6 +393,7 @@ body {
   color: #ffffff;
   font-size: 20px;
   font-weight: 700;
+  line-height: 1;
   box-shadow: 0 3px 5px rgb(0 0 0 / 28%);
   cursor: pointer;
 }
@@ -400,6 +410,283 @@ body {
 
 .icon-content .notice {
   margin-top: 10px;
+}
+
+.complete-content {
+  width: min(100%, 360px);
+  margin-inline: auto;
+  padding: 86px 32px 40px;
+  text-align: center;
+}
+
+.complete-content h2 {
+  animation: completeFadeUp 420ms ease-out both;
+  margin: 0;
+  color: #111827;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.complete-description {
+  animation: completeFadeUp 420ms ease-out 80ms both;
+  margin: 18px 0 22px;
+  color: #9aa6b8;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.complete-profile {
+  position: relative;
+  width: 214px;
+  margin: 0 auto;
+  padding: 8px 0 0;
+  animation: completePop 520ms cubic-bezier(0.2, 0.9, 0.2, 1.15) 120ms both;
+}
+
+.complete-avatar {
+  display: block;
+  width: 112px;
+  height: 112px;
+  margin: 0 auto;
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px #dbe7f3,
+    0 10px 18px rgb(30 41 59 / 9%);
+  object-fit: cover;
+  filter: saturate(1.16) contrast(1.06);
+}
+
+.complete-check {
+  position: absolute;
+  right: 48px;
+  bottom: 31px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: #34c759;
+  box-shadow: 0 3px 8px rgb(52 199 89 / 28%);
+}
+
+.complete-check::before {
+  width: 11px;
+  height: 6px;
+  border-bottom: 3px solid #ffffff;
+  border-left: 3px solid #ffffff;
+  content: '';
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.complete-name {
+  margin: 8px 0 0;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sparkle {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  animation: sparkleTwinkle 1400ms ease-in-out infinite;
+  color: #f8b400;
+}
+
+.sparkle::before,
+.sparkle::after {
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  content: '';
+  clip-path: polygon(
+    50% 0,
+    66% 34%,
+    100% 50%,
+    66% 66%,
+    50% 100%,
+    34% 66%,
+    0 50%,
+    34% 34%
+  );
+}
+
+.sparkle::after {
+  inset: 9px;
+  color: #fff7d6;
+  background: currentColor;
+}
+
+.sparkle-one {
+  --sparkle-rotate: 8deg;
+  --sparkle-rest-scale: 0.72;
+  --sparkle-active-scale: 0.9;
+
+  top: 9px;
+  left: 4px;
+}
+
+.sparkle-two {
+  --sparkle-rotate: 8deg;
+  --sparkle-rest-scale: 0.58;
+  --sparkle-active-scale: 0.72;
+
+  top: 15px;
+  right: 7px;
+  animation-delay: 160ms;
+  color: #facc15;
+}
+
+.sparkle-three {
+  --sparkle-rotate: 28deg;
+  --sparkle-rest-scale: 0.54;
+  --sparkle-active-scale: 0.68;
+
+  bottom: 37px;
+  left: 17px;
+  animation-delay: 300ms;
+  color: #f59e0b;
+}
+
+.sparkle-four {
+  --sparkle-rotate: 4deg;
+  --sparkle-rest-scale: 0.62;
+  --sparkle-active-scale: 0.78;
+
+  right: 12px;
+  bottom: 39px;
+  animation-delay: 460ms;
+  color: #fbbf24;
+}
+
+.sparkle-five {
+  --sparkle-rotate: 18deg;
+  --sparkle-rest-scale: 0.24;
+  --sparkle-active-scale: 0.3;
+
+  top: 55px;
+  left: 21px;
+  animation-delay: 620ms;
+  color: #fcd34d;
+}
+
+.sparkle-six {
+  --sparkle-rotate: 18deg;
+  --sparkle-rest-scale: 0.26;
+  --sparkle-active-scale: 0.32;
+
+  top: 63px;
+  right: 25px;
+  animation-delay: 760ms;
+  color: #fcd34d;
+}
+
+.celebration-dot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffd166;
+  box-shadow:
+    0 0 0 4px rgb(255 209 102 / 18%),
+    0 0 12px rgb(255 209 102 / 48%);
+  animation: dotFloat 1800ms ease-in-out infinite;
+}
+
+.dot-one {
+  top: 40px;
+  left: 47px;
+}
+
+.dot-two {
+  top: 49px;
+  right: 45px;
+  width: 6px;
+  height: 6px;
+  animation-delay: 220ms;
+  background: #7dd3fc;
+}
+
+.dot-three {
+  bottom: 59px;
+  left: 55px;
+  width: 5px;
+  height: 5px;
+  animation-delay: 420ms;
+  background: #fca5a5;
+}
+
+.start-button {
+  width: min(100%, 208px);
+  margin: 36px auto 0;
+  animation: completeFadeUp 420ms ease-out 260ms both;
+  font-size: 17px;
+}
+
+@keyframes completeFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes completePop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sparkleTwinkle {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(var(--sparkle-rest-scale, 0.78))
+      rotate(var(--sparkle-rotate, 0deg));
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(var(--sparkle-active-scale, 1))
+      rotate(var(--sparkle-rotate, 0deg));
+  }
+}
+
+@keyframes dotFloat {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .complete-content h2,
+  .complete-description,
+  .complete-profile,
+  .start-button,
+  .sparkle,
+  .celebration-dot {
+    animation: none;
+  }
 }
 
 .notice {
@@ -472,5 +759,17 @@ body {
 
   .avatar-option.photo-slot-empty {
     cursor: default;
+  }
+
+  .signup-page.complete-page {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .complete-content {
+    width: min(100%, 360px);
+    margin-inline: auto;
+    padding-top: 86px;
   }
 }
