@@ -1,6 +1,38 @@
 require 'rails_helper'
 
 RSpec.describe "Registrations", type: :request do
+  describe "POST /signup/email_check" do
+    it "ユーザーを作成せず、利用可能なメールアドレスを確認できること" do
+      expect {
+        post "/signup/email_check", params: { user: { email: "available@example.com" } }, as: :json
+      }.not_to change(User, :count)
+
+      expect(response).to have_http_status(:ok)
+
+      json_response = JSON.parse(response.body)
+      expect(json_response["status"]).to eq("success")
+    end
+
+    it "登録済みメールアドレスの場合はエラーを返すこと" do
+      User.create!(
+        name: "Existing User",
+        email: "registered@example.com",
+        password: "password1",
+        password_confirmation: "password1"
+      )
+
+      expect {
+        post "/signup/email_check", params: { user: { email: " Registered@example.com " } }, as: :json
+      }.not_to change(User, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+
+      json_response = JSON.parse(response.body)
+      expect(json_response["status"]).to eq("error")
+      expect(json_response["errors"]).to include("Email has already been taken")
+    end
+  end
+
   describe "POST /signup" do
     let(:valid_attributes) do
       {

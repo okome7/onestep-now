@@ -26,6 +26,7 @@ type SignupErrorResponse = {
 }
 
 type SignupResponse = SignupSuccessResponse | SignupErrorResponse
+type SignupEmailCheckResponse = { status: 'success' } | SignupErrorResponse
 
 const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
@@ -56,16 +57,75 @@ function isPresentString(message: string | undefined): message is string {
   return Boolean(message)
 }
 
+function apiUrl(apiBaseUrl: string, path: string) {
+  const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
+  return `${trimmedApiBaseUrl.replace(/\/$/, '')}${path}`
+}
+
+function errorMessageFromResult(
+  result: SignupErrorResponse,
+  fallbackMessage: string,
+) {
+  const errors =
+    result.errors ?? [result.error, result.message].filter(isPresentString)
+
+  return errors.length
+    ? errors.map(translateSignupError).join('\n')
+    : fallbackMessage
+}
+
+export async function checkSignupEmail(
+  email: string,
+  apiBaseUrl = defaultApiBaseUrl,
+) {
+  let response: Response
+
+  try {
+    response = await fetch(apiUrl(apiBaseUrl, '/signup/email_check'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user: {
+          email,
+        },
+      }),
+    })
+  } catch {
+    throw new Error(
+      'APIに接続できませんでした。時間をおいて再度お試しください。',
+    )
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
+    )
+  }
+
+  const result = (await response.json()) as SignupEmailCheckResponse
+
+  if (!response.ok || result.status === 'error') {
+    throw new Error(
+      errorMessageFromResult(
+        result as SignupErrorResponse,
+        '登録に失敗しました。',
+      ),
+    )
+  }
+}
+
 export async function signup(
   form: SignupForm,
   apiBaseUrl = defaultApiBaseUrl,
 ): Promise<SignupUser> {
-  const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-
   let response: Response
 
   try {
-    response = await fetch(`${trimmedApiBaseUrl.replace(/\/$/, '')}/signup`, {
+    response = await fetch(apiUrl(apiBaseUrl, '/signup'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -97,15 +157,9 @@ export async function signup(
   const result = (await response.json()) as SignupResponse
 
   if (!response.ok || result.status === 'error') {
-    const errors =
-      result.status === 'error'
-        ? (result.errors ??
-          [result.error, result.message].filter(isPresentString))
-        : []
-
     throw new Error(
-      errors.length
-        ? errors.map(translateSignupError).join('\n')
+      result.status === 'error'
+        ? errorMessageFromResult(result, '登録に失敗しました。')
         : '登録に失敗しました。',
     )
   }

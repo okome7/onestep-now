@@ -1,4 +1,16 @@
 class RegistrationsController < ApplicationController
+  def email_check
+    user = User.new(email: email_check_params[:email])
+    user.validate
+    email_errors = user.errors.full_messages_for(:email)
+
+    if email_errors.empty?
+      render json: { status: "success" }, status: :ok
+    else
+      render json: { status: "error", errors: email_errors }, status: :unprocessable_entity
+    end
+  end
+
   def create
     user = User.new(user_params)
     if user.save
@@ -20,5 +32,9 @@ class RegistrationsController < ApplicationController
 
   def user_params
     params.require(:user).permit(:name, :email, :password, :password_confirmation, :avatar_key)
+  end
+
+  def email_check_params
+    params.require(:user).permit(:email)
   end
 end

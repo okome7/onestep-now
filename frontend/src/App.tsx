@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import './App.css'
-import { signup } from './signupApi'
+import { checkSignupEmail, signup } from './signupApi'
 import type { SignupForm } from './signupApi'
 import passwordShowIcon from './assets/icons/password_show.svg'
 import passwordHideIcon from './assets/icons/password_hide.svg'
@@ -428,10 +428,30 @@ function SignupPage() {
       return
     }
 
-    saveSignupDraft(form, true)
-    window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
-    window.localStorage.removeItem(signupCompleteStorageKey)
-    setScreen('icon')
+    setIsSubmitting(true)
+
+    try {
+      await checkSignupEmail(form.email)
+      saveSignupDraft(form, true)
+      window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
+      window.localStorage.removeItem(signupCompleteStorageKey)
+      setScreen('icon')
+    } catch (caughtError) {
+      const nextError =
+        caughtError instanceof Error
+          ? caughtError.message
+          : '登録に失敗しました。'
+      const nextFieldErrors = apiMessageToFieldErrors(nextError)
+
+      if (hasErrors(nextFieldErrors)) {
+        setFieldErrors((current) => ({ ...current, ...nextFieldErrors }))
+        return
+      }
+
+      setError(nextError)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function handleBack() {
