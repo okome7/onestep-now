@@ -88,6 +88,25 @@ test("フロントエンドの新規登録画面が表示される", async ({ pa
   await expect(page.getByRole("button", { name: "登録" })).toBeVisible();
 });
 
+test("新規登録画面の入力欄の幅が揃っている", async ({ page }) => {
+  await page.goto("/");
+
+  const inputWidths = await page.evaluate(() => {
+    const targets = ["name", "email", "password", "passwordConfirmation"];
+
+    return targets.map((id) => {
+      const input = document.getElementById(id);
+      const box = id.startsWith("password")
+        ? input?.closest(".password-field")
+        : input;
+
+      return Math.round(box?.getBoundingClientRect().width ?? 0);
+    });
+  });
+
+  expect(new Set(inputWidths)).toHaveSize(1);
+});
+
 test("新規登録画面のリロード後も名前とメールアドレスを保持する", async ({
   page,
 }) => {
