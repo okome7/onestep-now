@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import './App.css'
+import { login } from './loginApi'
+import type { LoginForm } from './loginApi'
 import { checkSignupEmail, signup } from './signupApi'
 import type { SignupForm } from './signupApi'
 import passwordShowIcon from './assets/icons/password_show.svg'
@@ -24,7 +26,7 @@ const initialForm: SignupForm = {
 const passwordGuidance = '8文字以上で英字と数字を含めてください'
 const passwordPattern = '(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
-type LoginForm = Pick<SignupForm, 'email' | 'password'>
+type LoginFieldErrors = Partial<Record<keyof LoginForm, string>>
 type Screen = 'signup' | 'icon' | 'complete'
 const customPhotoIconId = 'custom-photo'
 const signupScreenStorageKey = 'onestep-signup-screen'
@@ -84,7 +86,7 @@ function validateForm(form: SignupForm) {
 }
 
 function validateLoginForm(form: LoginForm) {
-  const nextErrors: Partial<Record<keyof LoginForm, string>> = {}
+  const nextErrors: LoginFieldErrors = {}
 
   if (!form.email.trim()) {
     nextErrors.email = 'メールアドレスを入力してください'
@@ -133,6 +135,22 @@ function apiMessageToFieldErrors(message: string): FieldErrors {
   }
 
   return nextErrors
+}
+
+function apiMessageToLoginFieldErrors(message: string): LoginFieldErrors {
+  if (message.includes('メールアドレスまたはパスワード')) {
+    return { password: message }
+  }
+
+  if (message.includes('メールアドレス')) {
+    return { email: message }
+  }
+
+  if (message.includes('パスワード')) {
+    return { password: message }
+  }
+
+  return {}
 }
 
 type CompleteProfile = {
@@ -944,9 +962,8 @@ function SignupPage() {
 
 function LoginPage() {
   const [form, setForm] = useState<LoginForm>({ email: '', password: '' })
-  const [fieldErrors, setFieldErrors] = useState<
-    Partial<Record<keyof LoginForm, string>>
-  >({})
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleBack = () => {
     window.location.href = '/'
@@ -963,7 +980,7 @@ function LoginPage() {
     }))
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const nextErrors = validateLoginForm(form)
@@ -973,7 +990,27 @@ function LoginPage() {
       return
     }
 
-    window.location.href = '/home'
+    setIsSubmitting(true)
+
+    try {
+      await login(form)
+      window.location.href = '/home'
+    } catch (caughtError) {
+      const nextError =
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'メールアドレスまたはパスワードが違います'
+      const nextFieldErrors = apiMessageToLoginFieldErrors(nextError)
+
+      if (Object.keys(nextFieldErrors).length > 0) {
+        setFieldErrors((current) => ({ ...current, ...nextFieldErrors }))
+        return
+      }
+
+      setFieldErrors((current) => ({ ...current, password: nextError }))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -1041,7 +1078,12 @@ function LoginPage() {
             </div>
           </div>
 
-          <button className="submit-button" type="submit">
+          <button
+            className="submit-button"
+            type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+          >
             ログイン
           </button>
         </form>

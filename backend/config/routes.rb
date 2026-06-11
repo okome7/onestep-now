@@ -5,4 +5,5 @@ Rails.application.routes.draw do
   # 新規登録
   post "signup", to: "registrations#create"
   post "signup/email_check", to: "registrations#email_check"
+  post "login", to: "sessions#create"
 end
