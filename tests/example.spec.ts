@@ -150,6 +150,25 @@ test("入力エラーをフォーム内に表示する", async ({ page }) => {
   );
 });
 
+test("ログイン画面の入力エラーをフォーム内に表示する", async ({ page }) => {
+  await page.goto("/login");
+
+  await page.getByRole("button", { name: "ログイン" }).click();
+
+  await expect(
+    page.getByText("メールアドレスを入力してください"),
+  ).toBeVisible();
+  await expect(page.getByText("パスワードを入力してください")).toBeVisible();
+  await expect(page.getByLabel("メールアドレス")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(page.getByLabel("パスワード")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+});
+
 test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   const signupRequests: unknown[] = [];
   await page.route("**/api/signup", async (route) => {

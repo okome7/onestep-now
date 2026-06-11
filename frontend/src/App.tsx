@@ -24,6 +24,7 @@ const initialForm: SignupForm = {
 const passwordGuidance = '8文字以上で英字と数字を含めてください'
 const passwordPattern = '(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
+type LoginForm = Pick<SignupForm, 'email' | 'password'>
 type Screen = 'signup' | 'icon' | 'complete'
 const customPhotoIconId = 'custom-photo'
 const signupScreenStorageKey = 'onestep-signup-screen'
@@ -77,6 +78,22 @@ function validateForm(form: SignupForm) {
     nextErrors.passwordConfirmation = 'パスワード確認を入力してください'
   } else if (form.password !== form.passwordConfirmation) {
     nextErrors.passwordConfirmation = 'パスワード確認が一致していません'
+  }
+
+  return nextErrors
+}
+
+function validateLoginForm(form: LoginForm) {
+  const nextErrors: Partial<Record<keyof LoginForm, string>> = {}
+
+  if (!form.email.trim()) {
+    nextErrors.email = 'メールアドレスを入力してください'
+  } else if (!isValidEmail(form.email)) {
+    nextErrors.email = '@を含む正しいメールアドレスを入力してください'
+  }
+
+  if (!form.password) {
+    nextErrors.password = 'パスワードを入力してください'
   }
 
   return nextErrors
@@ -906,8 +923,31 @@ function SignupPage() {
 }
 
 function LoginPage() {
+  const [form, setForm] = useState<LoginForm>({ email: '', password: '' })
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof LoginForm, string>>
+  >({})
+
   const handleBack = () => {
     window.location.href = '/'
+  }
+
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = event.target
+    const nextValue = name === 'password' ? formatPasswordInput(value) : value
+
+    setForm((current) => ({ ...current, [name]: nextValue }))
+    setFieldErrors((current) => ({
+      ...current,
+      [name]: undefined,
+    }))
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const nextErrors = validateLoginForm(form)
+    setFieldErrors(nextErrors)
   }
 
   return (
@@ -915,28 +955,63 @@ function LoginPage() {
       <SignupHeader title="ログイン" onBack={handleBack} />
 
       <section className="signup-content">
-        <form className="signup-form">
+        <form className="signup-form" onSubmit={handleSubmit} noValidate>
           <div className="form-fields">
             <div className="form-field">
               <label htmlFor="login-email">メールアドレス</label>
               <input
                 id="login-email"
+                className={errorFieldClass(fieldErrors.email)}
                 name="email"
                 type="email"
                 autoComplete="email"
                 placeholder="メールアドレスを入力"
+                value={form.email}
+                onChange={handleChange}
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={
+                  fieldErrors.email ? 'login-email-error' : undefined
+                }
+                required
               />
+              {fieldErrors.email && (
+                <p
+                  id="login-email-error"
+                  className="field-error-message"
+                  role="alert"
+                >
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
 
             <div className="form-field">
               <label htmlFor="login-password">パスワード</label>
               <input
                 id="login-password"
+                className={errorFieldClass(fieldErrors.password)}
                 name="password"
                 type="password"
                 autoComplete="current-password"
+                inputMode="text"
                 placeholder="パスワードを入力"
+                value={form.password}
+                onChange={handleChange}
+                aria-invalid={Boolean(fieldErrors.password)}
+                aria-describedby={
+                  fieldErrors.password ? 'login-password-error' : undefined
+                }
+                required
               />
+              {fieldErrors.password && (
+                <p
+                  id="login-password-error"
+                  className="field-error-message"
+                  role="alert"
+                >
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
           </div>
 
