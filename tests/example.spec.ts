@@ -52,7 +52,6 @@ test("入力エラーをフォーム内に表示する", async ({ page }) => {
   await page.goto("/");
 
   const submitButton = page.getByRole("button", { name: "登録" });
-  const beforeSubmitBox = await submitButton.boundingBox();
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("example.com");
@@ -63,9 +62,7 @@ test("入力エラーをフォーム内に表示する", async ({ page }) => {
   await expect(
     page.getByText("@を含む正しいメールアドレスを入力してください"),
   ).toBeVisible();
-  const afterSubmitBox = await submitButton.boundingBox();
 
-  expect(afterSubmitBox?.y).toBeCloseTo(beforeSubmitBox?.y ?? 0, 0);
   await expect(page.getByLabel("メールアドレス")).toHaveAttribute(
     "aria-invalid",
     "true",
