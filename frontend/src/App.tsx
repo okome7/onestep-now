@@ -3,9 +3,6 @@ import type { ChangeEvent, FormEvent } from 'react'
 import './App.css'
 import { signup } from './signupApi'
 import type { SignupForm } from './signupApi'
-import userIcon from './assets/icons/user.svg'
-import mailIcon from './assets/icons/mail.svg'
-import passwordIcon from './assets/icons/password.svg'
 import passwordShowIcon from './assets/icons/password_show.svg'
 import passwordHideIcon from './assets/icons/password_hide.svg'
 
@@ -31,7 +28,7 @@ function validateForm(form: SignupForm) {
   const nextErrors: FieldErrors = {}
 
   if (!form.name.trim()) {
-    nextErrors.name = '名前を入力してください'
+    nextErrors.name = '表示名を入力してください'
   }
 
   if (!form.email.trim()) {
@@ -61,16 +58,6 @@ function hasErrors(errors: FieldErrors) {
   return Object.keys(errors).length > 0
 }
 
-function firstFieldError(errors: FieldErrors) {
-  return (
-    errors.name ??
-    errors.email ??
-    errors.password ??
-    errors.passwordConfirmation ??
-    ''
-  )
-}
-
 function errorFieldClass(error: string | undefined) {
   return error ? 'field-error' : undefined
 }
@@ -84,7 +71,6 @@ function App() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
-  const firstError = firstFieldError(fieldErrors)
   const noticeText = message || error
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -139,147 +125,179 @@ function App() {
 
       <section className="signup-content">
         <form className="signup-form" onSubmit={handleSubmit} noValidate>
-          <div className="input-group">
-            <label className={errorFieldClass(fieldErrors.name)}>
-              <span className="input-icon">
-                <img src={userIcon} alt="" aria-hidden="true" />
-              </span>
+          <div className="form-fields">
+            <div className="form-field">
+              <label htmlFor="name">表示名</label>
               <input
+                id="name"
+                className={errorFieldClass(fieldErrors.name)}
                 name="name"
                 type="text"
-                aria-label="名前"
                 autoComplete="name"
-                placeholder="名前を入力"
+                placeholder="表示名を入力"
                 value={form.name}
                 onChange={handleChange}
                 aria-invalid={Boolean(fieldErrors.name)}
                 aria-describedby={
-                  fieldErrors.name ? 'field-error-message' : undefined
+                  fieldErrors.name ? 'name-error' : 'name-description'
                 }
                 required
               />
-            </label>
+              <p id="name-description" className="field-note">
+                ※他のユーザーに公開される名前です
+              </p>
+              {fieldErrors.name && (
+                <p id="name-error" className="field-error-message" role="alert">
+                  {fieldErrors.name}
+                </p>
+              )}
+            </div>
 
-            <label className={errorFieldClass(fieldErrors.email)}>
-              <span className="input-icon">
-                <img src={mailIcon} alt="" aria-hidden="true" />
-              </span>
+            <div className="form-field">
+              <label htmlFor="email">メールアドレス</label>
               <input
+                id="email"
+                className={errorFieldClass(fieldErrors.email)}
                 name="email"
                 type="email"
-                aria-label="メールアドレス"
                 autoComplete="email"
                 placeholder="メールアドレスを入力"
                 value={form.email}
                 onChange={handleChange}
                 aria-invalid={Boolean(fieldErrors.email)}
-                aria-describedby={
-                  fieldErrors.email ? 'field-error-message' : undefined
-                }
+                aria-describedby={fieldErrors.email ? 'email-error' : undefined}
                 required
               />
-            </label>
+              {fieldErrors.email && (
+                <p
+                  id="email-error"
+                  className="field-error-message"
+                  role="alert"
+                >
+                  {fieldErrors.email}
+                </p>
+              )}
+            </div>
 
-            <label className={errorFieldClass(fieldErrors.password)}>
-              <span className="input-icon">
-                <img src={passwordIcon} alt="" aria-hidden="true" />
-              </span>
-              <input
-                name="password"
-                type={isPasswordVisible ? 'text' : 'password'}
-                aria-label="パスワード"
-                autoComplete="new-password"
-                inputMode="text"
-                placeholder="パスワードを入力"
-                pattern={passwordPattern}
-                title="8文字以上の英数字で入力してください"
-                value={form.password}
-                onChange={handleChange}
-                aria-invalid={Boolean(fieldErrors.password)}
-                aria-describedby={
-                  fieldErrors.password ? 'field-error-message' : undefined
-                }
-                required
-              />
-              <button
-                className="visibility-button"
-                type="button"
-                aria-label={
-                  isPasswordVisible
-                    ? 'パスワードを非表示にする'
-                    : 'パスワードを表示する'
-                }
-                aria-pressed={isPasswordVisible}
-                onClick={() => setIsPasswordVisible((current) => !current)}
+            <div className="form-field">
+              <label htmlFor="password">パスワード</label>
+              <div
+                className={`password-field ${errorFieldClass(fieldErrors.password) ?? ''}`}
               >
-                <img
-                  src={isPasswordVisible ? passwordShowIcon : passwordHideIcon}
-                  alt=""
-                  aria-hidden="true"
-                />
-              </button>
-            </label>
-
-            <label
-              className={errorFieldClass(fieldErrors.passwordConfirmation)}
-            >
-              <span className="input-icon">
-                <img src={passwordIcon} alt="" aria-hidden="true" />
-              </span>
-              <input
-                name="passwordConfirmation"
-                type={isPasswordConfirmationVisible ? 'text' : 'password'}
-                aria-label="パスワード確認"
-                autoComplete="new-password"
-                inputMode="text"
-                placeholder="パスワード確認を入力"
-                pattern={passwordPattern}
-                title="8文字以上の英数字で入力してください"
-                value={form.passwordConfirmation}
-                onChange={handleChange}
-                aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
-                aria-describedby={
-                  fieldErrors.passwordConfirmation
-                    ? 'field-error-message'
-                    : undefined
-                }
-                required
-              />
-              <button
-                className="visibility-button"
-                type="button"
-                aria-label={
-                  isPasswordConfirmationVisible
-                    ? 'パスワード確認を非表示にする'
-                    : 'パスワード確認を表示する'
-                }
-                aria-pressed={isPasswordConfirmationVisible}
-                onClick={() =>
-                  setIsPasswordConfirmationVisible((current) => !current)
-                }
-              >
-                <img
-                  src={
-                    isPasswordConfirmationVisible
-                      ? passwordShowIcon
-                      : passwordHideIcon
+                <input
+                  id="password"
+                  name="password"
+                  type={isPasswordVisible ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  inputMode="text"
+                  placeholder="パスワードを入力"
+                  pattern={passwordPattern}
+                  title="8文字以上の英数字で入力してください"
+                  value={form.password}
+                  onChange={handleChange}
+                  aria-invalid={Boolean(fieldErrors.password)}
+                  aria-describedby={
+                    fieldErrors.password
+                      ? 'password-error'
+                      : 'password-description'
                   }
-                  alt=""
-                  aria-hidden="true"
+                  required
                 />
-              </button>
-            </label>
+                <button
+                  className="visibility-button"
+                  type="button"
+                  aria-label={
+                    isPasswordVisible
+                      ? 'パスワードを非表示にする'
+                      : 'パスワードを表示する'
+                  }
+                  aria-pressed={isPasswordVisible}
+                  onClick={() => setIsPasswordVisible((current) => !current)}
+                >
+                  <img
+                    src={
+                      isPasswordVisible ? passwordShowIcon : passwordHideIcon
+                    }
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+              <p id="password-description" className="field-note">
+                ※8文字以上で英字と数字を含めてください
+              </p>
+              {fieldErrors.password && (
+                <p
+                  id="password-error"
+                  className="field-error-message"
+                  role="alert"
+                >
+                  {fieldErrors.password}
+                </p>
+              )}
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="passwordConfirmation">パスワード確認</label>
+              <div
+                className={`password-field ${
+                  errorFieldClass(fieldErrors.passwordConfirmation) ?? ''
+                }`}
+              >
+                <input
+                  id="passwordConfirmation"
+                  name="passwordConfirmation"
+                  type={isPasswordConfirmationVisible ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  inputMode="text"
+                  placeholder="パスワードを再入力"
+                  pattern={passwordPattern}
+                  title="8文字以上の英数字で入力してください"
+                  value={form.passwordConfirmation}
+                  onChange={handleChange}
+                  aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
+                  aria-describedby={
+                    fieldErrors.passwordConfirmation
+                      ? 'password-confirmation-error'
+                      : undefined
+                  }
+                  required
+                />
+                <button
+                  className="visibility-button"
+                  type="button"
+                  aria-label={
+                    isPasswordConfirmationVisible
+                      ? 'パスワード確認を非表示にする'
+                      : 'パスワード確認を表示する'
+                  }
+                  aria-pressed={isPasswordConfirmationVisible}
+                  onClick={() =>
+                    setIsPasswordConfirmationVisible((current) => !current)
+                  }
+                >
+                  <img
+                    src={
+                      isPasswordConfirmationVisible
+                        ? passwordShowIcon
+                        : passwordHideIcon
+                    }
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+              {fieldErrors.passwordConfirmation && (
+                <p
+                  id="password-confirmation-error"
+                  className="field-error-message"
+                  role="alert"
+                >
+                  {fieldErrors.passwordConfirmation}
+                </p>
+              )}
+            </div>
           </div>
-
-          <p className="password-note">*パスワードは8文字以上の英数字</p>
-
-          <p
-            id="field-error-message"
-            className="field-error-message"
-            role="alert"
-          >
-            {firstError}
-          </p>
 
           <button
             className="submit-button"

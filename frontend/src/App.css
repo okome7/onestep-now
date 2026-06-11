@@ -49,82 +49,75 @@ body {
 .signup-content {
   width: min(100%, 360px);
   margin: 0 auto;
-  padding: 38px 30px 48px;
+  padding: 20px 30px 40px;
 }
 
 .signup-form {
   position: relative;
   width: 100%;
+  text-align: left;
 }
 
-.input-group {
-  overflow: hidden;
-  border: 1px solid #a8b2c3;
-  border-radius: 4px;
-  background: #ffffff;
-}
-
-.input-group label {
-  position: relative;
-  display: flex;
-  align-items: center;
-  height: 32px;
-  border-bottom: 1px solid #d6dce6;
-  background: #ffffff;
-}
-
-.input-group label:last-child {
-  border-bottom: 0;
-}
-
-.input-group label.field-error {
-  z-index: 1;
-}
-
-.input-group label.field-error::after {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border: 1px solid #ef4444;
-  content: '';
-  pointer-events: none;
-}
-
-.input-icon {
-  flex: 0 0 40px;
+.form-fields {
   display: grid;
-  place-items: center;
-  height: 100%;
+  gap: 16px;
 }
 
-.input-icon img {
-  display: block;
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
+.form-field {
+  display: grid;
+  gap: 6px;
 }
 
-.input-group input {
+.form-field label {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.form-field input,
+.password-field {
   width: 100%;
+  height: 44px;
+  border: 1px solid #c4ccd9;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.form-field input {
   min-width: 0;
-  border: 0;
+  padding: 0 14px;
   outline: 0;
   color: #374151;
   font-size: 14px;
-  background: #ffffff;
 }
 
-.input-group input::placeholder {
+.form-field input.field-error,
+.password-field.field-error {
+  border: 1px solid #ef4444;
+}
+
+.form-field input::placeholder {
   color: #a0a9b8;
 }
 
-.input-group input:autofill,
-.input-group input:-webkit-autofill {
+.form-field input:autofill,
+.form-field input:-webkit-autofill {
   box-shadow: 0 0 0 1000px #ffffff inset;
   -webkit-text-fill-color: #374151;
 }
 
-.input-group input::selection {
+.form-field input::selection {
+  background: transparent;
+}
+
+.password-field {
+  display: flex;
+  align-items: center;
+}
+
+.password-field input {
+  height: 100%;
+  border: 0;
   background: transparent;
 }
 
@@ -150,18 +143,15 @@ body {
   display: block;
 }
 
-.password-note {
-  margin: 5px 0 0;
+.field-note {
+  margin: -2px 0 0;
   color: #9aa6b8;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .field-error-message {
-  position: absolute;
-  top: 162px;
-  left: 0;
-  width: 100%;
-  margin: 0;
+  margin: -2px 0 0;
   color: #ef4444;
   font-size: 11px;
   line-height: 1.5;
@@ -171,7 +161,7 @@ body {
   display: block;
   width: min(100%, 212px);
   height: 40px;
-  margin: 68px auto 0;
+  margin: 24px auto 0;
   border: 0;
   border-radius: 8px;
   background: #4d95e5;
@@ -246,8 +236,8 @@ body {
     display: flex;
     flex: 1;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     width: min(100%, 360px);
-    padding: 40px 30px 80px;
+    padding: 24px 30px 80px;
   }
 }
