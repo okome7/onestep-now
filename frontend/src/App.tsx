@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import './App.css'
-import { signup } from './signupApi'
+import { login } from './loginApi'
+import type { LoginForm } from './loginApi'
+import { checkSignupEmail, signup } from './signupApi'
 import type { SignupForm } from './signupApi'
 import passwordShowIcon from './assets/icons/password_show.svg'
 import passwordHideIcon from './assets/icons/password_hide.svg'
@@ -24,6 +26,7 @@ const initialForm: SignupForm = {
 const passwordGuidance = '8文字以上で英字と数字を含めてください'
 const passwordPattern = '(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
+type LoginFieldErrors = Partial<Record<keyof LoginForm, string>>
 type Screen = 'signup' | 'icon' | 'complete'
 const customPhotoIconId = 'custom-photo'
 const signupScreenStorageKey = 'onestep-signup-screen'
@@ -82,6 +85,22 @@ function validateForm(form: SignupForm) {
   return nextErrors
 }
 
+function validateLoginForm(form: LoginForm) {
+  const nextErrors: LoginFieldErrors = {}
+
+  if (!form.email.trim()) {
+    nextErrors.email = 'メールアドレスを入力してください'
+  } else if (!isValidEmail(form.email)) {
+    nextErrors.email = '@を含む正しいメールアドレスを入力してください'
+  }
+
+  if (!form.password) {
+    nextErrors.password = 'パスワードを入力してください'
+  }
+
+  return nextErrors
+}
+
 function hasErrors(errors: FieldErrors) {
   return Object.keys(errors).length > 0
 }
@@ -116,6 +135,22 @@ function apiMessageToFieldErrors(message: string): FieldErrors {
   }
 
   return nextErrors
+}
+
+function apiMessageToLoginFieldErrors(message: string): LoginFieldErrors {
+  if (message.includes('メールアドレスまたはパスワード')) {
+    return { password: message }
+  }
+
+  if (message.includes('メールアドレス')) {
+    return { email: message }
+  }
+
+  if (message.includes('パスワード')) {
+    return { password: message }
+  }
+
+  return {}
 }
 
 type CompleteProfile = {
@@ -411,10 +446,30 @@ function SignupPage() {
       return
     }
 
-    saveSignupDraft(form, true)
-    window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
-    window.localStorage.removeItem(signupCompleteStorageKey)
-    setScreen('icon')
+    setIsSubmitting(true)
+
+    try {
+      await checkSignupEmail(form.email)
+      saveSignupDraft(form, true)
+      window.sessionStorage.setItem(signupScreenStorageKey, 'icon')
+      window.localStorage.removeItem(signupCompleteStorageKey)
+      setScreen('icon')
+    } catch (caughtError) {
+      const nextError =
+        caughtError instanceof Error
+          ? caughtError.message
+          : '登録に失敗しました。'
+      const nextFieldErrors = apiMessageToFieldErrors(nextError)
+
+      if (hasErrors(nextFieldErrors)) {
+        setFieldErrors((current) => ({ ...current, ...nextFieldErrors }))
+        return
+      }
+
+      setError(nextError)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function handleBack() {
@@ -895,7 +950,9 @@ function SignupPage() {
 
           <div className="login-link-area">
             <p>すでにアカウントをお持ちですか？</p>
-            <a href="/login">ログイン</a>
+            <a className="login-action-link" href="/login">
+              ログイン
+            </a>
           </div>
         </section>
       )}
@@ -904,49 +961,142 @@ function SignupPage() {
 }
 
 function LoginPage() {
+  const [form, setForm] = useState<LoginForm>({ email: '', password: '' })
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleBack = () => {
+    window.location.href = '/'
+  }
+
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    const { name, value } = event.target
+    const nextValue = name === 'password' ? formatPasswordInput(value) : value
+
+    setForm((current) => ({ ...current, [name]: nextValue }))
+    setFieldErrors((current) => ({
+      ...current,
+      [name]: undefined,
+    }))
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const nextErrors = validateLoginForm(form)
+    setFieldErrors(nextErrors)
+
+    if (hasErrors(nextErrors)) {
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      await login(form)
+      window.location.href = '/home'
+    } catch (caughtError) {
+      const nextError =
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'メールアドレスまたはパスワードが違います'
+      const nextFieldErrors = apiMessageToLoginFieldErrors(nextError)
+
+      if (Object.keys(nextFieldErrors).length > 0) {
+        setFieldErrors((current) => ({ ...current, ...nextFieldErrors }))
+        return
+      }
+
+      setFieldErrors((current) => ({ ...current, password: nextError }))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
-    <main className="signup-page">
-      <header className="signup-header">
-        <a className="back-button" href="/" aria-label="戻る">
-          &lt;
-        </a>
-        <h1>ログイン</h1>
-      </header>
+    <main className="signup-page login-page">
+      <SignupHeader title="ログイン" onBack={handleBack} />
 
       <section className="signup-content">
-        <form className="signup-form">
+        <form className="signup-form" onSubmit={handleSubmit} noValidate>
           <div className="form-fields">
             <div className="form-field">
               <label htmlFor="login-email">メールアドレス</label>
               <input
                 id="login-email"
+                className={errorFieldClass(fieldErrors.email)}
                 name="email"
                 type="email"
                 autoComplete="email"
                 placeholder="メールアドレスを入力"
+                value={form.email}
+                onChange={handleChange}
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={
+                  fieldErrors.email ? 'login-email-error' : undefined
+                }
+                required
               />
+              {fieldErrors.email && (
+                <p
+                  id="login-email-error"
+                  className="field-error-message"
+                  role="alert"
+                >
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
 
             <div className="form-field">
               <label htmlFor="login-password">パスワード</label>
               <input
                 id="login-password"
+                className={errorFieldClass(fieldErrors.password)}
                 name="password"
                 type="password"
                 autoComplete="current-password"
+                inputMode="text"
                 placeholder="パスワードを入力"
+                value={form.password}
+                onChange={handleChange}
+                aria-invalid={Boolean(fieldErrors.password)}
+                aria-describedby={
+                  fieldErrors.password ? 'login-password-error' : undefined
+                }
+                required
               />
+              {fieldErrors.password && (
+                <p
+                  id="login-password-error"
+                  className="field-error-message"
+                  role="alert"
+                >
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
           </div>
 
-          <button className="submit-button" type="submit">
+          <button
+            className="submit-button"
+            type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+          >
             ログイン
           </button>
         </form>
 
+        <div className="forgot-password-area">
+          <a href="/password-reset">パスワードを忘れた方はこちら</a>
+        </div>
+
         <div className="login-link-area">
           <p>アカウントをお持ちでないですか？</p>
-          <a href="/">新規登録</a>
+          <a className="login-action-link" href="/">
+            新規登録
+          </a>
         </div>
       </section>
     </main>

@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { signup } from './signupApi'
+import { checkSignupEmail, signup } from './signupApi'
 
 const form = {
   name: 'テスト太郎',
@@ -54,6 +54,37 @@ test('登録フォームの値をAPIに送信する', async () => {
   })
 })
 
+test('メールアドレス確認APIにemailだけを送信する', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: () =>
+      Promise.resolve({
+        status: 'success',
+      }),
+  })
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(
+    checkSignupEmail(form.email, 'http://localhost:3000'),
+  ).resolves.toBeUndefined()
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://localhost:3000/signup/email_check',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user: {
+          email: form.email,
+        },
+      }),
+    },
+  )
+})
+
 test('API接続先を指定しない場合は同一オリジンのAPI proxyに送信する', async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
@@ -88,6 +119,25 @@ test('APIのバリデーションメッセージを日本語で返す', async ()
   await expect(signup(form, 'http://localhost:3000/')).rejects.toThrow(
     'このメールアドレスはすでに登録されています。\nパスワードが短すぎます。',
   )
+})
+
+test('メールアドレス確認APIの重複エラーを日本語で返す', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'error',
+          errors: ['Email has already been taken'],
+        }),
+    }),
+  )
+
+  await expect(
+    checkSignupEmail(form.email, 'http://localhost:3000/'),
+  ).rejects.toThrow('このメールアドレスはすでに登録されています。')
 })
 
 test('APIのエラーメッセージがmessageで返った場合も表示する', async () => {
