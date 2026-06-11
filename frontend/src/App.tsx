@@ -62,6 +62,24 @@ function errorFieldClass(error: string | undefined) {
   return error ? 'field-error' : undefined
 }
 
+function apiMessageToFieldErrors(message: string): FieldErrors {
+  const nextErrors: FieldErrors = {}
+
+  for (const line of message.split('\n')) {
+    if (line.includes('メールアドレス')) {
+      nextErrors.email = line
+    } else if (line.includes('パスワード確認')) {
+      nextErrors.passwordConfirmation = line
+    } else if (line.includes('パスワード') || line.startsWith('Password')) {
+      nextErrors.password = '8文字以上で英字と数字を含めてください'
+    } else if (line.includes('表示名') || line.includes('名前')) {
+      nextErrors.name = line
+    }
+  }
+
+  return nextErrors
+}
+
 function App() {
   const [form, setForm] = useState<SignupForm>(initialForm)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -104,11 +122,18 @@ function App() {
       setForm(initialForm)
       setFieldErrors({})
     } catch (caughtError) {
-      setError(
+      const nextError =
         caughtError instanceof Error
           ? caughtError.message
-          : '登録に失敗しました。',
-      )
+          : '登録に失敗しました。'
+      const nextFieldErrors = apiMessageToFieldErrors(nextError)
+
+      if (hasErrors(nextFieldErrors)) {
+        setFieldErrors((current) => ({ ...current, ...nextFieldErrors }))
+        return
+      }
+
+      setError(nextError)
     } finally {
       setIsSubmitting(false)
     }
