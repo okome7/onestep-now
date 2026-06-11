@@ -152,3 +152,25 @@ test('APIのパスワードエラーを日本語で返す', async () => {
     ),
   ).rejects.toThrow('パスワードは英字と数字を両方含めてください。')
 })
+
+test('APIのNotFoundエラーを日本語で返す', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'error',
+          message: 'NotFound',
+        }),
+    }),
+  )
+
+  await expect(
+    sendPasswordResetCode(
+      { email: 'reset@example.com' },
+      'http://localhost:3000',
+    ),
+  ).rejects.toThrow('再設定用APIが見つかりませんでした。')
+})

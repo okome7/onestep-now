@@ -30,6 +30,8 @@ type PasswordResetResponse =
 const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 const japaneseErrorMessages: Record<string, string> = {
+  NotFound: '再設定用APIが見つかりませんでした。',
+  'Not Found': '再設定用APIが見つかりませんでした。',
   'Email is invalid': 'メールアドレスの形式が正しくありません。',
   "Email can't be blank": 'メールアドレスを入力してください。',
   "Password can't be blank": 'パスワードを入力してください。',
