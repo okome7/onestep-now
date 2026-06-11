@@ -13,6 +13,7 @@ const initialForm: SignupForm = {
   passwordConfirmation: '',
 }
 
+const passwordGuidance = '8文字以上で英字と数字を含めてください'
 const passwordPattern = '[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
 
@@ -62,6 +63,15 @@ function errorFieldClass(error: string | undefined) {
   return error ? 'field-error' : undefined
 }
 
+function isPasswordGuidanceError(error: string | undefined) {
+  return Boolean(
+    error &&
+    (error.includes('8文字以上') ||
+      error.includes('英数字') ||
+      error === passwordGuidance),
+  )
+}
+
 function apiMessageToFieldErrors(message: string): FieldErrors {
   const nextErrors: FieldErrors = {}
 
@@ -71,7 +81,7 @@ function apiMessageToFieldErrors(message: string): FieldErrors {
     } else if (line.includes('パスワード確認')) {
       nextErrors.passwordConfirmation = line
     } else if (line.includes('パスワード') || line.startsWith('Password')) {
-      nextErrors.password = '8文字以上で英字と数字を含めてください'
+      nextErrors.password = passwordGuidance
     } else if (line.includes('表示名') || line.includes('名前')) {
       nextErrors.name = line
     }
@@ -80,7 +90,7 @@ function apiMessageToFieldErrors(message: string): FieldErrors {
   return nextErrors
 }
 
-function App() {
+function SignupPage() {
   const [form, setForm] = useState<SignupForm>(initialForm)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -89,6 +99,9 @@ function App() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
+  const showPasswordGuidanceError = isPasswordGuidanceError(
+    fieldErrors.password,
+  )
   const noticeText = message || error
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
@@ -222,7 +235,7 @@ function App() {
                   onChange={handleChange}
                   aria-invalid={Boolean(fieldErrors.password)}
                   aria-describedby={
-                    fieldErrors.password
+                    fieldErrors.password && !showPasswordGuidanceError
                       ? 'password-error'
                       : 'password-description'
                   }
@@ -248,10 +261,15 @@ function App() {
                   />
                 </button>
               </div>
-              <p id="password-description" className="field-note">
+              <p
+                id="password-description"
+                className={`field-note ${
+                  showPasswordGuidanceError ? 'field-note-error' : ''
+                }`}
+              >
                 ※8文字以上で英字と数字を含めてください
               </p>
-              {fieldErrors.password && (
+              {fieldErrors.password && !showPasswordGuidanceError && (
                 <p
                   id="password-error"
                   className="field-error-message"
@@ -349,6 +367,60 @@ function App() {
       </section>
     </main>
   )
+}
+
+function LoginPage() {
+  return (
+    <main className="signup-page">
+      <header className="signup-header">
+        <a className="back-button" href="/" aria-label="戻る">
+          &lt;
+        </a>
+        <h1>ログイン</h1>
+      </header>
+
+      <section className="signup-content">
+        <form className="signup-form">
+          <div className="form-fields">
+            <div className="form-field">
+              <label htmlFor="login-email">メールアドレス</label>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="メールアドレスを入力"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="login-password">パスワード</label>
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="パスワードを入力"
+              />
+            </div>
+          </div>
+
+          <button className="submit-button" type="submit">
+            ログイン
+          </button>
+        </form>
+
+        <div className="login-link-area">
+          <p>アカウントをお持ちでないですか？</p>
+          <a href="/">新規登録</a>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function App() {
+  return window.location.pathname === '/login' ? <LoginPage /> : <SignupPage />
 }
 
 export default App

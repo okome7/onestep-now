@@ -150,6 +150,10 @@ body {
   line-height: 1.4;
 }
 
+.field-note-error {
+  color: #ef4444;
+}
+
 .field-error-message {
   margin: -2px 0 0;
   color: #ef4444;
