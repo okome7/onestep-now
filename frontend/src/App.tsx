@@ -906,14 +906,13 @@ function SignupPage() {
 }
 
 function LoginPage() {
+  const handleBack = () => {
+    window.location.href = '/'
+  }
+
   return (
     <main className="signup-page login-page">
-      <header className="signup-header">
-        <a className="back-button" href="/" aria-label="戻る">
-          &lt;
-        </a>
-        <h1>ログイン</h1>
-      </header>
+      <SignupHeader title="ログイン" onBack={handleBack} />
 
       <section className="signup-content">
         <form className="signup-form">
