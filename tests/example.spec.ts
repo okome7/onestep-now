@@ -11,7 +11,7 @@ test("フロントエンドの新規登録画面が表示される", async ({ pa
 
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
-  await expect(page.getByLabel("名前")).toBeVisible();
+  await expect(page.getByLabel("表示名")).toBeVisible();
   await expect(page.getByLabel("メールアドレス")).toBeVisible();
   await expect(page.getByLabel("パスワード", { exact: true })).toBeVisible();
   await expect(
@@ -39,7 +39,7 @@ test("パスワードに英数字以外は入力できない", async ({ page }) 
   await page.goto("/");
 
   const passwordInput = page.getByPlaceholder("パスワードを入力");
-  const confirmationInput = page.getByPlaceholder("パスワード確認を入力");
+  const confirmationInput = page.getByPlaceholder("パスワードを再入力");
 
   await passwordInput.fill("あああabc123");
   await confirmationInput.fill("テストpass456");
@@ -54,7 +54,7 @@ test("入力エラーをフォーム内に表示する", async ({ page }) => {
   const submitButton = page.getByRole("button", { name: "登録" });
   const beforeSubmitBox = await submitButton.boundingBox();
 
-  await page.getByLabel("名前").fill("おこめ");
+  await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("example.com");
   await page.getByLabel("パスワード", { exact: true }).fill("password1");
   await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
@@ -88,7 +88,7 @@ test("登録後のメッセージで画面がずれない", async ({ page }) => 
   const loginLink = page.getByRole("link", { name: "ログイン" });
   const beforeLoginBox = await loginLink.boundingBox();
 
-  await page.getByLabel("名前").fill("おこめ");
+  await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
   await page.getByLabel("パスワード", { exact: true }).fill("password1");
   await page.getByLabel("パスワード確認", { exact: true }).fill("password1");
