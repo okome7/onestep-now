@@ -24,6 +24,19 @@ type LoginResponse = LoginSuccessResponse | LoginErrorResponse
 
 const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
+const loginAuthErrorMessage = 'メールアドレスまたはパスワードが違います'
+
+const japaneseErrorMessages: Record<string, string> = {
+  'Invalid email or password': loginAuthErrorMessage,
+  'Invalid Email or password': loginAuthErrorMessage,
+  'Email or password is invalid': loginAuthErrorMessage,
+  Unauthorized: loginAuthErrorMessage,
+}
+
+function translateLoginError(message: string) {
+  return japaneseErrorMessages[message] ?? message
+}
+
 function isPresentString(message: string | undefined): message is string {
   return Boolean(message)
 }
@@ -38,8 +51,8 @@ function errorMessageFromResult(result: LoginErrorResponse) {
     result.errors ?? [result.error, result.message].filter(isPresentString)
 
   return errors.length
-    ? errors.join('\n')
-    : 'メールアドレスまたはパスワードが違います'
+    ? errors.map(translateLoginError).join('\n')
+    : loginAuthErrorMessage
 }
 
 export async function login(form: LoginForm, apiBaseUrl = defaultApiBaseUrl) {

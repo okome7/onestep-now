@@ -64,3 +64,22 @@ test('認証エラーを表示用メッセージとして返す', async () => {
     'メールアドレスまたはパスワードが違います',
   )
 })
+
+test('APIの英語エラーを日本語で返す', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'error',
+          errors: ['Invalid email or password'],
+        }),
+    }),
+  )
+
+  await expect(login(form, 'http://localhost:3000')).rejects.toThrow(
+    'メールアドレスまたはパスワードが違います',
+  )
+})
