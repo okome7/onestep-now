@@ -3,9 +3,6 @@ import type { ChangeEvent, FormEvent } from 'react'
 import './App.css'
 import { signup } from './signupApi'
 import type { SignupForm } from './signupApi'
-import userIcon from './assets/icons/user.svg'
-import mailIcon from './assets/icons/mail.svg'
-import passwordIcon from './assets/icons/password.svg'
 import passwordShowIcon from './assets/icons/password_show.svg'
 import passwordHideIcon from './assets/icons/password_hide.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
@@ -24,6 +21,7 @@ const initialForm: SignupForm = {
   passwordConfirmation: '',
 }
 
+const passwordGuidance = '8文字以上で英字と数字を含めてください'
 const passwordPattern = '(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}'
 type FieldErrors = Partial<Record<keyof SignupForm, string>>
 type Screen = 'signup' | 'icon' | 'complete'
@@ -58,7 +56,7 @@ function validateForm(form: SignupForm) {
   const nextErrors: FieldErrors = {}
 
   if (!form.name.trim()) {
-    nextErrors.name = '名前を入力してください'
+    nextErrors.name = '表示名を入力してください'
   }
 
   if (!form.email.trim()) {
@@ -70,9 +68,9 @@ function validateForm(form: SignupForm) {
   if (!form.password) {
     nextErrors.password = 'パスワードを入力してください'
   } else if (form.password.length < 8) {
-    nextErrors.password = '8文字以上の英数字を入力してください'
+    nextErrors.password = passwordGuidance
   } else if (!new RegExp(`^${passwordPattern}$`).test(form.password)) {
-    nextErrors.password = '英字と数字を両方含めてください'
+    nextErrors.password = passwordGuidance
   }
 
   if (!form.passwordConfirmation) {
@@ -88,18 +86,36 @@ function hasErrors(errors: FieldErrors) {
   return Object.keys(errors).length > 0
 }
 
-function firstFieldError(errors: FieldErrors) {
-  return (
-    errors.name ??
-    errors.email ??
-    errors.password ??
-    errors.passwordConfirmation ??
-    ''
+function errorFieldClass(error: string | undefined) {
+  return error ? 'field-error' : undefined
+}
+
+function isPasswordGuidanceError(error: string | undefined) {
+  return Boolean(
+    error &&
+    (error.includes('8文字以上') ||
+      error.includes('英数字') ||
+      error.includes('英字と数字') ||
+      error === passwordGuidance),
   )
 }
 
-function errorFieldClass(error: string | undefined) {
-  return error ? 'field-error' : undefined
+function apiMessageToFieldErrors(message: string): FieldErrors {
+  const nextErrors: FieldErrors = {}
+
+  for (const line of message.split('\n')) {
+    if (line.includes('メールアドレス')) {
+      nextErrors.email = line
+    } else if (line.includes('パスワード確認')) {
+      nextErrors.passwordConfirmation = line
+    } else if (line.includes('パスワード') || line.startsWith('Password')) {
+      nextErrors.password = passwordGuidance
+    } else if (line.includes('表示名') || line.includes('名前')) {
+      nextErrors.name = line
+    }
+  }
+
+  return nextErrors
 }
 
 type CompleteProfile = {
@@ -313,7 +329,7 @@ function SignupHeader({ title, onBack }: SignupHeaderProps) {
   )
 }
 
-function App() {
+function SignupPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [screen, setScreen] = useState<Screen>(getInitialScreen)
@@ -338,7 +354,9 @@ function App() {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
-  const firstError = firstFieldError(fieldErrors)
+  const showPasswordGuidanceError = isPasswordGuidanceError(
+    fieldErrors.password,
+  )
   const noticeText = message || error
 
   useEffect(() => {
@@ -449,11 +467,20 @@ function App() {
       })
       setScreen('complete')
     } catch (caughtError) {
-      setError(
+      const nextError =
         caughtError instanceof Error
           ? caughtError.message
-          : '登録に失敗しました。',
-      )
+          : '登録に失敗しました。'
+      const nextFieldErrors = apiMessageToFieldErrors(nextError)
+
+      if (hasErrors(nextFieldErrors)) {
+        setFieldErrors((current) => ({ ...current, ...nextFieldErrors }))
+        window.sessionStorage.setItem(signupScreenStorageKey, 'signup')
+        setScreen('signup')
+        return
+      }
+
+      setError(nextError)
     } finally {
       setIsSubmitting(false)
     }
@@ -663,151 +690,190 @@ function App() {
       ) : (
         <section className="signup-content">
           <form className="signup-form" onSubmit={handleSubmit} noValidate>
-            <div className="input-group">
-              <label className={errorFieldClass(fieldErrors.name)}>
-                <span className="input-icon">
-                  <img src={userIcon} alt="" aria-hidden="true" />
-                </span>
+            <div className="form-fields">
+              <div className="form-field">
+                <label htmlFor="name">表示名</label>
                 <input
+                  id="name"
+                  className={errorFieldClass(fieldErrors.name)}
                   name="name"
                   type="text"
-                  aria-label="名前"
                   autoComplete="name"
-                  placeholder="名前を入力"
+                  placeholder="表示名を入力"
                   value={form.name}
                   onChange={handleChange}
                   aria-invalid={Boolean(fieldErrors.name)}
                   aria-describedby={
-                    fieldErrors.name ? 'field-error-message' : undefined
+                    fieldErrors.name ? 'name-error' : 'name-description'
                   }
                   required
                 />
-              </label>
+                <p id="name-description" className="field-note">
+                  ※他のユーザーに公開される名前です
+                </p>
+                {fieldErrors.name && (
+                  <p
+                    id="name-error"
+                    className="field-error-message"
+                    role="alert"
+                  >
+                    {fieldErrors.name}
+                  </p>
+                )}
+              </div>
 
-              <label className={errorFieldClass(fieldErrors.email)}>
-                <span className="input-icon">
-                  <img src={mailIcon} alt="" aria-hidden="true" />
-                </span>
+              <div className="form-field">
+                <label htmlFor="email">メールアドレス</label>
                 <input
+                  id="email"
+                  className={errorFieldClass(fieldErrors.email)}
                   name="email"
                   type="email"
-                  aria-label="メールアドレス"
                   autoComplete="email"
                   placeholder="メールアドレスを入力"
                   value={form.email}
                   onChange={handleChange}
                   aria-invalid={Boolean(fieldErrors.email)}
                   aria-describedby={
-                    fieldErrors.email ? 'field-error-message' : undefined
+                    fieldErrors.email ? 'email-error' : undefined
                   }
                   required
                 />
-              </label>
+                {fieldErrors.email && (
+                  <p
+                    id="email-error"
+                    className="field-error-message"
+                    role="alert"
+                  >
+                    {fieldErrors.email}
+                  </p>
+                )}
+              </div>
 
-              <label className={errorFieldClass(fieldErrors.password)}>
-                <span className="input-icon">
-                  <img src={passwordIcon} alt="" aria-hidden="true" />
-                </span>
-                <input
-                  name="password"
-                  type={isPasswordVisible ? 'text' : 'password'}
-                  aria-label="パスワード"
-                  autoComplete="new-password"
-                  inputMode="text"
-                  placeholder="パスワードを入力"
-                  pattern={passwordPattern}
-                  title="8文字以上の英数字で入力してください"
-                  value={form.password}
-                  onChange={handleChange}
-                  aria-invalid={Boolean(fieldErrors.password)}
-                  aria-describedby={
-                    fieldErrors.password ? 'field-error-message' : undefined
-                  }
-                  required
-                />
-                <button
-                  className="visibility-button"
-                  type="button"
-                  aria-label={
-                    isPasswordVisible
-                      ? 'パスワードを非表示にする'
-                      : 'パスワードを表示する'
-                  }
-                  aria-pressed={isPasswordVisible}
-                  onClick={() => setIsPasswordVisible((current) => !current)}
+              <div className="form-field">
+                <label htmlFor="password">パスワード</label>
+                <div
+                  className={`password-field ${errorFieldClass(fieldErrors.password) ?? ''}`}
                 >
-                  <img
-                    src={
-                      isPasswordVisible ? passwordShowIcon : passwordHideIcon
+                  <input
+                    id="password"
+                    name="password"
+                    type={isPasswordVisible ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    inputMode="text"
+                    placeholder="パスワードを入力"
+                    pattern={passwordPattern}
+                    title="8文字以上で英字と数字を含めてください"
+                    value={form.password}
+                    onChange={handleChange}
+                    aria-invalid={Boolean(fieldErrors.password)}
+                    aria-describedby={
+                      fieldErrors.password && !showPasswordGuidanceError
+                        ? 'password-error'
+                        : 'password-description'
                     }
-                    alt=""
-                    aria-hidden="true"
+                    required
                   />
-                </button>
-              </label>
-
-              <label
-                className={errorFieldClass(fieldErrors.passwordConfirmation)}
-              >
-                <span className="input-icon">
-                  <img src={passwordIcon} alt="" aria-hidden="true" />
-                </span>
-                <input
-                  name="passwordConfirmation"
-                  type={isPasswordConfirmationVisible ? 'text' : 'password'}
-                  aria-label="パスワード確認"
-                  autoComplete="new-password"
-                  inputMode="text"
-                  placeholder="パスワード確認を入力"
-                  pattern={passwordPattern}
-                  title="8文字以上の英数字で入力してください"
-                  value={form.passwordConfirmation}
-                  onChange={handleChange}
-                  aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
-                  aria-describedby={
-                    fieldErrors.passwordConfirmation
-                      ? 'field-error-message'
-                      : undefined
-                  }
-                  required
-                />
-                <button
-                  className="visibility-button"
-                  type="button"
-                  aria-label={
-                    isPasswordConfirmationVisible
-                      ? 'パスワード確認を非表示にする'
-                      : 'パスワード確認を表示する'
-                  }
-                  aria-pressed={isPasswordConfirmationVisible}
-                  onClick={() =>
-                    setIsPasswordConfirmationVisible((current) => !current)
-                  }
+                  <button
+                    className="visibility-button"
+                    type="button"
+                    aria-label={
+                      isPasswordVisible
+                        ? 'パスワードを非表示にする'
+                        : 'パスワードを表示する'
+                    }
+                    aria-pressed={isPasswordVisible}
+                    onClick={() => setIsPasswordVisible((current) => !current)}
+                  >
+                    <img
+                      src={
+                        isPasswordVisible ? passwordShowIcon : passwordHideIcon
+                      }
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
+                <p
+                  id="password-description"
+                  className={`field-note ${
+                    showPasswordGuidanceError ? 'field-note-error' : ''
+                  }`}
                 >
-                  <img
-                    src={
+                  ※8文字以上で英字と数字を含めてください
+                </p>
+                {fieldErrors.password && !showPasswordGuidanceError && (
+                  <p
+                    id="password-error"
+                    className="field-error-message"
+                    role="alert"
+                  >
+                    {fieldErrors.password}
+                  </p>
+                )}
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="passwordConfirmation">パスワード確認</label>
+                <div
+                  className={`password-field ${
+                    errorFieldClass(fieldErrors.passwordConfirmation) ?? ''
+                  }`}
+                >
+                  <input
+                    id="passwordConfirmation"
+                    name="passwordConfirmation"
+                    type={isPasswordConfirmationVisible ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    inputMode="text"
+                    placeholder="パスワードを再入力"
+                    pattern={passwordPattern}
+                    title="8文字以上で英字と数字を含めてください"
+                    value={form.passwordConfirmation}
+                    onChange={handleChange}
+                    aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
+                    aria-describedby={
+                      fieldErrors.passwordConfirmation
+                        ? 'password-confirmation-error'
+                        : undefined
+                    }
+                    required
+                  />
+                  <button
+                    className="visibility-button"
+                    type="button"
+                    aria-label={
                       isPasswordConfirmationVisible
-                        ? passwordShowIcon
-                        : passwordHideIcon
+                        ? 'パスワード確認を非表示にする'
+                        : 'パスワード確認を表示する'
                     }
-                    alt=""
-                    aria-hidden="true"
-                  />
-                </button>
-              </label>
+                    aria-pressed={isPasswordConfirmationVisible}
+                    onClick={() =>
+                      setIsPasswordConfirmationVisible((current) => !current)
+                    }
+                  >
+                    <img
+                      src={
+                        isPasswordConfirmationVisible
+                          ? passwordShowIcon
+                          : passwordHideIcon
+                      }
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
+                {fieldErrors.passwordConfirmation && (
+                  <p
+                    id="password-confirmation-error"
+                    className="field-error-message"
+                    role="alert"
+                  >
+                    {fieldErrors.passwordConfirmation}
+                  </p>
+                )}
+              </div>
             </div>
-
-            <p className="password-note">
-              *パスワードは8文字以上で英字と数字を含めてください
-            </p>
-
-            <p
-              id="field-error-message"
-              className="field-error-message"
-              role="alert"
-            >
-              {firstError}
-            </p>
 
             <button
               className="submit-button"
@@ -835,6 +901,60 @@ function App() {
       )}
     </main>
   )
+}
+
+function LoginPage() {
+  return (
+    <main className="signup-page">
+      <header className="signup-header">
+        <a className="back-button" href="/" aria-label="戻る">
+          &lt;
+        </a>
+        <h1>ログイン</h1>
+      </header>
+
+      <section className="signup-content">
+        <form className="signup-form">
+          <div className="form-fields">
+            <div className="form-field">
+              <label htmlFor="login-email">メールアドレス</label>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="メールアドレスを入力"
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="login-password">パスワード</label>
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                placeholder="パスワードを入力"
+              />
+            </div>
+          </div>
+
+          <button className="submit-button" type="submit">
+            ログイン
+          </button>
+        </form>
+
+        <div className="login-link-area">
+          <p>アカウントをお持ちでないですか？</p>
+          <a href="/">新規登録</a>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function App() {
+  return window.location.pathname === '/login' ? <LoginPage /> : <SignupPage />
 }
 
 export default App
