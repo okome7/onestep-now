@@ -38,6 +38,23 @@
 | **backendに入る** | `docker compose exec backend bash`                 |
 | **テスト実行**    | `docker compose exec backend bundle exec rspec`    |
 
+### パスワード再設定メールの送信設定
+
+実際にメールを送信する場合は、backendにSMTP用の環境変数を設定してください。
+
+```bash
+MAIL_FROM=no-reply@example.com
+SMTP_ADDRESS=smtp.example.com
+SMTP_PORT=587
+SMTP_DOMAIN=example.com
+SMTP_USERNAME=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+SMTP_AUTHENTICATION=plain
+SMTP_ENABLE_STARTTLS_AUTO=true
+```
+
+SMTP設定がない場合、再設定コードの発行APIは動きますが、実際のメール配送は行われません。
+
 ---
 
 ## 🛠 技術スタック
