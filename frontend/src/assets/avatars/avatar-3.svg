@@ -1,0 +1,45 @@
+<svg
+  width="256"
+  height="256"
+  viewBox="0 0 256 256"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <circle cx="128" cy="128" r="128" fill="#EAFBF0" />
+  <g transform="translate(128 128) scale(1.18) translate(-128 -128)">
+    <rect x="122" y="112" width="12" height="60" rx="6" fill="#34C759" />
+    <ellipse
+      cx="98"
+      cy="110"
+      rx="36"
+      ry="24"
+      fill="#66D17A"
+      transform="rotate(-25 98 110)"
+    />
+    <ellipse
+      cx="158"
+      cy="110"
+      rx="36"
+      ry="24"
+      fill="#66D17A"
+      transform="rotate(25 158 110)"
+    />
+    <ellipse
+      cx="89"
+      cy="103"
+      rx="10"
+      ry="5"
+      fill="#BDF5C8"
+      opacity="0.8"
+      transform="rotate(-25 89 103)"
+    />
+    <ellipse
+      cx="149"
+      cy="103"
+      rx="10"
+      ry="5"
+      fill="#BDF5C8"
+      opacity="0.8"
+      transform="rotate(25 149 103)"
+    />
+  </g>
+</svg>

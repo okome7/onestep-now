@@ -6,6 +6,7 @@ const form = {
   email: 'test@example.com',
   password: 'password123',
   passwordConfirmation: 'password123',
+  avatarKey: 'avatar-5',
 }
 
 afterEach(() => {
@@ -19,7 +20,12 @@ test('登録フォームの値をAPIに送信する', async () => {
     json: () =>
       Promise.resolve({
         status: 'success',
-        data: { id: 1, name: form.name, email: form.email },
+        data: {
+          id: 1,
+          name: form.name,
+          email: form.email,
+          avatar_key: form.avatarKey,
+        },
       }),
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -28,6 +34,7 @@ test('登録フォームの値をAPIに送信する', async () => {
     id: 1,
     name: form.name,
     email: form.email,
+    avatar_key: form.avatarKey,
   })
 
   expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/signup', {
@@ -41,6 +48,7 @@ test('登録フォームの値をAPIに送信する', async () => {
         email: form.email,
         password: form.password,
         password_confirmation: form.passwordConfirmation,
+        avatar_key: form.avatarKey,
       },
     }),
   })
@@ -98,6 +106,44 @@ test('APIのエラーメッセージがmessageで返った場合も表示する'
 
   await expect(signup(form, '/api')).rejects.toThrow(
     'APIの接続先が設定されていません。',
+  )
+})
+
+test('パスワードの英数字エラーを日本語で返す', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'error',
+          errors: ['Password は英数字で入力してください'],
+        }),
+    }),
+  )
+
+  await expect(signup(form, 'http://localhost:3000/')).rejects.toThrow(
+    'パスワードは英数字で入力してください。',
+  )
+})
+
+test('パスワードに英字と数字の両方が必要なエラーを日本語で返す', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'error',
+          errors: ['Password は英字と数字を両方含めてください'],
+        }),
+    }),
+  )
+
+  await expect(signup(form, 'http://localhost:3000/')).rejects.toThrow(
+    'パスワードは英字と数字を両方含めてください。',
   )
 })
 

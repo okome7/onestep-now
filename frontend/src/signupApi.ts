@@ -3,12 +3,14 @@ export type SignupForm = {
   email: string
   password: string
   passwordConfirmation: string
+  avatarKey?: string
 }
 
 export type SignupUser = {
   id: number
   name: string
   email: string
+  avatar_key?: string
 }
 
 type SignupSuccessResponse = {
@@ -34,6 +36,10 @@ const japaneseErrorMessages: Record<string, string> = {
   'Email has already been taken':
     'このメールアドレスはすでに登録されています。',
   "Password can't be blank": 'パスワードを入力してください。',
+  'Password は英数字で入力してください':
+    'パスワードは英数字で入力してください。',
+  'Password は英字と数字を両方含めてください':
+    'パスワードは英字と数字を両方含めてください。',
   "Password confirmation doesn't match Password":
     'パスワード確認が一致していません。',
 }
@@ -70,6 +76,7 @@ export async function signup(
           email: form.email,
           password: form.password,
           password_confirmation: form.passwordConfirmation,
+          avatar_key: form.avatarKey,
         },
       }),
     })

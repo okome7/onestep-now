@@ -1,0 +1,25 @@
+<svg
+  width="256"
+  height="256"
+  viewBox="0 0 256 256"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <circle cx="128" cy="128" r="128" fill="#FFF8D9" />
+  <path
+    d="M128 58L145 102L192 106L156 136L168 182L128 157L88 182L100 136L64 106L111 102Z"
+    fill="#FFD54F"
+  />
+  <path
+    d="M128 74L138 99L164 101L144 118L151 143L128 129Z"
+    fill="#FFF3B0"
+    opacity="0.9"
+  />
+  <path
+    d="M186 74L190 84L200 88L190 92L186 102L182 92L172 88L182 84Z"
+    fill="#FFE082"
+  />
+  <path
+    d="M74 164L78 174L88 178L78 182L74 192L70 182L60 178L70 174Z"
+    fill="#FFE082"
+  />
+</svg>
