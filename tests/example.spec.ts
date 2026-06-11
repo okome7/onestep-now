@@ -201,6 +201,19 @@ test("ログイン画面の入力エラーをフォーム内に表示する", as
   );
 });
 
+test("ログイン画面からログインできる", async ({ page }) => {
+  await page.goto("/login");
+
+  await expect(
+    page.getByRole("link", { name: "パスワードを忘れた方はこちら" }),
+  ).toBeVisible();
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード").fill("password1");
+  await page.getByRole("button", { name: "ログイン" }).click();
+
+  await expect(page).toHaveURL(/\/home$/);
+});
+
 test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   const signupRequests: unknown[] = [];
   await mockSignupEmailCheck(page);

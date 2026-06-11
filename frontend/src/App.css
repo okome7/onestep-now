@@ -710,6 +710,24 @@ body {
   text-align: center;
 }
 
+.forgot-password-area {
+  margin-top: 18px;
+  text-align: center;
+}
+
+.forgot-password-area a {
+  color: #2f8bea;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.forgot-password-area a:focus-visible,
+.login-link-area a:focus-visible {
+  outline: 2px solid #4d95e5;
+  outline-offset: 3px;
+}
+
 .login-link-area p {
   margin: 0 0 14px;
   color: #9aa6b8;

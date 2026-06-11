@@ -968,6 +968,12 @@ function LoginPage() {
 
     const nextErrors = validateLoginForm(form)
     setFieldErrors(nextErrors)
+
+    if (hasErrors(nextErrors)) {
+      return
+    }
+
+    window.location.href = '/home'
   }
 
   return (
@@ -1039,6 +1045,10 @@ function LoginPage() {
             ログイン
           </button>
         </form>
+
+        <div className="forgot-password-area">
+          <a href="/password-reset">パスワードを忘れた方はこちら</a>
+        </div>
 
         <div className="login-link-area">
           <p>アカウントをお持ちでないですか？</p>
