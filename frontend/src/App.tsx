@@ -1662,15 +1662,17 @@ function HomePage() {
 }
 
 function App() {
-  if (window.location.pathname === '/login') {
+  const pathname = window.location.pathname.replace(/\/+$/, '') || '/'
+
+  if (pathname === '/login') {
     return <LoginPage />
   }
 
-  if (window.location.pathname === '/password-reset') {
+  if (pathname === '/password-reset') {
     return <PasswordResetPage />
   }
 
-  if (window.location.pathname === '/home') {
+  if (pathname === '/home') {
     return <HomePage />
   }
 

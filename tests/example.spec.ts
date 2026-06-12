@@ -534,6 +534,17 @@ test("ホーム画面が表示される", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("ホーム画面は末尾スラッシュ付きでも表示される", async ({ page }) => {
+  await page.goto("/home/");
+
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "今できること" }),
+  ).toBeVisible();
+});
+
 test("ホーム画面でやることを始めるとタイマーが表示される", async ({ page }) => {
   await page.goto("/home");
 
