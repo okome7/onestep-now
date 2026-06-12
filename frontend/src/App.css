@@ -26,6 +26,234 @@ body {
   justify-content: center;
 }
 
+.home-page {
+  position: relative;
+  display: grid;
+  grid-template-rows: 64px 1fr 64px;
+  width: 100%;
+  min-height: 100dvh;
+  background: #f4f7fb;
+}
+
+.home-page.task-active {
+  display: block;
+  padding: 0 12px;
+}
+
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.home-header h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.home-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 82px 30px 24px;
+}
+
+.home-start h2 {
+  margin: 0 0 16px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.home-task-input {
+  width: min(100%, 300px);
+  height: 48px;
+  border: 1px solid #b8c1cc;
+  border-radius: 6px;
+  padding: 0 14px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  outline: none;
+}
+
+.home-task-input::placeholder {
+  color: #aab4c2;
+}
+
+.home-task-input:focus {
+  border-color: #4d95e5;
+  box-shadow: 0 0 0 2px rgb(77 149 229 / 18%);
+}
+
+.home-start-button {
+  width: min(100%, 240px);
+  height: 56px;
+  margin-top: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: #4d95e5;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.home-start-button:focus-visible {
+  outline: 3px solid rgb(77 149 229 / 35%);
+  outline-offset: 3px;
+}
+
+.home-bottom-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  padding-inline: 7%;
+  border-top: 1px solid #e5eaf2;
+  background: #ffffff;
+}
+
+.home-nav-item {
+  display: grid;
+  height: 64px;
+  place-items: center;
+  color: #9aa6b8;
+  text-decoration: none;
+}
+
+.home-nav-item.active {
+  color: #4d95e5;
+}
+
+.home-nav-icon {
+  display: block;
+  width: 34px;
+  height: 34px;
+}
+
+.focus-session {
+  display: grid;
+  min-height: 100dvh;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  justify-items: center;
+  padding: 0 28px 28px;
+  background: #f4f7fb;
+  text-align: center;
+}
+
+.focus-main {
+  display: grid;
+  justify-items: center;
+}
+
+.focus-main h1 {
+  max-width: 100%;
+  margin: 0 0 22px;
+  overflow-wrap: anywhere;
+  color: #111827;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+.focus-timer {
+  display: block;
+  color: #4d95e5;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.18em;
+  line-height: 1;
+}
+
+.focus-actions {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+}
+
+.focus-done-button {
+  width: min(100%, 208px);
+  height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: #4d95e5;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.focus-cancel-button {
+  margin-top: 16px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #9aa6b8;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 639px) {
+  .home-page {
+    grid-template-rows: 64px 1fr 56px;
+  }
+
+  .home-start {
+    padding-top: 88px;
+  }
+
+  .home-task-input {
+    width: min(100%, 228px);
+    height: 34px;
+    border-radius: 3px;
+    padding-inline: 11px;
+    font-size: 13px;
+  }
+
+  .home-start-button {
+    width: min(100%, 208px);
+    height: 48px;
+    margin-top: 34px;
+    font-size: 24px;
+  }
+
+  .home-nav-item {
+    height: 56px;
+  }
+
+  .home-nav-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .focus-session h1 {
+    font-size: 26px;
+  }
+
+  .focus-timer {
+    font-size: 34px;
+  }
+}
+
 .signup-header {
   position: relative;
   display: flex;

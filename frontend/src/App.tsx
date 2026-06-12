@@ -63,6 +63,13 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
+function formatElapsedTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
 function validateForm(form: SignupForm) {
   const nextErrors: FieldErrors = {}
 
@@ -1464,6 +1471,196 @@ function PasswordResetPage() {
   )
 }
 
+function HomePage() {
+  const [taskText, setTaskText] = useState('')
+  const [activeTask, setActiveTask] = useState('')
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const isTaskActive = Boolean(activeTask)
+
+  useEffect(() => {
+    if (!isTaskActive) {
+      return undefined
+    }
+
+    const timerId = window.setInterval(() => {
+      setElapsedSeconds((current) => current + 1)
+    }, 1000)
+
+    return () => window.clearInterval(timerId)
+  }, [isTaskActive])
+
+  function handleTaskStart(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const nextTask = taskText.trim()
+
+    if (!nextTask) {
+      return
+    }
+
+    setActiveTask(nextTask)
+    setElapsedSeconds(0)
+  }
+
+  function handleTaskCancel() {
+    setActiveTask('')
+    setElapsedSeconds(0)
+  }
+
+  return (
+    <main className={`home-page ${isTaskActive ? 'task-active' : ''}`}>
+      {isTaskActive ? null : (
+        <header className="home-header">
+          <h1>OneStep Now</h1>
+        </header>
+      )}
+
+      {isTaskActive ? (
+        <section className="focus-session" aria-labelledby="focus-task-title">
+          <div className="focus-main">
+            <h1 id="focus-task-title">{activeTask}</h1>
+            <time className="focus-timer" dateTime={`PT${elapsedSeconds}S`}>
+              {formatElapsedTime(elapsedSeconds)}
+            </time>
+          </div>
+
+          <div className="focus-actions">
+            <button className="focus-done-button" type="button">
+              できた！
+            </button>
+            <button
+              className="focus-cancel-button"
+              type="button"
+              onClick={handleTaskCancel}
+            >
+              やめる
+            </button>
+          </div>
+        </section>
+      ) : (
+        <form
+          className="home-start"
+          aria-labelledby="home-start-title"
+          onSubmit={handleTaskStart}
+        >
+          <h2 id="home-start-title">今できることから</h2>
+          <input
+            className="home-task-input"
+            type="text"
+            aria-label="今できること"
+            placeholder="やることを入力"
+            value={taskText}
+            onChange={(event) => setTaskText(event.target.value)}
+          />
+          <button
+            className="home-start-button"
+            type="submit"
+            disabled={!taskText.trim()}
+          >
+            始める
+          </button>
+        </form>
+      )}
+
+      {isTaskActive ? null : (
+        <nav className="home-bottom-nav" aria-label="ホームメニュー">
+          <a className="home-nav-item active" href="/home" aria-label="ホーム">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 10.5L12 3L21 10.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M5 10V20H10V15H14V20H19V10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+          <a className="home-nav-item" href="/home" aria-label="投稿">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <rect
+                x="4"
+                y="5"
+                width="16"
+                height="14"
+                rx="3"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M8 9H16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M8 13H13"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M16 13.5L17 14.5L19 12"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+          <a className="home-nav-item" href="/home" aria-label="プロフィール">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <circle
+                cx="12"
+                cy="8"
+                r="4"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </a>
+        </nav>
+      )}
+    </main>
+  )
+}
+
 function App() {
   if (window.location.pathname === '/login') {
     return <LoginPage />
@@ -1471,6 +1668,10 @@ function App() {
 
   if (window.location.pathname === '/password-reset') {
     return <PasswordResetPage />
+  }
+
+  if (window.location.pathname === '/home') {
+    return <HomePage />
   }
 
   return <SignupPage />
