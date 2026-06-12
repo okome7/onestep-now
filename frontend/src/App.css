@@ -54,27 +54,29 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: min(100%, 360px);
+  margin: 0 auto;
   padding: 82px 30px 24px;
 }
 
 .home-start h2 {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   color: #111827;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0;
 }
 
 .home-task-input {
-  width: min(100%, 300px);
-  height: 48px;
-  border: 1px solid #b8c1cc;
+  width: 100%;
+  height: 44px;
+  border: 1px solid #c4ccd9;
   border-radius: 6px;
   padding: 0 14px;
   background: #ffffff;
-  color: #111827;
+  color: #374151;
   font: inherit;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   outline: none;
 }
@@ -89,16 +91,18 @@ body {
 }
 
 .home-start-button {
-  width: min(100%, 240px);
-  height: 56px;
-  margin-top: 34px;
+  width: min(100%, 212px);
+  height: 40px;
+  margin-top: 24px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #4d95e5;
   color: #ffffff;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: 0;
+  line-height: 1;
+  box-shadow: 0 3px 5px rgb(0 0 0 / 28%);
   cursor: pointer;
 }
 
@@ -140,21 +144,6 @@ body {
 
   .home-start {
     padding-top: 88px;
-  }
-
-  .home-task-input {
-    width: min(100%, 228px);
-    height: 34px;
-    border-radius: 3px;
-    padding-inline: 11px;
-    font-size: 13px;
-  }
-
-  .home-start-button {
-    width: min(100%, 208px);
-    height: 48px;
-    margin-top: 34px;
-    font-size: 24px;
   }
 
   .home-nav-item {
