@@ -1464,6 +1464,41 @@ function PasswordResetPage() {
   )
 }
 
+function HomePage() {
+  return (
+    <main className="home-page">
+      <header className="home-header">
+        <h1>OneStep Now</h1>
+      </header>
+
+      <section className="home-start" aria-labelledby="home-start-title">
+        <h2 id="home-start-title">今できることから</h2>
+        <input
+          className="home-task-input"
+          type="text"
+          aria-label="今できること"
+          placeholder="やることを入力"
+        />
+        <button className="home-start-button" type="button">
+          始める
+        </button>
+      </section>
+
+      <nav className="home-bottom-nav" aria-label="ホームメニュー">
+        <a className="home-nav-item active" href="/home" aria-label="ホーム">
+          <span className="home-nav-icon home-icon" aria-hidden="true" />
+        </a>
+        <a className="home-nav-item" href="/home" aria-label="投稿">
+          <span className="home-nav-icon post-icon" aria-hidden="true" />
+        </a>
+        <a className="home-nav-item" href="/home" aria-label="プロフィール">
+          <span className="home-nav-icon profile-icon" aria-hidden="true" />
+        </a>
+      </nav>
+    </main>
+  )
+}
+
 function App() {
   if (window.location.pathname === '/login') {
     return <LoginPage />
@@ -1471,6 +1506,10 @@ function App() {
 
   if (window.location.pathname === '/password-reset') {
     return <PasswordResetPage />
+  }
+
+  if (window.location.pathname === '/home') {
+    return <HomePage />
   }
 
   return <SignupPage />
