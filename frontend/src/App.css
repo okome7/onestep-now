@@ -111,6 +111,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   align-items: center;
+  padding-inline: 7%;
   border-top: 1px solid #e5eaf2;
   background: #ffffff;
 }
