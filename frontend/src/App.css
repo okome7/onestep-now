@@ -29,7 +29,7 @@ body {
 .home-page {
   position: relative;
   display: grid;
-  grid-template-rows: 50px 1fr 50px;
+  grid-template-rows: 64px 1fr 64px;
   min-height: 100dvh;
   background: #f4f7fb;
 }
@@ -44,8 +44,8 @@ body {
 .home-header h1 {
   margin: 0;
   color: #111827;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -53,27 +53,27 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 75px 30px 24px;
+  padding: 82px 30px 24px;
 }
 
 .home-start h2 {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   color: #111827;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0;
 }
 
 .home-task-input {
-  width: min(100%, 190px);
-  height: 29px;
+  width: min(100%, 300px);
+  height: 48px;
   border: 1px solid #b8c1cc;
-  border-radius: 2px;
-  padding: 0 10px;
+  border-radius: 6px;
+  padding: 0 14px;
   background: #ffffff;
   color: #111827;
   font: inherit;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 500;
   outline: none;
 }
@@ -88,14 +88,14 @@ body {
 }
 
 .home-start-button {
-  width: min(100%, 173px);
-  height: 39px;
-  margin-top: 30px;
+  width: min(100%, 240px);
+  height: 56px;
+  margin-top: 34px;
   border: 0;
   border-radius: 999px;
   background: #4d95e5;
   color: #ffffff;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0;
   cursor: pointer;
@@ -116,7 +116,7 @@ body {
 
 .home-nav-item {
   display: grid;
-  height: 50px;
+  height: 64px;
   place-items: center;
   color: #9aa6b8;
   text-decoration: none;
@@ -128,8 +128,8 @@ body {
 
 .home-nav-icon {
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
 }
 
 .signup-header {
