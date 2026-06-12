@@ -534,6 +534,25 @@ test("ホーム画面が表示される", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("ホーム画面でやることを始めるとタイマーが表示される", async ({ page }) => {
+  await page.goto("/home");
+
+  await page
+    .getByRole("textbox", { name: "今できること" })
+    .fill("スライド1枚作る");
+  await page.getByRole("button", { name: "始める" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "スライド1枚作る" }),
+  ).toBeVisible();
+  await expect(page.getByText("00:00")).toBeVisible();
+  await expect(page.getByRole("button", { name: "できた！" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "やめる" })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "ホームメニュー" }),
+  ).toHaveCount(0);
+});
+
 test("登録済みメールアドレスは新規登録時にエラーを表示する", async ({
   page,
 }) => {
