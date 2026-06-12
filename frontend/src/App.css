@@ -133,6 +133,40 @@ body {
   height: 34px;
 }
 
+@media (max-width: 639px) {
+  .home-page {
+    grid-template-rows: 64px 1fr 56px;
+  }
+
+  .home-start {
+    padding-top: 88px;
+  }
+
+  .home-task-input {
+    width: min(100%, 228px);
+    height: 34px;
+    border-radius: 3px;
+    padding-inline: 11px;
+    font-size: 13px;
+  }
+
+  .home-start-button {
+    width: min(100%, 208px);
+    height: 48px;
+    margin-top: 34px;
+    font-size: 24px;
+  }
+
+  .home-nav-item {
+    height: 56px;
+  }
+
+  .home-nav-icon {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 .signup-header {
   position: relative;
   display: flex;
