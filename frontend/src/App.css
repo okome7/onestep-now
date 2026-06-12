@@ -30,9 +30,8 @@ body {
   position: relative;
   display: grid;
   grid-template-rows: 64px 1fr 64px;
-  width: min(100%, 360px);
+  width: 100%;
   min-height: 100dvh;
-  margin: 0 auto;
   background: #f4f7fb;
 }
 
