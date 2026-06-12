@@ -83,3 +83,18 @@ test('APIの英語エラーを日本語で返す', async () => {
     'メールアドレスまたはパスワードが違います',
   )
 })
+
+test('APIが一時的に落ちている場合は接続エラーを返す', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      headers: new Headers({ 'Content-Type': 'text/plain' }),
+    }),
+  )
+
+  await expect(login(form, 'http://localhost:3000')).rejects.toThrow(
+    'APIに接続できませんでした。時間をおいて再度お試しください。',
+  )
+})

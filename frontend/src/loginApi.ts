@@ -80,6 +80,12 @@ export async function login(form: LoginForm, apiBaseUrl = defaultApiBaseUrl) {
   const contentType = response.headers.get('content-type') ?? ''
 
   if (!contentType.includes('application/json')) {
+    if (response.status >= 500) {
+      throw new Error(
+        'APIに接続できませんでした。時間をおいて再度お試しください。',
+      )
+    }
+
     throw new Error(
       'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
     )
