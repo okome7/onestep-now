@@ -42,6 +42,13 @@ const signupDraftStorageKey = 'onestep-signup-draft'
 const signupCompleteStorageKey = 'onestep-signup-complete'
 const avatarImageSize = 256
 const avatarImageQuality = 0.82
+const taskCompleteComments = [
+  '頑張れ！',
+  'ファイト🔥',
+  'がんば！',
+  '応援してる！',
+]
+const taskCompleteLikeCount = 12
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -1475,10 +1482,13 @@ function HomePage() {
   const [taskText, setTaskText] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [isTaskComplete, setIsTaskComplete] = useState(false)
   const isTaskActive = Boolean(activeTask)
+  const isTaskRunning = isTaskActive && !isTaskComplete
+  const hasCompleteComments = taskCompleteComments.length > 0
 
   useEffect(() => {
-    if (!isTaskActive) {
+    if (!isTaskRunning) {
       return undefined
     }
 
@@ -1487,7 +1497,7 @@ function HomePage() {
     }, 1000)
 
     return () => window.clearInterval(timerId)
-  }, [isTaskActive])
+  }, [isTaskRunning])
 
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1500,11 +1510,24 @@ function HomePage() {
 
     setActiveTask(nextTask)
     setElapsedSeconds(0)
+    setIsTaskComplete(false)
   }
 
   function handleTaskCancel() {
     setActiveTask('')
     setElapsedSeconds(0)
+    setIsTaskComplete(false)
+  }
+
+  function handleTaskDone() {
+    setIsTaskComplete(true)
+  }
+
+  function handleNextTask() {
+    setTaskText('')
+    setActiveTask('')
+    setElapsedSeconds(0)
+    setIsTaskComplete(false)
   }
 
   return (
@@ -1515,7 +1538,96 @@ function HomePage() {
         </header>
       )}
 
-      {isTaskActive ? (
+      {isTaskComplete ? (
+        <section
+          className="task-complete-screen"
+          aria-labelledby="task-complete-title"
+        >
+          <div className="complete-confetti" aria-hidden="true">
+            {Array.from({ length: 18 }).map((_, index) => (
+              <span key={index} />
+            ))}
+          </div>
+
+          <div className="task-complete-content">
+            <h1 id="task-complete-title">よくできた✨</h1>
+            <p className="task-complete-name">{activeTask}</p>
+
+            <div className="task-complete-stats" aria-label="リアクション">
+              <span>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M7 10V21H4C3.44772 21 3 20.5523 3 20V11C3 10.4477 3.44772 10 4 10H7Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M7 10L11 3C12.1046 3 13 3.89543 13 5V9H19.5C20.3284 9 21 9.67157 21 10.5L19.8 19.5C19.6707 20.3562 18.9344 21 18.0684 21H7V10Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {taskCompleteLikeCount}件
+              </span>
+              <span>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M5 5H19V16H9L5 20V5Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {taskCompleteComments.length}件
+              </span>
+            </div>
+
+            {hasCompleteComments ? (
+              <section className="complete-comments" aria-label="コメント">
+                <h2>コメント</h2>
+                <ul>
+                  {taskCompleteComments.map((comment) => (
+                    <li key={comment}>
+                      <span aria-hidden="true" />
+                      {comment}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </div>
+
+          <div className="task-complete-actions">
+            <a className="complete-feed-button" href="/home">
+              みんなを見る
+            </a>
+            <button
+              className="complete-next-button"
+              type="button"
+              onClick={handleNextTask}
+            >
+              次の一歩へ
+            </button>
+          </div>
+        </section>
+      ) : isTaskActive ? (
         <section className="focus-session" aria-labelledby="focus-task-title">
           <div className="focus-main">
             <h1 id="focus-task-title">{activeTask}</h1>
@@ -1525,7 +1637,11 @@ function HomePage() {
           </div>
 
           <div className="focus-actions">
-            <button className="focus-done-button" type="button">
+            <button
+              className="focus-done-button"
+              type="button"
+              onClick={handleTaskDone}
+            >
               できた！
             </button>
             <button
