@@ -67,11 +67,14 @@ type FeedPost = {
   comments: string[]
   createdAt: number
   liked: boolean
+  isOwnPost: boolean
 }
 
 const feedViewDurationSeconds = 5 * 60
 const feedCommentPlaceholder = 'いいね！一緒に頑張ろう'
-const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number }> = [
+const sampleFeedPosts: Array<
+  Omit<FeedPost, 'createdAt'> & { ageMinutes: number }
+> = [
   {
     id: 'sample-1',
     userName: 'あや',
@@ -82,6 +85,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: ['いいね！'],
     ageMinutes: 1,
     liked: false,
+    isOwnPost: false,
   },
   {
     id: 'sample-2',
@@ -93,6 +97,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: [],
     ageMinutes: 3,
     liked: false,
+    isOwnPost: false,
   },
   {
     id: 'sample-3',
@@ -104,6 +109,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: ['おつかれさま！', 'すごい！'],
     ageMinutes: 4,
     liked: true,
+    isOwnPost: false,
   },
   {
     id: 'sample-4',
@@ -115,6 +121,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: ['応援してる！'],
     ageMinutes: 7,
     liked: true,
+    isOwnPost: false,
   },
   {
     id: 'sample-5',
@@ -126,6 +133,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: ['ナイス！', 'えらい！', '助かるね'],
     ageMinutes: 8,
     liked: false,
+    isOwnPost: false,
   },
 ]
 
@@ -155,7 +163,6 @@ function formatElapsedTime(totalSeconds: number) {
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
-
 
 function formatFeedRemainingTime(totalSeconds: number) {
   const safeSeconds = Math.max(0, totalSeconds)
@@ -543,6 +550,77 @@ function SignupHeader({ title, onBack }: SignupHeaderProps) {
       </button>
       <h1>{title}</h1>
     </header>
+  )
+}
+
+type AppHeaderProps = {
+  title?: string
+}
+
+function AppHeader({ title = 'OneStep Now' }: AppHeaderProps) {
+  return (
+    <header className="home-header">
+      <h1>{title}</h1>
+    </header>
+  )
+}
+
+function LikeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
+        fill="currentColor"
+        opacity="0.24"
+      />
+      <path
+        d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.4 10.2V20.6"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function CommentIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+        fill="currentColor"
+        opacity="0.18"
+      />
+      <path
+        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
+        stroke="currentColor"
+        strokeWidth="2.3"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }
 
@@ -1595,6 +1673,7 @@ function HomePage() {
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = taskCompleteComments.length > 0
   const isFeedExpired = feedRemainingSeconds <= 0
+  const visibleFeedPosts = feedPosts.filter((post) => !post.isOwnPost)
 
   useEffect(() => {
     if (!isTaskRunning) {
@@ -1643,6 +1722,7 @@ function HomePage() {
         comments: [],
         createdAt: Date.now(),
         liked: false,
+        isOwnPost: true,
       },
       ...currentPosts,
     ])
@@ -1739,7 +1819,8 @@ function HomePage() {
   if (isFeedOpen) {
     return (
       <main className="home-page feed-page">
-        <header className="feed-header">
+        <AppHeader />
+        <div className="feed-toolbar" aria-label="フィード操作">
           <button
             className="feed-back-button"
             type="button"
@@ -1748,24 +1829,31 @@ function HomePage() {
           >
             ←
           </button>
-          <h1>フィード</h1>
-          <time className="feed-countdown" dateTime={`PT${feedRemainingSeconds}S`}>
+          <h2>フィード</h2>
+          <time
+            className="feed-countdown"
+            dateTime={`PT${feedRemainingSeconds}S`}
+          >
             <span className="feed-countdown-icon" aria-hidden="true" />
             残り {formatFeedRemainingTime(feedRemainingSeconds)}
           </time>
-        </header>
+        </div>
 
         {isFeedExpired ? (
           <section className="feed-expired" aria-live="polite">
             <h2>フィードの閲覧時間が終了しました</h2>
             <p>もう一度見る場合は、みんなを見るを押してください。</p>
-            <button className="home-start-button" type="button" onClick={openFeed}>
+            <button
+              className="home-start-button"
+              type="button"
+              onClick={openFeed}
+            >
               もう一度見る
             </button>
           </section>
         ) : (
           <section className="feed-list" aria-label="みんなの投稿">
-            {feedPosts.map((post) => (
+            {visibleFeedPosts.map((post) => (
               <article
                 className={`feed-card feed-card-${post.status}`}
                 key={post.id}
@@ -1790,11 +1878,15 @@ function HomePage() {
                     aria-pressed={post.liked}
                     onClick={() => togglePostLike(post.id)}
                   >
-                    <span aria-hidden="true">♡</span>
+                    <span className="feed-action-icon">
+                      <LikeIcon />
+                    </span>
                     <span>{post.likes}</span>
                   </button>
                   <span className="feed-comment-count" aria-label="コメント数">
-                    <span aria-hidden="true">▱</span>
+                    <span className="feed-action-icon">
+                      <CommentIcon />
+                    </span>
                     <span>{post.comments.length}</span>
                   </span>
                   <time
@@ -1935,11 +2027,7 @@ function HomePage() {
 
   return (
     <main className={`home-page ${isTaskActive ? 'task-active' : ''}`}>
-      {isTaskActive ? null : (
-        <header className="home-header">
-          <h1>OneStep Now</h1>
-        </header>
-      )}
+      {isTaskActive ? null : <AppHeader />}
 
       {isTaskComplete ? (
         <section
@@ -1989,62 +2077,11 @@ function HomePage() {
 
             <div className="task-complete-stats" aria-label="リアクション">
               <span>
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
-                    fill="currentColor"
-                    opacity="0.24"
-                  />
-                  <path
-                    d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M7.4 10.2V20.6"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <LikeIcon />
                 {taskCompleteLikeCount}件
               </span>
               <span>
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
-                    fill="currentColor"
-                    opacity="0.18"
-                  />
-                  <path
-                    d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
-                    stroke="currentColor"
-                    strokeWidth="2.3"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <CommentIcon />
                 {taskCompleteComments.length}件
               </span>
             </div>
