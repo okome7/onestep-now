@@ -42,6 +42,18 @@ const signupDraftStorageKey = 'onestep-signup-draft'
 const signupCompleteStorageKey = 'onestep-signup-complete'
 const avatarImageSize = 256
 const avatarImageQuality = 0.82
+const taskCompleteComments = [
+  '頑張れ！',
+  'ファイト🔥',
+  '今日も一歩進めていてすごい！その調子で次の一歩も応援してるよ',
+  '応援してる！',
+  '集中できたのすごい！',
+  'その一歩が未来につながってるよ',
+  'ナイスチャレンジ✨',
+  '最後までやり切ったね！',
+  '次も一緒に進もう！',
+]
+const taskCompleteLikeCount = 12
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -1475,10 +1487,13 @@ function HomePage() {
   const [taskText, setTaskText] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [isTaskComplete, setIsTaskComplete] = useState(false)
   const isTaskActive = Boolean(activeTask)
+  const isTaskRunning = isTaskActive && !isTaskComplete
+  const hasCompleteComments = taskCompleteComments.length > 0
 
   useEffect(() => {
-    if (!isTaskActive) {
+    if (!isTaskRunning) {
       return undefined
     }
 
@@ -1487,7 +1502,15 @@ function HomePage() {
     }, 1000)
 
     return () => window.clearInterval(timerId)
-  }, [isTaskActive])
+  }, [isTaskRunning])
+
+  useEffect(() => {
+    if (!isTaskComplete) {
+      return
+    }
+
+    window.scrollTo({ top: 0, left: 0 })
+  }, [isTaskComplete])
 
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1500,11 +1523,24 @@ function HomePage() {
 
     setActiveTask(nextTask)
     setElapsedSeconds(0)
+    setIsTaskComplete(false)
   }
 
   function handleTaskCancel() {
     setActiveTask('')
     setElapsedSeconds(0)
+    setIsTaskComplete(false)
+  }
+
+  function handleTaskDone() {
+    setIsTaskComplete(true)
+  }
+
+  function handleNextTask() {
+    setTaskText('')
+    setActiveTask('')
+    setElapsedSeconds(0)
+    setIsTaskComplete(false)
   }
 
   return (
@@ -1515,7 +1551,143 @@ function HomePage() {
         </header>
       )}
 
-      {isTaskActive ? (
+      {isTaskComplete ? (
+        <section
+          className="task-complete-screen"
+          aria-labelledby="task-complete-title"
+        >
+          <div className="complete-confetti" aria-hidden="true">
+            <div className="cracker-burst cracker-burst-left">
+              {Array.from({ length: 18 }).map((_, index) => (
+                <span key={index} />
+              ))}
+            </div>
+            <div className="cracker-burst cracker-burst-right">
+              {Array.from({ length: 18 }).map((_, index) => (
+                <span key={index} />
+              ))}
+            </div>
+          </div>
+
+          <div className="task-complete-content">
+            <h1 id="task-complete-title" className="task-complete-title">
+              <svg
+                className="title-star title-star-left"
+                width="34"
+                height="34"
+                viewBox="0 0 34 34"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path d="M17 2.5L20.8 12.6L31.5 13.1L23.1 19.8L25.9 30.2L17 24.3L8.1 30.2L10.9 19.8L2.5 13.1L13.2 12.6L17 2.5Z" />
+              </svg>
+              <span>よくできた</span>
+              <svg
+                className="title-star title-star-right"
+                width="34"
+                height="34"
+                viewBox="0 0 34 34"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path d="M17 2.5L20.8 12.6L31.5 13.1L23.1 19.8L25.9 30.2L17 24.3L8.1 30.2L10.9 19.8L2.5 13.1L13.2 12.6L17 2.5Z" />
+              </svg>
+            </h1>
+            <p className="task-complete-name">{activeTask}</p>
+
+            <div className="task-complete-stats" aria-label="リアクション">
+              <span>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
+                    fill="currentColor"
+                    opacity="0.24"
+                  />
+                  <path
+                    d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M7.4 10.2V20.6"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                {taskCompleteLikeCount}件
+              </span>
+              <span>
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+                    fill="currentColor"
+                    opacity="0.18"
+                  />
+                  <path
+                    d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
+                    stroke="currentColor"
+                    strokeWidth="2.3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                {taskCompleteComments.length}件
+              </span>
+            </div>
+
+            {hasCompleteComments ? (
+              <section className="complete-comments" aria-label="コメント">
+                <h2>コメント</h2>
+                <ul>
+                  {taskCompleteComments.map((comment) => (
+                    <li key={comment}>
+                      <span className="comment-avatar" aria-hidden="true" />
+                      <span className="complete-comment-text">{comment}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+          </div>
+
+          <div className="task-complete-actions">
+            <a className="complete-feed-button" href="/home">
+              みんなを見る
+            </a>
+            <button
+              className="complete-next-button"
+              type="button"
+              onClick={handleNextTask}
+            >
+              次の一歩へ
+            </button>
+          </div>
+        </section>
+      ) : isTaskActive ? (
         <section className="focus-session" aria-labelledby="focus-task-title">
           <div className="focus-main">
             <h1 id="focus-task-title">{activeTask}</h1>
@@ -1525,7 +1697,11 @@ function HomePage() {
           </div>
 
           <div className="focus-actions">
-            <button className="focus-done-button" type="button">
+            <button
+              className="focus-done-button"
+              type="button"
+              onClick={handleTaskDone}
+            >
               できた！
             </button>
             <button
