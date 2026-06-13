@@ -56,14 +56,28 @@ npm run test:e2e
 
 ローカル実行時は `scripts/start-rails-e2e.mjs` が `RAILS_ENV=test` で `backend/bin/rails db:prepare` を実行し、Rails を `127.0.0.1:3001` で起動します。Frontend は Vite を `127.0.0.1:5173` で起動します。
 
-#### Docker 実行
+#### Docker 実行（推奨・最短手順）
 
-Ruby gem や PostgreSQL をホストに用意しない場合、または `npx playwright install` が CDN の 403 などで失敗する環境では、ブラウザ同梱の Playwright 公式イメージを使って実行してください。
+Ruby gem や PostgreSQL をホストに用意しない場合、または `npx playwright install` が CDN の 403 などで失敗する環境では、ブラウザ同梱の Playwright 公式イメージを使って実行してください。ローカル Docker 環境での最短手順は次のとおりです。
 
 ```bash
-docker compose up -d --build backend frontend
+npm ci
 npm run test:e2e:docker
 ```
+
+`npm run test:e2e:docker` は内部で `docker compose run --rm --build e2e` を実行します。直接実行する場合も同じコマンドを使えます。
+
+```bash
+docker compose run --rm --build e2e
+```
+
+`e2e` サービスは `backend` と `frontend` の healthcheck が成功してから Playwright を実行します。`backend` は PostgreSQL の起動完了を待ち、`db:prepare` 後に Rails を起動します。
+
+#### Codex 環境での注意
+
+Codex 環境では Docker CLI が利用できない場合や、RubyGems / Playwright CDN へのアクセスが 403 で制限される場合があります。その場合、この環境内では E2E を最後まで実行できないため、Docker CLI と外部ネットワークへアクセスできるローカル環境または CI で確認してください。
+
+#### その他の実行方法
 
 Docker 上で Playwright 設定から開発サーバーも起動したい場合は、次のように実行できます。
 
@@ -79,6 +93,10 @@ BASE_URL=http://127.0.0.1:5173 \
 E2E_BACKEND_URL=http://127.0.0.1:3000 \
 npm run test:e2e
 ```
+
+#### CI での E2E
+
+GitHub Actions の Playwright workflow では、PostgreSQL サービス、Ruby の `bundler-cache`、Node.js 依存関係をセットアップしたうえで、`npx playwright install --with-deps chromium` により Chromium と必要な OS 依存関係をインストールしてから `npm run test:e2e -- --project=chromium` を実行します。CI のブラウザ CDN 制限を避けたい場合は、同 workflow を Playwright 公式 Docker イメージ（例: `mcr.microsoft.com/playwright:v1.60.0-noble`）上で実行する構成に切り替えてください。
 
 ### パスワード再設定メールの送信設定
 
