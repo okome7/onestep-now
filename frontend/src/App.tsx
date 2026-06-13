@@ -239,6 +239,115 @@ type CompleteProfile = {
   avatarId: string
 }
 
+type CommunityPostStatus = 'doing' | 'done'
+
+type CommunityPost = {
+  id: string
+  author: string
+  avatar: string
+  status: CommunityPostStatus
+  task: string
+  createdAt: number
+  likes: number
+  liked: boolean
+  comments: string[]
+  isMine?: boolean
+}
+
+const communityPostsStorageKey = 'onestep-community-posts'
+const communityViewDurationSeconds = 5 * 60
+
+const starterCommunityPosts: CommunityPost[] = [
+  {
+    id: 'starter-1',
+    author: 'はる',
+    avatar: avatarTwo,
+    status: 'doing',
+    task: '机の上を片づける',
+    createdAt: Date.now() - 2 * 60 * 1000,
+    likes: 3,
+    liked: false,
+    comments: ['一緒にがんばろう！'],
+  },
+  {
+    id: 'starter-2',
+    author: 'みな',
+    avatar: avatarSix,
+    status: 'done',
+    task: '英単語を10個覚える',
+    createdAt: Date.now() - 8 * 60 * 1000,
+    likes: 7,
+    liked: false,
+    comments: ['すごい！'],
+  },
+  {
+    id: 'starter-3',
+    author: 'そうた',
+    avatar: avatarFour,
+    status: 'doing',
+    task: '水を一杯飲む',
+    createdAt: Date.now() - 12 * 60 * 1000,
+    likes: 5,
+    liked: true,
+    comments: [],
+  },
+]
+
+function getInitialCommunityPosts() {
+  const savedPosts = window.localStorage.getItem(communityPostsStorageKey)
+
+  if (!savedPosts) {
+    return starterCommunityPosts
+  }
+
+  try {
+    const parsedPosts = JSON.parse(savedPosts) as CommunityPost[]
+
+    if (!Array.isArray(parsedPosts)) {
+      return starterCommunityPosts
+    }
+
+    return parsedPosts
+  } catch {
+    return starterCommunityPosts
+  }
+}
+
+function saveCommunityPosts(posts: CommunityPost[]) {
+  window.localStorage.setItem(communityPostsStorageKey, JSON.stringify(posts))
+}
+
+function createMyCommunityPost(status: CommunityPostStatus, task: string) {
+  const profile = getInitialCompleteProfile()
+  const author = profile.name.trim() || 'あなた'
+
+  return {
+    id: `mine-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    author,
+    avatar: getCompleteAvatarSrc(profile),
+    status,
+    task,
+    createdAt: Date.now(),
+    likes: 0,
+    liked: false,
+    comments: [],
+    isMine: true,
+  } satisfies CommunityPost
+}
+
+function formatPostTime(createdAt: number) {
+  const elapsedMinutes = Math.max(
+    0,
+    Math.floor((Date.now() - createdAt) / 60000),
+  )
+
+  if (elapsedMinutes <= 0) {
+    return 'たった今'
+  }
+
+  return `${elapsedMinutes}分前`
+}
+
 function isAvatarImageDataUrl(value: string | undefined) {
   return Boolean(value?.startsWith('data:image/'))
 }
@@ -1475,7 +1584,19 @@ function HomePage() {
   const [taskText, setTaskText] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>(
+    getInitialCommunityPosts,
+  )
+  const [isCommunityOpen, setIsCommunityOpen] = useState(false)
+  const [communityRemainingSeconds, setCommunityRemainingSeconds] = useState(
+    communityViewDurationSeconds,
+  )
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const isTaskActive = Boolean(activeTask)
+
+  useEffect(() => {
+    saveCommunityPosts(communityPosts)
+  }, [communityPosts])
 
   useEffect(() => {
     if (!isTaskActive) {
@@ -1489,6 +1610,38 @@ function HomePage() {
     return () => window.clearInterval(timerId)
   }, [isTaskActive])
 
+  useEffect(() => {
+    if (!isCommunityOpen) {
+      return undefined
+    }
+
+    const timerId = window.setInterval(() => {
+      setCommunityRemainingSeconds((current) => {
+        if (current <= 1) {
+          window.clearInterval(timerId)
+          setIsCommunityOpen(false)
+          return communityViewDurationSeconds
+        }
+
+        return current - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timerId)
+  }, [isCommunityOpen])
+
+  function addCommunityPost(status: CommunityPostStatus, task: string) {
+    setCommunityPosts((current) => [
+      createMyCommunityPost(status, task),
+      ...current,
+    ])
+  }
+
+  function openCommunity() {
+    setCommunityRemainingSeconds(communityViewDurationSeconds)
+    setIsCommunityOpen(true)
+  }
+
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -1498,7 +1651,18 @@ function HomePage() {
       return
     }
 
+    addCommunityPost('doing', nextTask)
     setActiveTask(nextTask)
+    setElapsedSeconds(0)
+  }
+
+  function handleTaskDone() {
+    if (activeTask) {
+      addCommunityPost('done', activeTask)
+    }
+
+    setTaskText('')
+    setActiveTask('')
     setElapsedSeconds(0)
   }
 
@@ -1506,6 +1670,46 @@ function HomePage() {
     setActiveTask('')
     setElapsedSeconds(0)
   }
+
+  function handleLike(postId: string) {
+    setCommunityPosts((current) =>
+      current.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              liked: !post.liked,
+              likes: post.liked ? Math.max(0, post.likes - 1) : post.likes + 1,
+            }
+          : post,
+      ),
+    )
+  }
+
+  function handleCommentSubmit(
+    event: FormEvent<HTMLFormElement>,
+    postId: string,
+  ) {
+    event.preventDefault()
+
+    const nextComment = commentDrafts[postId]?.trim()
+
+    if (!nextComment) {
+      return
+    }
+
+    setCommunityPosts((current) =>
+      current.map((post) =>
+        post.id === postId
+          ? { ...post, comments: [...post.comments, nextComment] }
+          : post,
+      ),
+    )
+    setCommentDrafts((current) => ({ ...current, [postId]: '' }))
+  }
+
+  const sortedCommunityPosts = [...communityPosts].sort(
+    (firstPost, secondPost) => secondPost.createdAt - firstPost.createdAt,
+  )
 
   return (
     <main className={`home-page ${isTaskActive ? 'task-active' : ''}`}>
@@ -1525,8 +1729,19 @@ function HomePage() {
           </div>
 
           <div className="focus-actions">
-            <button className="focus-done-button" type="button">
+            <button
+              className="focus-done-button"
+              type="button"
+              onClick={handleTaskDone}
+            >
               できた！
+            </button>
+            <button
+              className="community-open-button community-open-button-focus"
+              type="button"
+              onClick={openCommunity}
+            >
+              みんなを見る
             </button>
             <button
               className="focus-cancel-button"
@@ -1559,8 +1774,112 @@ function HomePage() {
           >
             始める
           </button>
+          <button
+            className="community-open-button"
+            type="button"
+            onClick={openCommunity}
+          >
+            みんなを見る
+          </button>
         </form>
       )}
+
+      {isCommunityOpen ? (
+        <section
+          className="community-sheet"
+          aria-labelledby="community-title"
+          aria-modal="true"
+          role="dialog"
+        >
+          <div className="community-panel">
+            <header className="community-header">
+              <div>
+                <p className="community-kicker">
+                  あと{formatElapsedTime(communityRemainingSeconds)}
+                </p>
+                <h2 id="community-title">みんなの一歩</h2>
+              </div>
+              <button
+                className="community-close-button"
+                type="button"
+                aria-label="みんなの投稿を閉じる"
+                onClick={() => setIsCommunityOpen(false)}
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="community-post-list">
+              {sortedCommunityPosts.map((post) => (
+                <article className="community-post" key={post.id}>
+                  <div className="community-post-main">
+                    <img
+                      className="community-avatar"
+                      src={post.avatar}
+                      alt=""
+                    />
+                    <div className="community-post-body">
+                      <div className="community-post-meta">
+                        <strong>{post.author}</strong>
+                        <span>{formatPostTime(post.createdAt)}</span>
+                        {post.isMine ? <span>あなた</span> : null}
+                      </div>
+                      <p className="community-status">
+                        {post.status === 'doing' ? 'やります' : 'できた'}
+                      </p>
+                      <p className="community-task">{post.task}</p>
+                    </div>
+                  </div>
+
+                  <div className="community-actions">
+                    <button
+                      className={`community-like-button ${post.liked ? 'liked' : ''}`}
+                      type="button"
+                      aria-pressed={post.liked}
+                      onClick={() => handleLike(post.id)}
+                    >
+                      ♥ {post.likes}
+                    </button>
+                    <span>{post.comments.length}コメント</span>
+                  </div>
+
+                  {post.comments.length > 0 ? (
+                    <ul className="community-comments">
+                      {post.comments.map((comment, index) => (
+                        <li key={`${post.id}-${index}`}>{comment}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  <form
+                    className="community-comment-form"
+                    onSubmit={(event) => handleCommentSubmit(event, post.id)}
+                  >
+                    <input
+                      type="text"
+                      aria-label={`${post.author}さんの投稿にコメント`}
+                      placeholder="コメントする"
+                      value={commentDrafts[post.id] ?? ''}
+                      onChange={(event) =>
+                        setCommentDrafts((current) => ({
+                          ...current,
+                          [post.id]: event.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      type="submit"
+                      disabled={!commentDrafts[post.id]?.trim()}
+                    >
+                      送信
+                    </button>
+                  </form>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {isTaskActive ? null : (
         <nav className="home-bottom-nav" aria-label="ホームメニュー">
