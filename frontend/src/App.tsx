@@ -240,6 +240,7 @@ type CompleteProfile = {
 }
 
 type CommunityPostStatus = 'doing' | 'done'
+type HomeView = 'start' | 'focus' | 'complete' | 'community'
 
 type CommunityPost = {
   id: string
@@ -1583,16 +1584,17 @@ function PasswordResetPage() {
 function HomePage() {
   const [taskText, setTaskText] = useState('')
   const [activeTask, setActiveTask] = useState('')
+  const [completedTask, setCompletedTask] = useState('')
+  const [homeView, setHomeView] = useState<HomeView>('start')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>(
     getInitialCommunityPosts,
   )
-  const [isCommunityOpen, setIsCommunityOpen] = useState(false)
   const [communityRemainingSeconds, setCommunityRemainingSeconds] = useState(
     communityViewDurationSeconds,
   )
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
-  const isTaskActive = Boolean(activeTask)
+  const isTaskActive = homeView === 'focus' && Boolean(activeTask)
 
   useEffect(() => {
     saveCommunityPosts(communityPosts)
@@ -1611,7 +1613,7 @@ function HomePage() {
   }, [isTaskActive])
 
   useEffect(() => {
-    if (!isCommunityOpen) {
+    if (homeView !== 'community') {
       return undefined
     }
 
@@ -1619,7 +1621,7 @@ function HomePage() {
       setCommunityRemainingSeconds((current) => {
         if (current <= 1) {
           window.clearInterval(timerId)
-          setIsCommunityOpen(false)
+          setHomeView(completedTask ? 'complete' : 'start')
           return communityViewDurationSeconds
         }
 
@@ -1628,7 +1630,7 @@ function HomePage() {
     }, 1000)
 
     return () => window.clearInterval(timerId)
-  }, [isCommunityOpen])
+  }, [completedTask, homeView])
 
   function addCommunityPost(status: CommunityPostStatus, task: string) {
     setCommunityPosts((current) => [
@@ -1639,7 +1641,15 @@ function HomePage() {
 
   function openCommunity() {
     setCommunityRemainingSeconds(communityViewDurationSeconds)
-    setIsCommunityOpen(true)
+    setHomeView('community')
+  }
+
+  function goHome() {
+    setTaskText('')
+    setActiveTask('')
+    setCompletedTask('')
+    setElapsedSeconds(0)
+    setHomeView('start')
   }
 
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
@@ -1653,22 +1663,27 @@ function HomePage() {
 
     addCommunityPost('doing', nextTask)
     setActiveTask(nextTask)
+    setCompletedTask('')
     setElapsedSeconds(0)
+    setHomeView('focus')
   }
 
   function handleTaskDone() {
     if (activeTask) {
       addCommunityPost('done', activeTask)
+      setCompletedTask(activeTask)
     }
 
     setTaskText('')
     setActiveTask('')
     setElapsedSeconds(0)
+    setHomeView('complete')
   }
 
   function handleTaskCancel() {
     setActiveTask('')
     setElapsedSeconds(0)
+    setHomeView('start')
   }
 
   function handleLike(postId: string) {
@@ -1711,15 +1726,105 @@ function HomePage() {
     (firstPost, secondPost) => secondPost.createdAt - firstPost.createdAt,
   )
 
+  if (homeView === 'community') {
+    return (
+      <main className="community-page">
+        <header className="community-page-header">
+          <button
+            className="community-back-button"
+            type="button"
+            onClick={() => setHomeView(completedTask ? 'complete' : 'start')}
+          >
+            &lt;
+          </button>
+          <div>
+            <p className="community-kicker">
+              あと{formatElapsedTime(communityRemainingSeconds)}
+            </p>
+            <h1 id="community-title">みんなの一歩</h1>
+          </div>
+        </header>
+
+        <section
+          className="community-post-list"
+          aria-labelledby="community-title"
+        >
+          {sortedCommunityPosts.map((post) => (
+            <article className="community-post" key={post.id}>
+              <div className="community-post-main">
+                <img className="community-avatar" src={post.avatar} alt="" />
+                <div className="community-post-body">
+                  <div className="community-post-meta">
+                    <strong>{post.author}</strong>
+                    <span>{formatPostTime(post.createdAt)}</span>
+                    {post.isMine ? <span>あなた</span> : null}
+                  </div>
+                  <p className="community-status">
+                    {post.status === 'doing' ? 'やります' : 'できた'}
+                  </p>
+                  <p className="community-task">{post.task}</p>
+                </div>
+              </div>
+
+              <div className="community-actions">
+                <button
+                  className={`community-like-button ${post.liked ? 'liked' : ''}`}
+                  type="button"
+                  aria-pressed={post.liked}
+                  onClick={() => handleLike(post.id)}
+                >
+                  ♥ {post.likes}
+                </button>
+                <span>{post.comments.length}コメント</span>
+              </div>
+
+              {post.comments.length > 0 ? (
+                <ul className="community-comments">
+                  {post.comments.map((comment, index) => (
+                    <li key={`${post.id}-${index}`}>{comment}</li>
+                  ))}
+                </ul>
+              ) : null}
+
+              <form
+                className="community-comment-form"
+                onSubmit={(event) => handleCommentSubmit(event, post.id)}
+              >
+                <input
+                  type="text"
+                  aria-label={`${post.author}さんの投稿にコメント`}
+                  placeholder="コメントする"
+                  value={commentDrafts[post.id] ?? ''}
+                  onChange={(event) =>
+                    setCommentDrafts((current) => ({
+                      ...current,
+                      [post.id]: event.target.value,
+                    }))
+                  }
+                />
+                <button
+                  type="submit"
+                  disabled={!commentDrafts[post.id]?.trim()}
+                >
+                  送信
+                </button>
+              </form>
+            </article>
+          ))}
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className={`home-page ${isTaskActive ? 'task-active' : ''}`}>
-      {isTaskActive ? null : (
+      {homeView === 'start' ? (
         <header className="home-header">
           <h1>OneStep Now</h1>
         </header>
-      )}
+      ) : null}
 
-      {isTaskActive ? (
+      {homeView === 'focus' ? (
         <section className="focus-session" aria-labelledby="focus-task-title">
           <div className="focus-main">
             <h1 id="focus-task-title">{activeTask}</h1>
@@ -1737,18 +1842,44 @@ function HomePage() {
               できた！
             </button>
             <button
-              className="community-open-button community-open-button-focus"
+              className="focus-cancel-button"
+              type="button"
+              onClick={handleTaskCancel}
+            >
+              やめる
+            </button>
+          </div>
+        </section>
+      ) : homeView === 'complete' ? (
+        <section
+          className="task-complete-screen"
+          aria-labelledby="task-complete-title"
+        >
+          <div className="task-complete-content">
+            <p className="task-complete-eyebrow">できた！</p>
+            <h1 id="task-complete-title">よくできた</h1>
+            {completedTask ? (
+              <p className="task-complete-task">{completedTask}</p>
+            ) : null}
+            <p className="task-complete-description">
+              みんなの一歩を見て、次の一歩につなげよう。
+            </p>
+          </div>
+
+          <div className="task-complete-actions">
+            <button
+              className="community-open-button"
               type="button"
               onClick={openCommunity}
             >
               みんなを見る
             </button>
             <button
-              className="focus-cancel-button"
+              className="task-complete-home-button"
               type="button"
-              onClick={handleTaskCancel}
+              onClick={goHome}
             >
-              やめる
+              ホームへ
             </button>
           </div>
         </section>
@@ -1774,114 +1905,10 @@ function HomePage() {
           >
             始める
           </button>
-          <button
-            className="community-open-button"
-            type="button"
-            onClick={openCommunity}
-          >
-            みんなを見る
-          </button>
         </form>
       )}
 
-      {isCommunityOpen ? (
-        <section
-          className="community-sheet"
-          aria-labelledby="community-title"
-          aria-modal="true"
-          role="dialog"
-        >
-          <div className="community-panel">
-            <header className="community-header">
-              <div>
-                <p className="community-kicker">
-                  あと{formatElapsedTime(communityRemainingSeconds)}
-                </p>
-                <h2 id="community-title">みんなの一歩</h2>
-              </div>
-              <button
-                className="community-close-button"
-                type="button"
-                aria-label="みんなの投稿を閉じる"
-                onClick={() => setIsCommunityOpen(false)}
-              >
-                ×
-              </button>
-            </header>
-
-            <div className="community-post-list">
-              {sortedCommunityPosts.map((post) => (
-                <article className="community-post" key={post.id}>
-                  <div className="community-post-main">
-                    <img
-                      className="community-avatar"
-                      src={post.avatar}
-                      alt=""
-                    />
-                    <div className="community-post-body">
-                      <div className="community-post-meta">
-                        <strong>{post.author}</strong>
-                        <span>{formatPostTime(post.createdAt)}</span>
-                        {post.isMine ? <span>あなた</span> : null}
-                      </div>
-                      <p className="community-status">
-                        {post.status === 'doing' ? 'やります' : 'できた'}
-                      </p>
-                      <p className="community-task">{post.task}</p>
-                    </div>
-                  </div>
-
-                  <div className="community-actions">
-                    <button
-                      className={`community-like-button ${post.liked ? 'liked' : ''}`}
-                      type="button"
-                      aria-pressed={post.liked}
-                      onClick={() => handleLike(post.id)}
-                    >
-                      ♥ {post.likes}
-                    </button>
-                    <span>{post.comments.length}コメント</span>
-                  </div>
-
-                  {post.comments.length > 0 ? (
-                    <ul className="community-comments">
-                      {post.comments.map((comment, index) => (
-                        <li key={`${post.id}-${index}`}>{comment}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-
-                  <form
-                    className="community-comment-form"
-                    onSubmit={(event) => handleCommentSubmit(event, post.id)}
-                  >
-                    <input
-                      type="text"
-                      aria-label={`${post.author}さんの投稿にコメント`}
-                      placeholder="コメントする"
-                      value={commentDrafts[post.id] ?? ''}
-                      onChange={(event) =>
-                        setCommentDrafts((current) => ({
-                          ...current,
-                          [post.id]: event.target.value,
-                        }))
-                      }
-                    />
-                    <button
-                      type="submit"
-                      disabled={!commentDrafts[post.id]?.trim()}
-                    >
-                      送信
-                    </button>
-                  </form>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {isTaskActive ? null : (
+      {homeView === 'start' ? (
         <nav className="home-bottom-nav" aria-label="ホームメニュー">
           <a className="home-nav-item active" href="/home" aria-label="ホーム">
             <svg
@@ -1975,7 +2002,7 @@ function HomePage() {
             </svg>
           </a>
         </nav>
-      )}
+      ) : null}
     </main>
   )
 }
