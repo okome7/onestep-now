@@ -71,7 +71,6 @@ type FeedPost = {
 }
 
 const feedViewDurationSeconds = 5 * 60
-const feedCommentPlaceholder = 'いいね！一緒に頑張ろう'
 const sampleFeedPosts: Array<
   Omit<FeedPost, 'createdAt'> & { ageMinutes: number }
 > = [
@@ -1677,11 +1676,17 @@ function HomePage() {
     }))
   })
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
+  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
+    null,
+  )
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = taskCompleteComments.length > 0
   const isFeedExpired = feedRemainingSeconds <= 0
   const visibleFeedPosts = feedPosts.filter((post) => !post.isOwnPost)
+  const activeCommentPost = activeCommentPostId
+    ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
+    : null
 
   useEffect(() => {
     if (!isTaskRunning) {
@@ -1800,6 +1805,14 @@ function HomePage() {
     }))
   }
 
+  function openCommentPanel(postId: string) {
+    setActiveCommentPostId(postId)
+  }
+
+  function closeCommentPanel() {
+    setActiveCommentPostId(null)
+  }
+
   function addPostComment(postId: string) {
     const nextComment = (commentDrafts[postId] ?? '').trim()
 
@@ -1880,12 +1893,17 @@ function HomePage() {
                     </span>
                     <span>{post.likes}</span>
                   </button>
-                  <span className="feed-comment-count" aria-label="コメント数">
+                  <button
+                    className="feed-comment-count"
+                    type="button"
+                    aria-label={`${post.userName}さんのコメントを開く`}
+                    onClick={() => openCommentPanel(post.id)}
+                  >
                     <span className="feed-action-icon">
                       <CommentIcon />
                     </span>
                     <span>{post.comments.length}</span>
-                  </span>
+                  </button>
                   <time
                     className="feed-post-age"
                     dateTime={new Date(post.createdAt).toISOString()}
@@ -1893,37 +1911,90 @@ function HomePage() {
                     {formatFeedPostAge(post.createdAt, feedNow)}
                   </time>
                 </div>
-
-                {post.comments.length > 0 ? (
-                  <ul className="feed-comments" aria-label="コメント一覧">
-                    {post.comments.slice(-2).map((comment, index) => (
-                      <li key={`${post.id}-comment-${index}`}>{comment}</li>
-                    ))}
-                  </ul>
-                ) : null}
-
-                <div className="feed-comment-form">
-                  <input
-                    type="text"
-                    aria-label={`${post.userName}さんの投稿にコメントする`}
-                    placeholder={feedCommentPlaceholder}
-                    value={commentDrafts[post.id] ?? ''}
-                    onChange={(event) =>
-                      handleCommentDraftChange(post.id, event.target.value)
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addPostComment(post.id)}
-                    disabled={!(commentDrafts[post.id] ?? '').trim()}
-                  >
-                    送信
-                  </button>
-                </div>
               </article>
             ))}
           </section>
         )}
+
+        {activeCommentPost ? (
+          <section
+            className={`feed-comment-panel feed-comment-panel-${activeCommentPost.status}`}
+            aria-labelledby="feed-comment-panel-title"
+          >
+            <div className="feed-comment-panel-header">
+              <h2 id="feed-comment-panel-title">コメント</h2>
+              <button
+                className="feed-comment-panel-close"
+                type="button"
+                aria-label="コメントを閉じる"
+                onClick={closeCommentPanel}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="feed-comment-panel-task">
+              {activeCommentPost.task}
+            </div>
+
+            {activeCommentPost.comments.length > 0 ? (
+              <ul className="feed-comment-panel-list" aria-label="コメント一覧">
+                {activeCommentPost.comments.map((comment, index) => (
+                  <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
+                    <div className="feed-comment-author">
+                      <span
+                        className="feed-comment-avatar"
+                        aria-hidden="true"
+                      />
+                      <span>みき</span>
+                      <span className="feed-comment-level">Lv.7</span>
+                    </div>
+                    <div className="feed-comment-body">
+                      <span>{comment}</span>
+                      <time
+                        dateTime={new Date(
+                          activeCommentPost.createdAt,
+                        ).toISOString()}
+                      >
+                        {index === activeCommentPost.comments.length - 1
+                          ? formatFeedPostAge(
+                              activeCommentPost.createdAt,
+                              feedNow,
+                            )
+                          : '2時間前'}
+                      </time>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="feed-comment-empty">まだコメントはありません</p>
+            )}
+
+            <div className="feed-comment-panel-form">
+              <input
+                type="text"
+                aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
+                placeholder="コメントを入力"
+                value={commentDrafts[activeCommentPost.id] ?? ''}
+                onChange={(event) =>
+                  handleCommentDraftChange(
+                    activeCommentPost.id,
+                    event.target.value,
+                  )
+                }
+              />
+              <button
+                type="button"
+                aria-label="コメントを送信"
+                onClick={() => addPostComment(activeCommentPost.id)}
+                disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
+              >
+                ➤
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <nav className="home-bottom-nav" aria-label="ホームメニュー">
           <a className="home-nav-item" href="/home" aria-label="ホーム">
