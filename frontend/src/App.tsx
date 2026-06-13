@@ -555,20 +555,16 @@ function SignupHeader({ title, onBack }: SignupHeaderProps) {
 
 type AppHeaderProps = {
   title?: string
-  leftAction?: ReactNode
   rightAction?: ReactNode
 }
 
 function AppHeader({
   title = 'OneStep Now',
-  leftAction = null,
   rightAction = null,
 }: AppHeaderProps) {
   return (
     <header className="home-header">
-      <div className="home-header-action home-header-action-left">
-        {leftAction}
-      </div>
+      <div className="home-header-action" aria-hidden="true" />
       <h1>{title}</h1>
       <div className="home-header-action home-header-action-right">
         {rightAction}
@@ -1748,10 +1744,6 @@ function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function closeFeed() {
-    setIsFeedOpen(false)
-  }
-
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -1833,16 +1825,6 @@ function HomePage() {
       <main className="home-page feed-page">
         <AppHeader
           title="フィード"
-          leftAction={
-            <button
-              className="feed-back-button"
-              type="button"
-              aria-label="ホームに戻る"
-              onClick={closeFeed}
-            >
-              ←
-            </button>
-          }
           rightAction={
             <time
               className="feed-countdown"

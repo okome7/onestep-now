@@ -73,10 +73,6 @@ body {
   align-items: center;
 }
 
-.home-header-action-left {
-  justify-content: flex-start;
-}
-
 .home-header-action-right {
   justify-content: flex-end;
 }
@@ -1558,21 +1554,6 @@ body {
 .feed-page {
   min-height: 100dvh;
   background: #f4f7fb;
-}
-
-.feed-back-button {
-  display: inline-grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #7c8ba0;
-  font: inherit;
-  font-size: 24px;
-  font-weight: 800;
-  cursor: pointer;
 }
 
 .feed-countdown {
