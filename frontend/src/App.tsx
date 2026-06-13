@@ -572,6 +572,148 @@ function AppHeader({
   )
 }
 
+function HomeNavIcon() {
+  return (
+    <svg
+      className="home-nav-icon"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M3 10.5L12 3L21 10.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 10V20H10V15H14V20H19V10"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function FeedNavIcon() {
+  return (
+    <svg
+      className="home-nav-icon"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <rect
+        x="4"
+        y="5"
+        width="16"
+        height="14"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M8 9H16"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 13H13"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 13.5L17 14.5L19 12"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function ProfileNavIcon() {
+  return (
+    <svg
+      className="home-nav-icon"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+type HomeBottomNavActiveItem = 'home' | 'feed' | 'profile'
+
+type HomeBottomNavProps = {
+  activeItem: HomeBottomNavActiveItem
+  onHomeClick?: (event: MouseEvent<HTMLAnchorElement>) => void
+  onFeedClick?: (event: MouseEvent<HTMLAnchorElement>) => void
+  onProfileClick?: (event: MouseEvent<HTMLAnchorElement>) => void
+}
+
+function HomeBottomNav({
+  activeItem,
+  onHomeClick,
+  onFeedClick,
+  onProfileClick,
+}: HomeBottomNavProps) {
+  return (
+    <nav className="home-bottom-nav" aria-label="ホームメニュー">
+      <a
+        className={`home-nav-item ${activeItem === 'home' ? 'active' : ''}`}
+        href="/home"
+        aria-label="ホーム"
+        aria-current={activeItem === 'home' ? 'page' : undefined}
+        onClick={onHomeClick}
+      >
+        <HomeNavIcon />
+      </a>
+      <a
+        className={`home-nav-item ${activeItem === 'feed' ? 'active' : ''}`}
+        href="/home"
+        aria-label="投稿"
+        aria-current={activeItem === 'feed' ? 'page' : undefined}
+        onClick={onFeedClick}
+      >
+        <FeedNavIcon />
+      </a>
+      <a
+        className={`home-nav-item ${activeItem === 'profile' ? 'active' : ''}`}
+        href="/home"
+        aria-label="プロフィール"
+        aria-current={activeItem === 'profile' ? 'page' : undefined}
+        onClick={onProfileClick}
+      >
+        <ProfileNavIcon />
+      </a>
+    </nav>
+  )
+}
+
 function LikeIcon() {
   return (
     <svg
@@ -1916,6 +2058,7 @@ function HomePage() {
           </section>
         )}
 
+        <HomeBottomNav activeItem="feed" />
         {activeCommentPost ? (
           <section
             className={`feed-comment-panel feed-comment-panel-${activeCommentPost.status}`}
@@ -2234,104 +2377,7 @@ function HomePage() {
       )}
 
       {isTaskActive ? null : (
-        <nav className="home-bottom-nav" aria-label="ホームメニュー">
-          <a className="home-nav-item active" href="/home" aria-label="ホーム">
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M3 10.5L12 3L21 10.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M5 10V20H10V15H14V20H19V10"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-          <a
-            className="home-nav-item"
-            href="/home"
-            aria-label="投稿"
-            onClick={openFeed}
-          >
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <rect
-                x="4"
-                y="5"
-                width="16"
-                height="14"
-                rx="3"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M8 9H16"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M8 13H13"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M16 13.5L17 14.5L19 12"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-          <a className="home-nav-item" href="/home" aria-label="プロフィール">
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle
-                cx="12"
-                cy="8"
-                r="4"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </a>
-        </nav>
+        <HomeBottomNav activeItem="home" onFeedClick={openFeed} />
       )}
     </main>
   )
