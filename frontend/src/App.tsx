@@ -47,6 +47,11 @@ const taskCompleteComments = [
   'ファイト🔥',
   '今日も一歩進めていてすごい！その調子で次の一歩も応援してるよ',
   '応援してる！',
+  '集中できたのすごい！',
+  'その一歩が未来につながってるよ',
+  'ナイスチャレンジ✨',
+  '最後までやり切ったね！',
+  '次も一緒に進もう！',
 ]
 const taskCompleteLikeCount = 12
 
@@ -1553,12 +1558,12 @@ function HomePage() {
         >
           <div className="complete-confetti" aria-hidden="true">
             <div className="cracker-burst cracker-burst-left">
-              {Array.from({ length: 12 }).map((_, index) => (
+              {Array.from({ length: 18 }).map((_, index) => (
                 <span key={index} />
               ))}
             </div>
             <div className="cracker-burst cracker-burst-right">
-              {Array.from({ length: 12 }).map((_, index) => (
+              {Array.from({ length: 18 }).map((_, index) => (
                 <span key={index} />
               ))}
             </div>
@@ -1566,9 +1571,29 @@ function HomePage() {
 
           <div className="task-complete-content">
             <h1 id="task-complete-title" className="task-complete-title">
-              <span className="title-sparkle title-sparkle-left" />
+              <svg
+                className="title-star title-star-left"
+                width="34"
+                height="34"
+                viewBox="0 0 34 34"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path d="M17 2.5L20.8 12.6L31.5 13.1L23.1 19.8L25.9 30.2L17 24.3L8.1 30.2L10.9 19.8L2.5 13.1L13.2 12.6L17 2.5Z" />
+              </svg>
               <span>よくできた</span>
-              <span className="title-sparkle title-sparkle-right" />
+              <svg
+                className="title-star title-star-right"
+                width="34"
+                height="34"
+                viewBox="0 0 34 34"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path d="M17 2.5L20.8 12.6L31.5 13.1L23.1 19.8L25.9 30.2L17 24.3L8.1 30.2L10.9 19.8L2.5 13.1L13.2 12.6L17 2.5Z" />
+              </svg>
             </h1>
             <p className="task-complete-name">{activeTask}</p>
 
@@ -1583,16 +1608,21 @@ function HomePage() {
                   aria-hidden="true"
                 >
                   <path
-                    d="M7 10V21H4C3.44772 21 3 20.5523 3 20V11C3 10.4477 3.44772 10 4 10H7Z"
+                    d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
+                    fill="currentColor"
+                    opacity="0.24"
+                  />
+                  <path
+                    d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="1.9"
                     strokeLinejoin="round"
                   />
                   <path
-                    d="M7 10L11 3C12.1046 3 13 3.89543 13 5V9H19.5C20.3284 9 21 9.67157 21 10.5L19.8 19.5C19.6707 20.3562 18.9344 21 18.0684 21H7V10Z"
+                    d="M7.4 10.2V20.6"
                     stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
                   />
                 </svg>
                 {taskCompleteLikeCount}件
@@ -1607,11 +1637,22 @@ function HomePage() {
                   aria-hidden="true"
                 >
                   <path
-                    d="M5 5H19V16H9L5 20V5Z"
+                    d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+                    fill="currentColor"
+                    opacity="0.18"
+                  />
+                  <path
+                    d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="1.9"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                  />
+                  <path
+                    d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
+                    stroke="currentColor"
+                    strokeWidth="2.3"
+                    strokeLinecap="round"
                   />
                 </svg>
                 {taskCompleteComments.length}件
