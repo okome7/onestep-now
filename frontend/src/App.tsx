@@ -45,7 +45,7 @@ const avatarImageQuality = 0.82
 const taskCompleteComments = [
   '頑張れ！',
   'ファイト🔥',
-  'がんば！',
+  '今日も一歩進めていてすごい！その調子で次の一歩も応援してるよ',
   '応援してる！',
 ]
 const taskCompleteLikeCount = 12
@@ -1552,13 +1552,24 @@ function HomePage() {
           aria-labelledby="task-complete-title"
         >
           <div className="complete-confetti" aria-hidden="true">
-            {Array.from({ length: 18 }).map((_, index) => (
-              <span key={index} />
-            ))}
+            <div className="cracker-burst cracker-burst-left">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <span key={index} />
+              ))}
+            </div>
+            <div className="cracker-burst cracker-burst-right">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <span key={index} />
+              ))}
+            </div>
           </div>
 
           <div className="task-complete-content">
-            <h1 id="task-complete-title">よくできた✨</h1>
+            <h1 id="task-complete-title" className="task-complete-title">
+              <span className="title-sparkle title-sparkle-left" />
+              <span>よくできた</span>
+              <span className="title-sparkle title-sparkle-right" />
+            </h1>
             <p className="task-complete-name">{activeTask}</p>
 
             <div className="task-complete-stats" aria-label="リアクション">
@@ -1613,8 +1624,8 @@ function HomePage() {
                 <ul>
                   {taskCompleteComments.map((comment) => (
                     <li key={comment}>
-                      <span aria-hidden="true" />
-                      {comment}
+                      <span className="comment-avatar" aria-hidden="true" />
+                      <span className="complete-comment-text">{comment}</span>
                     </li>
                   ))}
                 </ul>

@@ -563,13 +563,18 @@ test("集中画面でできたを押すと完了画面が表示される", async
   await page.getByRole("button", { name: "できた！" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "よくできた✨" }),
+    page.getByRole("heading", { name: "よくできた" }),
   ).toBeVisible();
   await expect(page.getByText("スライド1枚作る")).toBeVisible();
   await expect(page.getByText("12件")).toBeVisible();
   await expect(page.getByText("4件")).toBeVisible();
   await expect(page.getByRole("region", { name: "コメント" })).toBeVisible();
   await expect(page.getByText("頑張れ！")).toBeVisible();
+  await expect(
+    page.getByText(
+      "今日も一歩進めていてすごい！その調子で次の一歩も応援してるよ",
+    ),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "みんなを見る" })).toBeVisible();
   await expect(page.getByRole("button", { name: "次の一歩へ" })).toBeVisible();
 });
