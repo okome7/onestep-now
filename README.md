@@ -38,6 +38,48 @@
 | **backendに入る** | `docker compose exec backend bash`                 |
 | **テスト実行**    | `docker compose exec backend bundle exec rspec`    |
 
+### 🧪 E2Eテスト (Playwright)
+
+E2Eテストはルートディレクトリの Playwright 設定で、Rails API と Vite フロントエンドを起動して実行します。
+
+#### ローカル実行
+
+事前に Node.js 依存関係、Frontend 依存関係、Backend の gem、Playwright ブラウザをインストールしてください。
+
+```bash
+npm ci
+npm --prefix frontend ci
+cd backend && bundle install && cd ..
+npx playwright install
+npm run test:e2e
+```
+
+ローカル実行時は `scripts/start-rails-e2e.mjs` が `RAILS_ENV=test` で `backend/bin/rails db:prepare` を実行し、Rails を `127.0.0.1:3001` で起動します。Frontend は Vite を `127.0.0.1:5173` で起動します。
+
+#### Docker 実行
+
+Ruby gem や PostgreSQL をホストに用意しない場合、または `npx playwright install` が CDN の 403 などで失敗する環境では、ブラウザ同梱の Playwright 公式イメージを使って実行してください。
+
+```bash
+docker compose up -d --build backend frontend
+npm run test:e2e:docker
+```
+
+Docker 上で Playwright 設定から開発サーバーも起動したい場合は、次のように実行できます。
+
+```bash
+E2E_USE_DOCKER=1 npm run test:e2e
+```
+
+既に別プロセスや Docker Compose でサーバーを起動済みの場合は、以下の環境変数で接続先を指定できます。
+
+```bash
+E2E_SKIP_WEBSERVER=1 \
+BASE_URL=http://127.0.0.1:5173 \
+E2E_BACKEND_URL=http://127.0.0.1:3000 \
+npm run test:e2e
+```
+
 ### パスワード再設定メールの送信設定
 
 実際にメールを送信する場合は、backendにSMTP用の環境変数を設定してください。

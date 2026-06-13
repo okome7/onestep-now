@@ -1,12 +1,50 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
+const isTruthy = (value: string | undefined) =>
+  value === "1" || value === "true" || value === "yes";
+
+const useDocker = isTruthy(process.env.E2E_USE_DOCKER);
+const skipWebServer = isTruthy(process.env.E2E_SKIP_WEBSERVER);
+const frontendURL = process.env.BASE_URL || "http://127.0.0.1:5173";
+const backendURL =
+  process.env.E2E_BACKEND_URL ||
+  (useDocker ? "http://127.0.0.1:3000" : "http://127.0.0.1:3001");
+
+const localWebServer = [
+  {
+    command: "node scripts/start-rails-e2e.mjs",
+    url: `${backendURL}/up`,
+    reuseExistingServer: !process.env.CI,
+    stdout: "pipe" as const,
+    stderr: "pipe" as const,
+  },
+  {
+    command: "npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173",
+    url: frontendURL,
+    reuseExistingServer: !process.env.CI,
+    stdout: "pipe" as const,
+    stderr: "pipe" as const,
+  },
+];
+
+const dockerWebServer = [
+  {
+    command: "docker compose up --build backend frontend",
+    url: `${backendURL}/up`,
+    reuseExistingServer: !process.env.CI,
+    stdout: "pipe" as const,
+    stderr: "pipe" as const,
+    timeout: 120 * 1000,
+  },
+  {
+    command: 'node -e "setInterval(() => {}, 1 << 30)"',
+    url: frontendURL,
+    reuseExistingServer: !process.env.CI,
+    stdout: "pipe" as const,
+    stderr: "pipe" as const,
+    timeout: 120 * 1000,
+  },
+];
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -26,7 +64,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: process.env.BASE_URL || "http://127.0.0.1:5173",
+    baseURL: frontendURL,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry",
   },
@@ -47,43 +85,12 @@ export default defineConfig({
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
     },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: [
-    {
-      command: "node scripts/start-rails-e2e.mjs",
-      url: "http://127.0.0.1:3001/up",
-      reuseExistingServer: !process.env.CI,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-    {
-      command: "npm --prefix frontend run dev -- --host 127.0.0.1 --port 5173",
-      url: "http://127.0.0.1:5173",
-      reuseExistingServer: !process.env.CI,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  ],
+  /* Run your local or Docker dev server before starting the tests */
+  webServer: skipWebServer
+    ? undefined
+    : useDocker
+      ? dockerWebServer
+      : localWebServer,
 });

@@ -17,7 +17,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: onestep_now_backend
     working_dir: /app
-    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -b 0.0.0.0 -p 3000"
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec ruby bin/rails s -b 0.0.0.0 -p 3000"
     volumes:
       - ./backend:/app
     ports:
@@ -55,6 +55,19 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     depends_on:
       - backend
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.60.0-noble
+    container_name: onestep_now_e2e
+    working_dir: /workspace
+    command: >
+      bash -lc "npm ci && E2E_SKIP_WEBSERVER=1 BASE_URL=http://frontend:5173 E2E_BACKEND_URL=http://backend:3000 npx playwright test"
+    volumes:
+      - .:/workspace
+    environment:
+      CI: "true"
+    depends_on:
+      - frontend
 
 volumes:
   postgres_data:
