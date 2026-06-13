@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
+import type { ChangeEvent, FormEvent, MouseEvent, ReactNode } from 'react'
 import './App.css'
 import { login } from './loginApi'
 import type { LoginForm } from './loginApi'
@@ -555,12 +555,24 @@ function SignupHeader({ title, onBack }: SignupHeaderProps) {
 
 type AppHeaderProps = {
   title?: string
+  leftAction?: ReactNode
+  rightAction?: ReactNode
 }
 
-function AppHeader({ title = 'OneStep Now' }: AppHeaderProps) {
+function AppHeader({
+  title = 'OneStep Now',
+  leftAction = null,
+  rightAction = null,
+}: AppHeaderProps) {
   return (
     <header className="home-header">
+      <div className="home-header-action home-header-action-left">
+        {leftAction}
+      </div>
       <h1>{title}</h1>
+      <div className="home-header-action home-header-action-right">
+        {rightAction}
+      </div>
     </header>
   )
 }
@@ -1819,25 +1831,28 @@ function HomePage() {
   if (isFeedOpen) {
     return (
       <main className="home-page feed-page">
-        <AppHeader />
-        <div className="feed-toolbar" aria-label="フィード操作">
-          <button
-            className="feed-back-button"
-            type="button"
-            aria-label="ホームに戻る"
-            onClick={closeFeed}
-          >
-            ←
-          </button>
-          <h2>フィード</h2>
-          <time
-            className="feed-countdown"
-            dateTime={`PT${feedRemainingSeconds}S`}
-          >
-            <span className="feed-countdown-icon" aria-hidden="true" />
-            残り {formatFeedRemainingTime(feedRemainingSeconds)}
-          </time>
-        </div>
+        <AppHeader
+          title="フィード"
+          leftAction={
+            <button
+              className="feed-back-button"
+              type="button"
+              aria-label="ホームに戻る"
+              onClick={closeFeed}
+            >
+              ←
+            </button>
+          }
+          rightAction={
+            <time
+              className="feed-countdown"
+              dateTime={`PT${feedRemainingSeconds}S`}
+            >
+              <span className="feed-countdown-icon" aria-hidden="true" />
+              残り {formatFeedRemainingTime(feedRemainingSeconds)}
+            </time>
+          }
+        />
 
         {isFeedExpired ? (
           <section className="feed-expired" aria-live="polite">
