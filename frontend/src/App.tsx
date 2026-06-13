@@ -1499,6 +1499,14 @@ function HomePage() {
     return () => window.clearInterval(timerId)
   }, [isTaskRunning])
 
+  useEffect(() => {
+    if (!isTaskComplete) {
+      return
+    }
+
+    window.scrollTo({ top: 0, left: 0 })
+  }, [isTaskComplete])
+
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
