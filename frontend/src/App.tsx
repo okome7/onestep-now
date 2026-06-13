@@ -1660,16 +1660,22 @@ function HomePage() {
             </div>
 
             {hasCompleteComments ? (
-              <section className="complete-comments" aria-label="コメント">
+              <section className="complete-comments">
                 <h2>コメント</h2>
-                <ul>
-                  {taskCompleteComments.map((comment) => (
-                    <li key={comment}>
-                      <span className="comment-avatar" aria-hidden="true" />
-                      <span className="complete-comment-text">{comment}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div
+                  className="complete-comments-scroll"
+                  role="region"
+                  aria-label="コメント"
+                >
+                  <ul>
+                    {taskCompleteComments.map((comment) => (
+                      <li key={comment}>
+                        <span className="comment-avatar" aria-hidden="true" />
+                        <span className="complete-comment-text">{comment}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </section>
             ) : null}
           </div>
