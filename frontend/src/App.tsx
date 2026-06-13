@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import './App.css'
 import { login } from './loginApi'
 import type { LoginForm } from './loginApi'
@@ -55,6 +55,80 @@ const taskCompleteComments = [
 ]
 const taskCompleteLikeCount = 12
 
+type FeedPostStatus = 'doing' | 'done'
+
+type FeedPost = {
+  id: string
+  userName: string
+  level: number
+  task: string
+  status: FeedPostStatus
+  likes: number
+  comments: string[]
+  createdAt: number
+  liked: boolean
+}
+
+const feedViewDurationSeconds = 5 * 60
+const feedCommentPlaceholder = 'いいね！一緒に頑張ろう'
+const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number }> = [
+  {
+    id: 'sample-1',
+    userName: 'あや',
+    level: 5,
+    task: '参考記事を1つ読む',
+    status: 'done',
+    likes: 10,
+    comments: ['いいね！'],
+    ageMinutes: 1,
+    liked: false,
+  },
+  {
+    id: 'sample-2',
+    userName: 'たろう',
+    level: 20,
+    task: '問題5問解く',
+    status: 'doing',
+    likes: 1,
+    comments: [],
+    ageMinutes: 3,
+    liked: false,
+  },
+  {
+    id: 'sample-3',
+    userName: 'みき',
+    level: 7,
+    task: '洗い物をする',
+    status: 'done',
+    likes: 12,
+    comments: ['おつかれさま！', 'すごい！'],
+    ageMinutes: 4,
+    liked: true,
+  },
+  {
+    id: 'sample-4',
+    userName: 'けんじ',
+    level: 1,
+    task: 'バグを直す',
+    status: 'doing',
+    likes: 2,
+    comments: ['応援してる！'],
+    ageMinutes: 7,
+    liked: true,
+  },
+  {
+    id: 'sample-5',
+    userName: 'はる',
+    level: 16,
+    task: '部屋を片付ける',
+    status: 'done',
+    likes: 12,
+    comments: ['ナイス！', 'えらい！', '助かるね'],
+    ageMinutes: 8,
+    liked: false,
+  },
+]
+
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
   { id: 'avatar-2', src: avatarTwo, label: 'アイコン2' },
@@ -80,6 +154,21 @@ function formatElapsedTime(totalSeconds: number) {
   const seconds = totalSeconds % 60
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+
+function formatFeedRemainingTime(totalSeconds: number) {
+  const safeSeconds = Math.max(0, totalSeconds)
+  const minutes = Math.floor(safeSeconds / 60)
+  const seconds = safeSeconds % 60
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatFeedPostAge(createdAt: number, now: number) {
+  const elapsedMinutes = Math.max(1, Math.floor((now - createdAt) / 60000))
+
+  return `${elapsedMinutes}分前`
 }
 
 function validateForm(form: SignupForm) {
@@ -1488,9 +1577,24 @@ function HomePage() {
   const [activeTask, setActiveTask] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [isFeedOpen, setIsFeedOpen] = useState(false)
+  const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
+    feedViewDurationSeconds,
+  )
+  const [feedNow, setFeedNow] = useState(() => Date.now())
+  const [feedPosts, setFeedPosts] = useState<FeedPost[]>(() => {
+    const initialNow = Date.now()
+
+    return sampleFeedPosts.map(({ ageMinutes, ...post }) => ({
+      ...post,
+      createdAt: initialNow - ageMinutes * 60 * 1000,
+    }))
+  })
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = taskCompleteComments.length > 0
+  const isFeedExpired = feedRemainingSeconds <= 0
 
   useEffect(() => {
     if (!isTaskRunning) {
@@ -1512,6 +1616,50 @@ function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }, [isTaskComplete])
 
+  useEffect(() => {
+    if (!isFeedOpen || isFeedExpired) {
+      return undefined
+    }
+
+    const timerId = window.setInterval(() => {
+      setFeedRemainingSeconds((current) => Math.max(0, current - 1))
+      setFeedNow(Date.now())
+    }, 1000)
+
+    return () => window.clearInterval(timerId)
+  }, [isFeedExpired, isFeedOpen])
+
+  function addFeedPost(task: string, status: FeedPostStatus) {
+    const postId = `${status}-${Date.now()}`
+
+    setFeedPosts((currentPosts) => [
+      {
+        id: postId,
+        userName: 'あなた',
+        level: 1,
+        task,
+        status,
+        likes: 0,
+        comments: [],
+        createdAt: Date.now(),
+        liked: false,
+      },
+      ...currentPosts,
+    ])
+  }
+
+  function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
+    event?.preventDefault()
+    setIsFeedOpen(true)
+    setFeedRemainingSeconds(feedViewDurationSeconds)
+    setFeedNow(Date.now())
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeFeed() {
+    setIsFeedOpen(false)
+  }
+
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -1524,6 +1672,7 @@ function HomePage() {
     setActiveTask(nextTask)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+    addFeedPost(nextTask, 'doing')
   }
 
   function handleTaskCancel() {
@@ -1534,6 +1683,7 @@ function HomePage() {
 
   function handleTaskDone() {
     setIsTaskComplete(true)
+    addFeedPost(activeTask, 'done')
   }
 
   function handleNextTask() {
@@ -1541,6 +1691,246 @@ function HomePage() {
     setActiveTask('')
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+  }
+
+  function togglePostLike(postId: string) {
+    setFeedPosts((currentPosts) =>
+      currentPosts.map((post) => {
+        if (post.id !== postId) {
+          return post
+        }
+
+        return {
+          ...post,
+          liked: !post.liked,
+          likes: post.liked ? Math.max(0, post.likes - 1) : post.likes + 1,
+        }
+      }),
+    )
+  }
+
+  function handleCommentDraftChange(postId: string, value: string) {
+    setCommentDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [postId]: value,
+    }))
+  }
+
+  function addPostComment(postId: string) {
+    const nextComment = (commentDrafts[postId] ?? '').trim()
+
+    if (!nextComment) {
+      return
+    }
+
+    setFeedPosts((currentPosts) =>
+      currentPosts.map((post) =>
+        post.id === postId
+          ? { ...post, comments: [...post.comments, nextComment] }
+          : post,
+      ),
+    )
+    setCommentDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [postId]: '',
+    }))
+  }
+
+  if (isFeedOpen) {
+    return (
+      <main className="home-page feed-page">
+        <header className="feed-header">
+          <button
+            className="feed-back-button"
+            type="button"
+            aria-label="ホームに戻る"
+            onClick={closeFeed}
+          >
+            ←
+          </button>
+          <h1>フィード</h1>
+          <time className="feed-countdown" dateTime={`PT${feedRemainingSeconds}S`}>
+            <span className="feed-countdown-icon" aria-hidden="true" />
+            残り {formatFeedRemainingTime(feedRemainingSeconds)}
+          </time>
+        </header>
+
+        {isFeedExpired ? (
+          <section className="feed-expired" aria-live="polite">
+            <h2>フィードの閲覧時間が終了しました</h2>
+            <p>もう一度見る場合は、みんなを見るを押してください。</p>
+            <button className="home-start-button" type="button" onClick={openFeed}>
+              もう一度見る
+            </button>
+          </section>
+        ) : (
+          <section className="feed-list" aria-label="みんなの投稿">
+            {feedPosts.map((post) => (
+              <article
+                className={`feed-card feed-card-${post.status}`}
+                key={post.id}
+              >
+                <div className="feed-card-header">
+                  <div className="feed-user">
+                    <span className="feed-avatar" aria-hidden="true" />
+                    <span className="feed-user-name">{post.userName}</span>
+                    <span className="feed-user-level">Lv.{post.level}</span>
+                  </div>
+                  <span className={`feed-status feed-status-${post.status}`}>
+                    {post.status === 'done' ? '✓ できた' : '⚑ やります'}
+                  </span>
+                </div>
+
+                <p className="feed-task">{post.task}</p>
+
+                <div className="feed-card-footer">
+                  <button
+                    className={`feed-reaction ${post.liked ? 'active' : ''}`}
+                    type="button"
+                    aria-pressed={post.liked}
+                    onClick={() => togglePostLike(post.id)}
+                  >
+                    <span aria-hidden="true">♡</span>
+                    <span>{post.likes}</span>
+                  </button>
+                  <span className="feed-comment-count" aria-label="コメント数">
+                    <span aria-hidden="true">▱</span>
+                    <span>{post.comments.length}</span>
+                  </span>
+                  <time
+                    className="feed-post-age"
+                    dateTime={new Date(post.createdAt).toISOString()}
+                  >
+                    {formatFeedPostAge(post.createdAt, feedNow)}
+                  </time>
+                </div>
+
+                {post.comments.length > 0 ? (
+                  <ul className="feed-comments" aria-label="コメント一覧">
+                    {post.comments.slice(-2).map((comment, index) => (
+                      <li key={`${post.id}-comment-${index}`}>{comment}</li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                <div className="feed-comment-form">
+                  <input
+                    type="text"
+                    aria-label={`${post.userName}さんの投稿にコメントする`}
+                    placeholder={feedCommentPlaceholder}
+                    value={commentDrafts[post.id] ?? ''}
+                    onChange={(event) =>
+                      handleCommentDraftChange(post.id, event.target.value)
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => addPostComment(post.id)}
+                    disabled={!(commentDrafts[post.id] ?? '').trim()}
+                  >
+                    送信
+                  </button>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
+
+        <nav className="home-bottom-nav" aria-label="ホームメニュー">
+          <a className="home-nav-item" href="/home" aria-label="ホーム">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 10.5L12 3L21 10.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M5 10V20H10V15H14V20H19V10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+          <a className="home-nav-item active" href="/home" aria-label="投稿">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <rect
+                x="4"
+                y="5"
+                width="16"
+                height="14"
+                rx="3"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M8 9H16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M8 13H13"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M16 13.5L17 14.5L19 12"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+          <a className="home-nav-item" href="/home" aria-label="プロフィール">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <circle
+                cx="12"
+                cy="8"
+                r="4"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </a>
+        </nav>
+      </main>
+    )
   }
 
   return (
@@ -1675,7 +2065,7 @@ function HomePage() {
           </div>
 
           <div className="task-complete-actions">
-            <a className="complete-feed-button" href="/home">
+            <a className="complete-feed-button" href="/home" onClick={openFeed}>
               みんなを見る
             </a>
             <button
@@ -1766,7 +2156,12 @@ function HomePage() {
               />
             </svg>
           </a>
-          <a className="home-nav-item" href="/home" aria-label="投稿">
+          <a
+            className="home-nav-item"
+            href="/home"
+            aria-label="投稿"
+            onClick={openFeed}
+          >
             <svg
               className="home-nav-icon"
               width="24"
