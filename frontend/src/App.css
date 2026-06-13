@@ -657,11 +657,29 @@ body {
 }
 
 @media (min-width: 640px) {
+  .task-complete-screen {
+    grid-template-rows: minmax(0, 1fr) auto;
+    height: 100dvh;
+    min-height: auto;
+    align-content: stretch;
+    align-items: center;
+    padding: clamp(24px, 5dvh, 42px) 28px clamp(20px, 4dvh, 32px);
+  }
+
+  .task-complete-content {
+    min-height: 0;
+  }
+
   .complete-comments {
     width: min(100%, 360px);
-    max-height: 248px;
-    margin-top: 40px;
+    max-height: clamp(144px, 26dvh, 248px);
+    margin-top: clamp(24px, 4dvh, 40px);
     padding: 14px 18px 18px;
+  }
+
+  .task-complete-actions {
+    gap: clamp(12px, 2.4dvh, 20px);
+    margin-top: clamp(24px, 4dvh, 40px);
   }
 
   .complete-comments h2 {
