@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
+import type { ChangeEvent, FormEvent, MouseEvent, ReactNode } from 'react'
 import './App.css'
 import { login } from './loginApi'
 import type { LoginForm } from './loginApi'
@@ -67,11 +67,13 @@ type FeedPost = {
   comments: string[]
   createdAt: number
   liked: boolean
+  isOwnPost: boolean
 }
 
 const feedViewDurationSeconds = 5 * 60
-const feedCommentPlaceholder = 'いいね！一緒に頑張ろう'
-const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number }> = [
+const sampleFeedPosts: Array<
+  Omit<FeedPost, 'createdAt'> & { ageMinutes: number }
+> = [
   {
     id: 'sample-1',
     userName: 'あや',
@@ -82,6 +84,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: ['いいね！'],
     ageMinutes: 1,
     liked: false,
+    isOwnPost: false,
   },
   {
     id: 'sample-2',
@@ -93,6 +96,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: [],
     ageMinutes: 3,
     liked: false,
+    isOwnPost: false,
   },
   {
     id: 'sample-3',
@@ -104,6 +108,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: ['おつかれさま！', 'すごい！'],
     ageMinutes: 4,
     liked: true,
+    isOwnPost: false,
   },
   {
     id: 'sample-4',
@@ -115,6 +120,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: ['応援してる！'],
     ageMinutes: 7,
     liked: true,
+    isOwnPost: false,
   },
   {
     id: 'sample-5',
@@ -126,6 +132,7 @@ const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number 
     comments: ['ナイス！', 'えらい！', '助かるね'],
     ageMinutes: 8,
     liked: false,
+    isOwnPost: false,
   },
 ]
 
@@ -155,7 +162,6 @@ function formatElapsedTime(totalSeconds: number) {
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
-
 
 function formatFeedRemainingTime(totalSeconds: number) {
   const safeSeconds = Math.max(0, totalSeconds)
@@ -543,6 +549,227 @@ function SignupHeader({ title, onBack }: SignupHeaderProps) {
       </button>
       <h1>{title}</h1>
     </header>
+  )
+}
+
+type AppHeaderProps = {
+  title?: string
+  rightAction?: ReactNode
+}
+
+function AppHeader({
+  title = 'OneStep Now',
+  rightAction = null,
+}: AppHeaderProps) {
+  return (
+    <header className="home-header">
+      <div className="home-header-action" aria-hidden="true" />
+      <h1>{title}</h1>
+      <div className="home-header-action home-header-action-right">
+        {rightAction}
+      </div>
+    </header>
+  )
+}
+
+function HomeNavIcon() {
+  return (
+    <svg
+      className="home-nav-icon"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M3 10.5L12 3L21 10.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 10V20H10V15H14V20H19V10"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function FeedNavIcon() {
+  return (
+    <svg
+      className="home-nav-icon"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <rect
+        x="4"
+        y="5"
+        width="16"
+        height="14"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M8 9H16"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M8 13H13"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 13.5L17 14.5L19 12"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function ProfileNavIcon() {
+  return (
+    <svg
+      className="home-nav-icon"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+type HomeBottomNavActiveItem = 'home' | 'feed' | 'profile'
+
+type HomeBottomNavProps = {
+  activeItem: HomeBottomNavActiveItem
+  onHomeClick?: (event: MouseEvent<HTMLAnchorElement>) => void
+  onFeedClick?: (event: MouseEvent<HTMLAnchorElement>) => void
+  onProfileClick?: (event: MouseEvent<HTMLAnchorElement>) => void
+}
+
+function HomeBottomNav({
+  activeItem,
+  onHomeClick,
+  onFeedClick,
+  onProfileClick,
+}: HomeBottomNavProps) {
+  return (
+    <nav className="home-bottom-nav" aria-label="ホームメニュー">
+      <a
+        className={`home-nav-item ${activeItem === 'home' ? 'active' : ''}`}
+        href="/home"
+        aria-label="ホーム"
+        aria-current={activeItem === 'home' ? 'page' : undefined}
+        onClick={onHomeClick}
+      >
+        <HomeNavIcon />
+      </a>
+      <a
+        className={`home-nav-item ${activeItem === 'feed' ? 'active' : ''}`}
+        href="/home"
+        aria-label="投稿"
+        aria-current={activeItem === 'feed' ? 'page' : undefined}
+        onClick={onFeedClick}
+      >
+        <FeedNavIcon />
+      </a>
+      <a
+        className={`home-nav-item ${activeItem === 'profile' ? 'active' : ''}`}
+        href="/home"
+        aria-label="プロフィール"
+        aria-current={activeItem === 'profile' ? 'page' : undefined}
+        onClick={onProfileClick}
+      >
+        <ProfileNavIcon />
+      </a>
+    </nav>
+  )
+}
+
+function LikeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
+        fill="currentColor"
+        opacity="0.24"
+      />
+      <path
+        d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.4 10.2V20.6"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function CommentIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+        fill="currentColor"
+        opacity="0.18"
+      />
+      <path
+        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
+        stroke="currentColor"
+        strokeWidth="2.3"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }
 
@@ -1591,10 +1818,17 @@ function HomePage() {
     }))
   })
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
+  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
+    null,
+  )
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = taskCompleteComments.length > 0
   const isFeedExpired = feedRemainingSeconds <= 0
+  const visibleFeedPosts = feedPosts.filter((post) => !post.isOwnPost)
+  const activeCommentPost = activeCommentPostId
+    ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
+    : null
 
   useEffect(() => {
     if (!isTaskRunning) {
@@ -1643,6 +1877,7 @@ function HomePage() {
         comments: [],
         createdAt: Date.now(),
         liked: false,
+        isOwnPost: true,
       },
       ...currentPosts,
     ])
@@ -1654,10 +1889,6 @@ function HomePage() {
     setFeedRemainingSeconds(feedViewDurationSeconds)
     setFeedNow(Date.now())
     window.scrollTo({ top: 0, left: 0 })
-  }
-
-  function closeFeed() {
-    setIsFeedOpen(false)
   }
 
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
@@ -1716,6 +1947,14 @@ function HomePage() {
     }))
   }
 
+  function openCommentPanel(postId: string) {
+    setActiveCommentPostId(postId)
+  }
+
+  function closeCommentPanel() {
+    setActiveCommentPostId(null)
+  }
+
   function addPostComment(postId: string) {
     const nextComment = (commentDrafts[postId] ?? '').trim()
 
@@ -1739,33 +1978,34 @@ function HomePage() {
   if (isFeedOpen) {
     return (
       <main className="home-page feed-page">
-        <header className="feed-header">
-          <button
-            className="feed-back-button"
-            type="button"
-            aria-label="ホームに戻る"
-            onClick={closeFeed}
-          >
-            ←
-          </button>
-          <h1>フィード</h1>
-          <time className="feed-countdown" dateTime={`PT${feedRemainingSeconds}S`}>
-            <span className="feed-countdown-icon" aria-hidden="true" />
-            残り {formatFeedRemainingTime(feedRemainingSeconds)}
-          </time>
-        </header>
+        <AppHeader
+          title="フィード"
+          rightAction={
+            <time
+              className="feed-countdown"
+              dateTime={`PT${feedRemainingSeconds}S`}
+            >
+              <span className="feed-countdown-icon" aria-hidden="true" />
+              残り {formatFeedRemainingTime(feedRemainingSeconds)}
+            </time>
+          }
+        />
 
         {isFeedExpired ? (
           <section className="feed-expired" aria-live="polite">
             <h2>フィードの閲覧時間が終了しました</h2>
             <p>もう一度見る場合は、みんなを見るを押してください。</p>
-            <button className="home-start-button" type="button" onClick={openFeed}>
+            <button
+              className="home-start-button"
+              type="button"
+              onClick={openFeed}
+            >
               もう一度見る
             </button>
           </section>
         ) : (
           <section className="feed-list" aria-label="みんなの投稿">
-            {feedPosts.map((post) => (
+            {visibleFeedPosts.map((post) => (
               <article
                 className={`feed-card feed-card-${post.status}`}
                 key={post.id}
@@ -1790,13 +2030,22 @@ function HomePage() {
                     aria-pressed={post.liked}
                     onClick={() => togglePostLike(post.id)}
                   >
-                    <span aria-hidden="true">♡</span>
+                    <span className="feed-action-icon">
+                      <LikeIcon />
+                    </span>
                     <span>{post.likes}</span>
                   </button>
-                  <span className="feed-comment-count" aria-label="コメント数">
-                    <span aria-hidden="true">▱</span>
+                  <button
+                    className="feed-comment-count"
+                    type="button"
+                    aria-label={`${post.userName}さんのコメントを開く`}
+                    onClick={() => openCommentPanel(post.id)}
+                  >
+                    <span className="feed-action-icon">
+                      <CommentIcon />
+                    </span>
                     <span>{post.comments.length}</span>
-                  </span>
+                  </button>
                   <time
                     className="feed-post-age"
                     dateTime={new Date(post.createdAt).toISOString()}
@@ -1804,37 +2053,91 @@ function HomePage() {
                     {formatFeedPostAge(post.createdAt, feedNow)}
                   </time>
                 </div>
-
-                {post.comments.length > 0 ? (
-                  <ul className="feed-comments" aria-label="コメント一覧">
-                    {post.comments.slice(-2).map((comment, index) => (
-                      <li key={`${post.id}-comment-${index}`}>{comment}</li>
-                    ))}
-                  </ul>
-                ) : null}
-
-                <div className="feed-comment-form">
-                  <input
-                    type="text"
-                    aria-label={`${post.userName}さんの投稿にコメントする`}
-                    placeholder={feedCommentPlaceholder}
-                    value={commentDrafts[post.id] ?? ''}
-                    onChange={(event) =>
-                      handleCommentDraftChange(post.id, event.target.value)
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addPostComment(post.id)}
-                    disabled={!(commentDrafts[post.id] ?? '').trim()}
-                  >
-                    送信
-                  </button>
-                </div>
               </article>
             ))}
           </section>
         )}
+
+        <HomeBottomNav activeItem="feed" />
+        {activeCommentPost ? (
+          <section
+            className={`feed-comment-panel feed-comment-panel-${activeCommentPost.status}`}
+            aria-labelledby="feed-comment-panel-title"
+          >
+            <div className="feed-comment-panel-header">
+              <h2 id="feed-comment-panel-title">コメント</h2>
+              <button
+                className="feed-comment-panel-close"
+                type="button"
+                aria-label="コメントを閉じる"
+                onClick={closeCommentPanel}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="feed-comment-panel-task">
+              {activeCommentPost.task}
+            </div>
+
+            {activeCommentPost.comments.length > 0 ? (
+              <ul className="feed-comment-panel-list" aria-label="コメント一覧">
+                {activeCommentPost.comments.map((comment, index) => (
+                  <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
+                    <div className="feed-comment-author">
+                      <span
+                        className="feed-comment-avatar"
+                        aria-hidden="true"
+                      />
+                      <span>みき</span>
+                      <span className="feed-comment-level">Lv.7</span>
+                    </div>
+                    <div className="feed-comment-body">
+                      <span>{comment}</span>
+                      <time
+                        dateTime={new Date(
+                          activeCommentPost.createdAt,
+                        ).toISOString()}
+                      >
+                        {index === activeCommentPost.comments.length - 1
+                          ? formatFeedPostAge(
+                              activeCommentPost.createdAt,
+                              feedNow,
+                            )
+                          : '2時間前'}
+                      </time>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="feed-comment-empty">まだコメントはありません</p>
+            )}
+
+            <div className="feed-comment-panel-form">
+              <input
+                type="text"
+                aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
+                placeholder="コメントを入力"
+                value={commentDrafts[activeCommentPost.id] ?? ''}
+                onChange={(event) =>
+                  handleCommentDraftChange(
+                    activeCommentPost.id,
+                    event.target.value,
+                  )
+                }
+              />
+              <button
+                type="button"
+                aria-label="コメントを送信"
+                onClick={() => addPostComment(activeCommentPost.id)}
+                disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
+              >
+                ➤
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <nav className="home-bottom-nav" aria-label="ホームメニュー">
           <a className="home-nav-item" href="/home" aria-label="ホーム">
@@ -1935,11 +2238,7 @@ function HomePage() {
 
   return (
     <main className={`home-page ${isTaskActive ? 'task-active' : ''}`}>
-      {isTaskActive ? null : (
-        <header className="home-header">
-          <h1>OneStep Now</h1>
-        </header>
-      )}
+      {isTaskActive ? null : <AppHeader />}
 
       {isTaskComplete ? (
         <section
@@ -1989,62 +2288,11 @@ function HomePage() {
 
             <div className="task-complete-stats" aria-label="リアクション">
               <span>
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
-                    fill="currentColor"
-                    opacity="0.24"
-                  />
-                  <path
-                    d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M7.4 10.2V20.6"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <LikeIcon />
                 {taskCompleteLikeCount}件
               </span>
               <span>
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
-                    fill="currentColor"
-                    opacity="0.18"
-                  />
-                  <path
-                    d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
-                    stroke="currentColor"
-                    strokeWidth="1.9"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
-                    stroke="currentColor"
-                    strokeWidth="2.3"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <CommentIcon />
                 {taskCompleteComments.length}件
               </span>
             </div>
@@ -2129,104 +2377,7 @@ function HomePage() {
       )}
 
       {isTaskActive ? null : (
-        <nav className="home-bottom-nav" aria-label="ホームメニュー">
-          <a className="home-nav-item active" href="/home" aria-label="ホーム">
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M3 10.5L12 3L21 10.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M5 10V20H10V15H14V20H19V10"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-          <a
-            className="home-nav-item"
-            href="/home"
-            aria-label="投稿"
-            onClick={openFeed}
-          >
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <rect
-                x="4"
-                y="5"
-                width="16"
-                height="14"
-                rx="3"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M8 9H16"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M8 13H13"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M16 13.5L17 14.5L19 12"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-          <a className="home-nav-item" href="/home" aria-label="プロフィール">
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle
-                cx="12"
-                cy="8"
-                r="4"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </a>
-        </nav>
+        <HomeBottomNav activeItem="home" onFeedClick={openFeed} />
       )}
     </main>
   )
