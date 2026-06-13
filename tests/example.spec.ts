@@ -594,6 +594,11 @@ test("集中画面でできたを押すと完了画面が表示される", async
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "みんなを見る" })).toBeVisible();
   await expect(page.getByRole("button", { name: "次の一歩へ" })).toBeVisible();
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight),
+    )
+    .toBe(true);
 });
 
 test("登録済みメールアドレスは新規登録時にエラーを表示する", async ({
