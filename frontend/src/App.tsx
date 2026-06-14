@@ -600,20 +600,22 @@ async function createAvatarImageDataUrl(file: File) {
 
 type SignupHeaderProps = {
   title: string
-  onBack: () => void
+  onBack?: () => void
 }
 
 function SignupHeader({ title, onBack }: SignupHeaderProps) {
   return (
     <header className="signup-header">
-      <button
-        className="back-button"
-        type="button"
-        aria-label="戻る"
-        onClick={onBack}
-      >
-        &lt;
-      </button>
+      {onBack ? (
+        <button
+          className="back-button"
+          type="button"
+          aria-label="戻る"
+          onClick={onBack}
+        >
+          &lt;
+        </button>
+      ) : null}
       <h1>{title}</h1>
     </header>
   )
@@ -889,16 +891,6 @@ function SignupPage() {
     }
   }
 
-  function handleBack() {
-    if (screen === 'icon') {
-      window.sessionStorage.setItem(signupScreenStorageKey, 'signup')
-      setScreen('signup')
-      return
-    }
-
-    window.history.back()
-  }
-
   async function handleIconSubmit() {
     setMessage('')
     setError('')
@@ -1006,9 +998,7 @@ function SignupPage() {
     <main
       className={`signup-page ${screen === 'complete' ? 'complete-page' : ''}`}
     >
-      {screen === 'complete' ? null : (
-        <SignupHeader title="新規登録" onBack={handleBack} />
-      )}
+      {screen === 'complete' ? null : <SignupHeader title="新規登録" />}
 
       {screen === 'complete' ? (
         <section className="complete-content" aria-labelledby="complete-title">
