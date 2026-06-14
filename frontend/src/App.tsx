@@ -2091,7 +2091,7 @@ function HomePage() {
                   <strong>{achievement.task}</strong>
                   <div>
                     <span>
-                      <img src={likeActiveIcon} alt="" aria-hidden="true" />
+                      <img src={likeIcon} alt="" aria-hidden="true" />
                       {achievement.likes}
                     </span>
                     <span>
