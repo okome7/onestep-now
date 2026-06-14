@@ -1372,10 +1372,6 @@ function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleBack = () => {
-    window.location.href = '/'
-  }
-
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
     const nextValue = name === 'password' ? formatPasswordInput(value) : value
@@ -1422,7 +1418,7 @@ function LoginPage() {
 
   return (
     <main className="signup-page login-page">
-      <SignupHeader title="ログイン" onBack={handleBack} />
+      <SignupHeader title="ログイン" />
 
       <section className="signup-content">
         <form className="signup-form" onSubmit={handleSubmit} noValidate>
