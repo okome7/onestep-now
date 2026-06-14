@@ -2251,7 +2251,7 @@ function HomePage() {
               <button
                 className="feed-expired-start-button"
                 type="button"
-                onClick={openHome}
+                onClick={startNextTaskFromExpiredFeed}
               >
                 始める
               </button>
