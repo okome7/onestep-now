@@ -1811,6 +1811,7 @@ function HomePage() {
   const [activeTask, setActiveTask] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
@@ -1937,9 +1938,22 @@ function HomePage() {
   }
 
   function handleTaskCancel() {
+    setIsCancelConfirmOpen(true)
+  }
+
+  function closeTaskCancelConfirm() {
+    setIsCancelConfirmOpen(false)
+  }
+
+  function confirmTaskCancel() {
     setActiveTask('')
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+    setIsCancelConfirmOpen(false)
+    setIsFeedOpen(false)
+    setIsProfileOpen(false)
+    window.history.pushState(null, '', '/home')
+    window.scrollTo({ top: 0, left: 0 })
   }
 
   function handleTaskDone() {
@@ -2423,6 +2437,37 @@ function HomePage() {
               やめる
             </button>
           </div>
+
+          {isCancelConfirmOpen ? (
+            <div className="task-cancel-modal-backdrop" role="presentation">
+              <div
+                className="task-cancel-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="task-cancel-modal-title"
+                aria-describedby="task-cancel-modal-description"
+              >
+                <h2 id="task-cancel-modal-title">このタスクをやめますか？</h2>
+                <p id="task-cancel-modal-description">投稿は削除されます</p>
+                <div className="task-cancel-modal-actions">
+                  <button
+                    className="task-cancel-modal-secondary"
+                    type="button"
+                    onClick={closeTaskCancelConfirm}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    className="task-cancel-modal-primary"
+                    type="button"
+                    onClick={confirmTaskCancel}
+                  >
+                    やめる
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : (
         <form
