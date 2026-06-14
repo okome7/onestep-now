@@ -1,3 +1,5 @@
+Dotenv.load(Rails.root.join(".env").to_s) if Rails.env.local? && defined?(Dotenv)
+
 smtp_address = ENV["SMTP_ADDRESS"].to_s.strip
 
 if smtp_address.present?
