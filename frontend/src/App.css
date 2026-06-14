@@ -2147,14 +2147,14 @@ body {
 }
 .profile-stat-card {
   display: grid;
-  min-height: 58px;
+  min-height: 66px;
   grid-template-columns: 24px max-content;
   align-items: center;
   justify-content: center;
   column-gap: 8px;
   border: 1px solid #bcc7d4;
   border-radius: 6px;
-  padding: 7px 9px;
+  padding: 9px 9px;
   background: #ffffff;
   box-shadow: 0 2px 4px rgb(15 23 42 / 22%);
 }
@@ -2224,10 +2224,6 @@ body {
 .profile-achievement-card img {
   width: 18px;
   height: 18px;
-}
-.profile-achievement-card span:first-child img {
-  filter: invert(66%) sepia(11%) saturate(387%) hue-rotate(177deg)
-    brightness(91%) contrast(86%);
 }
 .profile-achievement-card time {
   margin-left: auto;
