@@ -1571,23 +1571,6 @@ body {
   background: #f4f7fb;
 }
 
-.feed-page .home-header {
-  grid-template-columns: auto 1fr;
-}
-
-.feed-page .home-header > .home-header-action:first-child {
-  display: none;
-}
-
-.feed-page .home-header h1 {
-  justify-self: start;
-  text-align: left;
-}
-
-.feed-page .home-header-action-right {
-  justify-self: end;
-}
-
 .feed-countdown {
   display: inline-flex;
   align-items: center;
@@ -1721,6 +1704,7 @@ body {
   font-size: 14px;
   font-weight: 800;
   line-height: 1.4;
+  text-align: left;
 }
 
 .feed-card-footer {
