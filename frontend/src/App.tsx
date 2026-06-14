@@ -16,6 +16,7 @@ import passwordHideIcon from './assets/icons/password_hide.svg'
 import likeIcon from './assets/icons/like.svg'
 import likeActiveIcon from './assets/icons/like-active.svg'
 import commentIcon from './assets/icons/comment.svg'
+import settingsIcon from './assets/icons/settings.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
 import avatarTwo from './assets/avatars/avatar-2.svg'
 import avatarThree from './assets/avatars/avatar-3.svg'
@@ -1809,6 +1810,7 @@ function HomePage() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
   const [isFeedOpen, setIsFeedOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
     feedViewDurationSeconds,
   )
@@ -1830,6 +1832,13 @@ function HomePage() {
   const hasCompleteComments = taskCompleteComments.length > 0
   const isFeedExpired = feedRemainingSeconds <= 0
   const visibleFeedPosts = feedPosts.filter((post) => !post.isOwnPost)
+  const completedProfile = getInitialCompleteProfile()
+  const profileAvatarSrc = getCompleteAvatarSrc(completedProfile)
+  const profileName = completedProfile.name || 'おこめ'
+  const recentAchievements = [
+    { task: 'スライド1枚作る', likes: 12, comments: 3, age: '4分前' },
+    { task: '部屋の掃除をする', likes: 13, comments: 3, age: '2時間前' },
+  ]
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
@@ -1890,8 +1899,23 @@ function HomePage() {
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
     setIsFeedOpen(true)
+    setIsProfileOpen(false)
     setFeedRemainingSeconds(feedViewDurationSeconds)
     setFeedNow(Date.now())
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openHome(event?: MouseEvent<HTMLAnchorElement>) {
+    event?.preventDefault()
+    setIsFeedOpen(false)
+    setIsProfileOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
+    event?.preventDefault()
+    setIsFeedOpen(false)
+    setIsProfileOpen(true)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1977,6 +2001,117 @@ function HomePage() {
       ...currentDrafts,
       [postId]: '',
     }))
+  }
+
+  if (isProfileOpen) {
+    return (
+      <main className="home-page profile-page">
+        <AppHeader
+          title="マイページ"
+          rightAction={
+            <button
+              className="profile-settings-button"
+              type="button"
+              aria-label="設定"
+            >
+              <img src={settingsIcon} alt="" aria-hidden="true" />
+            </button>
+          }
+        />
+
+        <section className="profile-content" aria-label="マイページ">
+          <img
+            className="profile-avatar-large"
+            src={profileAvatarSrc}
+            alt=""
+            aria-hidden="true"
+          />
+          <p className="profile-name">{profileName}</p>
+
+          <section className="profile-level-card" aria-label="レベル">
+            <div className="profile-level-row">
+              <span className="profile-level-label">
+                Lv.<strong>12</strong>
+              </span>
+              <span className="profile-level-next">あと2回でLv.13！</span>
+            </div>
+            <div className="profile-level-meter" aria-hidden="true">
+              <span />
+            </div>
+            <span className="profile-level-percent">80%</span>
+          </section>
+
+          <section
+            className="profile-section"
+            aria-labelledby="profile-stats-title"
+          >
+            <h2 id="profile-stats-title">実績</h2>
+            <div className="profile-stats-grid">
+              <div className="profile-stat-card">
+                <span aria-hidden="true">✓</span>
+                <strong>128回</strong>
+                <small>達成</small>
+              </div>
+              <div className="profile-stat-card">
+                <span aria-hidden="true">🔥</span>
+                <strong>7日</strong>
+                <small>連続</small>
+              </div>
+              <div className="profile-stat-card">
+                <img src={likeIcon} alt="" aria-hidden="true" />
+                <strong>234</strong>
+                <small>いいね</small>
+              </div>
+              <div className="profile-stat-card">
+                <img src={commentIcon} alt="" aria-hidden="true" />
+                <strong>32</strong>
+                <small>コメント</small>
+              </div>
+            </div>
+          </section>
+
+          <section
+            className="profile-section"
+            aria-labelledby="profile-recent-title"
+          >
+            <div className="profile-section-heading">
+              <h2 id="profile-recent-title">最近の達成</h2>
+              <a href="/home" onClick={(event) => event.preventDefault()}>
+                すべて見る&gt;
+              </a>
+            </div>
+            <div className="profile-achievement-list">
+              {recentAchievements.map((achievement) => (
+                <article
+                  className="profile-achievement-card"
+                  key={achievement.task}
+                >
+                  <strong>{achievement.task}</strong>
+                  <div>
+                    <span>
+                      <img src={likeIcon} alt="" aria-hidden="true" />
+                      {achievement.likes}
+                    </span>
+                    <span>
+                      <img src={commentIcon} alt="" aria-hidden="true" />
+                      {achievement.comments}
+                    </span>
+                    <time>{achievement.age}</time>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        <HomeBottomNav
+          activeItem="profile"
+          onHomeClick={openHome}
+          onFeedClick={openFeed}
+          onProfileClick={openProfile}
+        />
+      </main>
+    )
   }
 
   if (isFeedOpen) {
@@ -2066,7 +2201,12 @@ function HomePage() {
           </section>
         )}
 
-        <HomeBottomNav activeItem="feed" />
+        <HomeBottomNav
+          activeItem="feed"
+          onHomeClick={openHome}
+          onFeedClick={openFeed}
+          onProfileClick={openProfile}
+        />
         {activeCommentPost ? (
           <>
             <button
@@ -2157,100 +2297,6 @@ function HomePage() {
             </section>
           </>
         ) : null}
-
-        <nav className="home-bottom-nav" aria-label="ホームメニュー">
-          <a className="home-nav-item" href="/home" aria-label="ホーム">
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M3 10.5L12 3L21 10.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M5 10V20H10V15H14V20H19V10"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-          <a className="home-nav-item active" href="/home" aria-label="投稿">
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <rect
-                x="4"
-                y="5"
-                width="16"
-                height="14"
-                rx="3"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M8 9H16"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M8 13H13"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M16 13.5L17 14.5L19 12"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-          <a className="home-nav-item" href="/home" aria-label="プロフィール">
-            <svg
-              className="home-nav-icon"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <circle
-                cx="12"
-                cy="8"
-                r="4"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </a>
-        </nav>
       </main>
     )
   }
@@ -2402,7 +2448,12 @@ function HomePage() {
       )}
 
       {isTaskActive ? null : (
-        <HomeBottomNav activeItem="home" onFeedClick={openFeed} />
+        <HomeBottomNav
+          activeItem="home"
+          onHomeClick={openHome}
+          onFeedClick={openFeed}
+          onProfileClick={openProfile}
+        />
       )}
     </main>
   )
