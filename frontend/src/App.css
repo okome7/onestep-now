@@ -1768,8 +1768,8 @@ body {
   z-index: 8;
   border: 0;
   padding: 0;
-  background: rgb(15 23 42 / 10%);
-  backdrop-filter: blur(5px);
+  background: rgb(15 23 42 / 6%);
+  backdrop-filter: blur(2px);
   cursor: pointer;
 }
 
