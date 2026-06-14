@@ -10,6 +10,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d onestep_now_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
@@ -17,7 +22,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: onestep_now_backend
     working_dir: /app
-    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -b 0.0.0.0 -p 3000"
+    command: >
+      bash -c "rm -f tmp/pids/server.pid && bundle exec ruby bin/rails db:prepare && bundle exec ruby bin/rails s -b 0.0.0.0 -p 3000"
     volumes:
       - ./backend:/app
     ports:
@@ -36,7 +42,17 @@ services:
       SMTP_AUTHENTICATION: ${SMTP_AUTHENTICATION:-plain}
       SMTP_ENABLE_STARTTLS_AUTO: ${SMTP_ENABLE_STARTTLS_AUTO:-true}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'ruby -r net/http -e ''response = Net::HTTP.get_response(URI("http://127.0.0.1:3000/up")); exit(response.is_a?(Net::HTTPSuccess) ? 0 : 1)''',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   frontend:
     build:
@@ -54,7 +70,33 @@ services:
       API_BASE_URL: http://backend:3000
       CHOKIDAR_USEPOLLING: "true"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e ''fetch("http://127.0.0.1:5173").then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))''',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.60.0-noble
+    container_name: onestep_now_e2e
+    working_dir: /workspace
+    command: >
+      bash -lc "npm ci && E2E_SKIP_WEBSERVER=1 BASE_URL=http://frontend:5173 E2E_BACKEND_URL=http://backend:3000 npx playwright test"
+    volumes:
+      - .:/workspace
+    environment:
+      CI: "true"
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
