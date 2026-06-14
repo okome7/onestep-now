@@ -1,0 +1,58 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">アラーム時計</title>
+  <desc id="desc">時間経過を知らせる青いアラーム時計のイラスト</desc>
+  <rect width="512" height="512" fill="white"/>
+  <g stroke="#0B4D91" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M44 188C23 214 12 243 12 277C12 310 23 340 45 367" stroke-width="9"/>
+    <path d="M78 216C62 235 55 254 55 277C55 299 62 319 79 338" stroke-width="9"/>
+    <path d="M107 244C96 254 92 265 92 277C92 289 96 300 107 310" stroke-width="9"/>
+    <path d="M468 188C489 214 500 243 500 277C500 310 489 340 467 367" stroke-width="9"/>
+    <path d="M434 216C450 235 457 254 457 277C457 299 450 319 433 338" stroke-width="9"/>
+    <path d="M405 244C416 254 420 265 420 277C420 289 416 300 405 310" stroke-width="9"/>
+    <path d="M110 93L127 113" stroke-width="9"/>
+    <path d="M147 78L158 104" stroke-width="9"/>
+    <path d="M183 68L181 96" stroke-width="9"/>
+    <path d="M329 68L331 96" stroke-width="9"/>
+    <path d="M365 78L354 104" stroke-width="9"/>
+    <path d="M402 93L385 113" stroke-width="9"/>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M154 397L131 439C127 447 130 456 138 460C146 464 155 461 159 453L184 410L154 397Z" fill="#D6D6D6" stroke="#0B4D91" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M358 397L381 439C385 447 382 456 374 460C366 464 357 461 353 453L328 410L358 397Z" fill="#D6D6D6" stroke="#0B4D91" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M212 136H300" stroke="#0B4D91" stroke-width="12" stroke-linecap="round"/>
+    <path d="M244 128H268V158H244V128Z" fill="#D6D6D6" stroke="#0B4D91" stroke-width="10"/>
+    <rect x="224" y="113" width="64" height="31" rx="13" fill="url(#bellBlue)" stroke="#0B4D91" stroke-width="10"/>
+    <path d="M90 193C85 166 95 136 118 118C140 101 171 100 193 115L102 209C96 206 92 200 90 193Z" fill="url(#bellBlue)" stroke="#0B4D91" stroke-width="10"/>
+    <path d="M422 193C427 166 417 136 394 118C372 101 341 100 319 115L410 209C416 206 420 200 422 193Z" fill="url(#bellBlue)" stroke="#0B4D91" stroke-width="10"/>
+    <circle cx="256" cy="286" r="131" fill="url(#outerBlue)" stroke="#0B4D91" stroke-width="12"/>
+    <circle cx="256" cy="286" r="104" fill="url(#faceBlue)" stroke="#0B4D91" stroke-width="8"/>
+    <path d="M256 188V208" stroke="#0B4D91" stroke-width="8" stroke-linecap="round"/>
+    <path d="M256 365V385" stroke="#0B4D91" stroke-width="8" stroke-linecap="round"/>
+    <path d="M157 286H177" stroke="#0B4D91" stroke-width="8" stroke-linecap="round"/>
+    <path d="M335 286H355" stroke="#0B4D91" stroke-width="8" stroke-linecap="round"/>
+    <path d="M256 215V285" stroke="#0B4D91" stroke-width="14" stroke-linecap="round"/>
+    <path d="M256 285L307 318" stroke="#0B4D91" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="256" cy="286" r="17" fill="#0B4D91"/>
+    <path d="M111 151C121 137 136 129 153 129" stroke="white" stroke-opacity="0.75" stroke-width="8" stroke-linecap="round"/>
+    <path d="M359 129C376 129 391 137 401 151" stroke="white" stroke-opacity="0.75" stroke-width="8" stroke-linecap="round"/>
+    <path d="M172 129C196 114 230 105 256 105" stroke="white" stroke-opacity="0.75" stroke-width="8" stroke-linecap="round"/>
+    <path d="M271 122H251" stroke="white" stroke-opacity="0.75" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <defs>
+    <filter id="shadow" x="69" y="101" width="374" height="374" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#0B4D91" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="outerBlue" x1="143" y1="162" x2="363" y2="408" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#66C7FF"/>
+      <stop offset="1" stop-color="#2398F4"/>
+    </linearGradient>
+    <linearGradient id="faceBlue" x1="180" y1="183" x2="327" y2="389" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3FBFF"/>
+      <stop offset="1" stop-color="#DDF1FF"/>
+    </linearGradient>
+    <linearGradient id="bellBlue" x1="92" y1="105" x2="181" y2="206" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#76CDFF"/>
+      <stop offset="1" stop-color="#38A8F8"/>
+    </linearGradient>
+  </defs>
+</svg>

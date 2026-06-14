@@ -609,6 +609,38 @@ test("集中画面でできたを押すと完了画面が表示される", async
     .toBe(true);
 });
 
+test("フィード閲覧時間が終了するとモーダルからホームへ戻れる", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await page.goto("/home");
+
+  await page
+    .getByRole("textbox", { name: "今できること" })
+    .fill("スライド1枚作る");
+  await page.getByRole("button", { name: "始める" }).click();
+  await page.getByRole("button", { name: "できた！" }).click();
+  await page.getByRole("link", { name: "みんなを見る" }).click();
+
+  await expect(page.getByRole("heading", { name: "フィード" })).toBeVisible();
+  await page.clock.fastForward(5 * 60 * 1000);
+
+  const expiredDialog = page.getByRole("dialog", {
+    name: "5分経過しました",
+  });
+  await expect(expiredDialog).toBeVisible();
+  await expect(
+    expiredDialog.getByText("リフレッシュできましたか？"),
+  ).toBeVisible();
+
+  await expiredDialog.getByRole("button", { name: "始める" }).click();
+
+  await expect(page.getByRole("heading", { name: "フィード" })).toHaveCount(0);
+  await expect(
+    page.getByRole("textbox", { name: "今できること" }),
+  ).toBeVisible();
+});
+
 test("登録済みメールアドレスは新規登録時にエラーを表示する", async ({
   page,
 }) => {
