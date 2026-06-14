@@ -777,27 +777,24 @@ function HomeBottomNav({
 function LikeIcon() {
   return (
     <svg
-      viewBox="0 0 24 24"
+      width="64"
+      height="64"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <path
-        d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
-        fill="currentColor"
-        opacity="0.24"
-      />
-      <path
-        d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
+        d="M25 28L34 10C35.2 7.7 39 8.6 39 11.2V24H50C53.1 24 55.4 26.8 54.8 29.8L51.2 47.8C50.7 50.2 48.6 52 46.1 52H25V28Z"
         stroke="currentColor"
-        strokeWidth="1.9"
+        strokeWidth="5"
         strokeLinejoin="round"
       />
       <path
-        d="M7.4 10.2V20.6"
+        d="M10 30C10 27.8 11.8 26 14 26H25V52H14C11.8 52 10 50.2 10 48V30Z"
         stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
+        strokeWidth="5"
+        strokeLinejoin="round"
       />
     </svg>
   )
@@ -806,27 +803,18 @@ function LikeIcon() {
 function CommentIcon() {
   return (
     <svg
-      viewBox="0 0 24 24"
+      width="64"
+      height="64"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <path
-        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
-        fill="currentColor"
-        opacity="0.18"
-      />
-      <path
-        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+        d="M16 14H48C51.3 14 54 16.7 54 20V36C54 39.3 51.3 42 48 42H27L16 52V42C12.7 42 10 39.3 10 36V20C10 16.7 12.7 14 16 14Z"
         stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
+        strokeWidth="5"
         strokeLinejoin="round"
-      />
-      <path
-        d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
-        stroke="currentColor"
-        strokeWidth="2.3"
         strokeLinecap="round"
       />
     </svg>
