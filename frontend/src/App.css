@@ -1571,6 +1571,23 @@ body {
   background: #f4f7fb;
 }
 
+.feed-page .home-header {
+  grid-template-columns: auto 1fr;
+}
+
+.feed-page .home-header > .home-header-action:first-child {
+  display: none;
+}
+
+.feed-page .home-header h1 {
+  justify-self: start;
+  text-align: left;
+}
+
+.feed-page .home-header-action-right {
+  justify-self: end;
+}
+
 .feed-countdown {
   display: inline-flex;
   align-items: center;
@@ -1756,6 +1773,20 @@ body {
   color: #9aa6b8;
   font-size: 10px;
   font-weight: 700;
+}
+
+.feed-comment-backdrop {
+  position: fixed;
+  top: 64px;
+  right: 0;
+  bottom: 64px;
+  left: 0;
+  z-index: 8;
+  border: 0;
+  padding: 0;
+  background: rgb(15 23 42 / 10%);
+  backdrop-filter: blur(5px);
+  cursor: pointer;
 }
 
 .feed-comment-panel {
@@ -1983,6 +2014,10 @@ body {
 
   .home-bottom-nav {
     height: 56px;
+  }
+
+  .feed-comment-backdrop {
+    bottom: 56px;
   }
 
   .feed-comment-panel {

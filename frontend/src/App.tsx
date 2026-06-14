@@ -2060,83 +2060,94 @@ function HomePage() {
 
         <HomeBottomNav activeItem="feed" />
         {activeCommentPost ? (
-          <section
-            className={`feed-comment-panel feed-comment-panel-${activeCommentPost.status}`}
-            aria-labelledby="feed-comment-panel-title"
-          >
-            <div className="feed-comment-panel-header">
-              <h2 id="feed-comment-panel-title">コメント</h2>
-              <button
-                className="feed-comment-panel-close"
-                type="button"
-                aria-label="コメントを閉じる"
-                onClick={closeCommentPanel}
-              >
-                ×
-              </button>
-            </div>
+          <>
+            <button
+              className="feed-comment-backdrop"
+              type="button"
+              aria-label="コメントを閉じる"
+              onClick={closeCommentPanel}
+            />
+            <section
+              className={`feed-comment-panel feed-comment-panel-${activeCommentPost.status}`}
+              aria-labelledby="feed-comment-panel-title"
+            >
+              <div className="feed-comment-panel-header">
+                <h2 id="feed-comment-panel-title">コメント</h2>
+                <button
+                  className="feed-comment-panel-close"
+                  type="button"
+                  aria-label="コメントを閉じる"
+                  onClick={closeCommentPanel}
+                >
+                  ×
+                </button>
+              </div>
 
-            <div className="feed-comment-panel-task">
-              {activeCommentPost.task}
-            </div>
+              <div className="feed-comment-panel-task">
+                {activeCommentPost.task}
+              </div>
 
-            {activeCommentPost.comments.length > 0 ? (
-              <ul className="feed-comment-panel-list" aria-label="コメント一覧">
-                {activeCommentPost.comments.map((comment, index) => (
-                  <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
-                    <div className="feed-comment-author">
-                      <span
-                        className="feed-comment-avatar"
-                        aria-hidden="true"
-                      />
-                      <span>みき</span>
-                      <span className="feed-comment-level">Lv.7</span>
-                    </div>
-                    <div className="feed-comment-body">
-                      <span>{comment}</span>
-                      <time
-                        dateTime={new Date(
-                          activeCommentPost.createdAt,
-                        ).toISOString()}
-                      >
-                        {index === activeCommentPost.comments.length - 1
-                          ? formatFeedPostAge(
-                              activeCommentPost.createdAt,
-                              feedNow,
-                            )
-                          : '2時間前'}
-                      </time>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="feed-comment-empty">まだコメントはありません</p>
-            )}
+              {activeCommentPost.comments.length > 0 ? (
+                <ul
+                  className="feed-comment-panel-list"
+                  aria-label="コメント一覧"
+                >
+                  {activeCommentPost.comments.map((comment, index) => (
+                    <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>みき</span>
+                        <span className="feed-comment-level">Lv.7</span>
+                      </div>
+                      <div className="feed-comment-body">
+                        <span>{comment}</span>
+                        <time
+                          dateTime={new Date(
+                            activeCommentPost.createdAt,
+                          ).toISOString()}
+                        >
+                          {index === activeCommentPost.comments.length - 1
+                            ? formatFeedPostAge(
+                                activeCommentPost.createdAt,
+                                feedNow,
+                              )
+                            : '2時間前'}
+                        </time>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="feed-comment-empty">まだコメントはありません</p>
+              )}
 
-            <div className="feed-comment-panel-form">
-              <input
-                type="text"
-                aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
-                placeholder="コメントを入力"
-                value={commentDrafts[activeCommentPost.id] ?? ''}
-                onChange={(event) =>
-                  handleCommentDraftChange(
-                    activeCommentPost.id,
-                    event.target.value,
-                  )
-                }
-              />
-              <button
-                type="button"
-                aria-label="コメントを送信"
-                onClick={() => addPostComment(activeCommentPost.id)}
-                disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
-              >
-                ➤
-              </button>
-            </div>
-          </section>
+              <div className="feed-comment-panel-form">
+                <input
+                  type="text"
+                  aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
+                  placeholder="コメントを入力"
+                  value={commentDrafts[activeCommentPost.id] ?? ''}
+                  onChange={(event) =>
+                    handleCommentDraftChange(
+                      activeCommentPost.id,
+                      event.target.value,
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  aria-label="コメントを送信"
+                  onClick={() => addPostComment(activeCommentPost.id)}
+                  disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
+                >
+                  ➤
+                </button>
+              </div>
+            </section>
+          </>
         ) : null}
 
         <nav className="home-bottom-nav" aria-label="ホームメニュー">
