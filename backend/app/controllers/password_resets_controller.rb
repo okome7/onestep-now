@@ -16,9 +16,9 @@ class PasswordResetsController < ApplicationController
 
     user = User.find_by(email: email)
     _record, code = PasswordResetCode.issue_for(email: email, user: user)
-    deliver_reset_code(email:, code:, user:)
+    delivery_status = deliver_reset_code(email:, code:, user:)
 
-    render json: { status: "success", message: SUCCESS_MESSAGE }, status: :ok
+    render json: success_response(delivery_status), status: :ok
   end
 
   def verify
@@ -58,18 +58,26 @@ class PasswordResetsController < ApplicationController
       Rails.logger.info(
         "Password reset mail skipped: email=#{email} reason=user_not_found"
       )
-      return
+      return :skipped_user_not_found
     end
 
     Rails.logger.info("Password reset mail delivery started: email=#{email}")
     PasswordResetMailer.with(email: email, code: code).reset_code.deliver_now
     Rails.logger.info("Password reset mail delivered: email=#{email}")
+    :delivered
   rescue StandardError => e
     Rails.logger.error(
       "Password reset mail delivery failed: email=#{email} " \
         "error=#{e.class} message=#{e.message}"
     )
     raise
+  end
+
+  def success_response(delivery_status)
+    response = { status: "success", message: SUCCESS_MESSAGE }
+    return response unless Rails.env.development?
+
+    response.merge(debug: { mail_delivery: delivery_status })
   end
 
   def reset_params
