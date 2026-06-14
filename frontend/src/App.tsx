@@ -1872,13 +1872,20 @@ function HomePage() {
       return undefined
     }
 
+    const expirationTimerId = window.setTimeout(() => {
+      setFeedRemainingSeconds(0)
+      setFeedNow(Date.now())
+    }, feedRemainingSeconds * 1000)
     const timerId = window.setInterval(() => {
       setFeedRemainingSeconds((current) => Math.max(0, current - 1))
       setFeedNow(Date.now())
     }, 1000)
 
-    return () => window.clearInterval(timerId)
-  }, [isFeedExpired, isFeedOpen])
+    return () => {
+      window.clearInterval(timerId)
+      window.clearTimeout(expirationTimerId)
+    }
+  }, [feedRemainingSeconds, isFeedExpired, isFeedOpen])
 
   function addFeedPost(task: string, status: FeedPostStatus) {
     const postId = `${status}-${Date.now()}`
@@ -1909,10 +1916,18 @@ function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function openHome(event?: MouseEvent<HTMLAnchorElement>) {
+  function openHome(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function startNextTaskFromExpiredFeed(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    setIsFeedOpen(false)
+    setIsProfileOpen(false)
+    handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -2150,76 +2165,95 @@ function HomePage() {
           }
         />
 
-        {isFeedExpired ? (
-          <section className="feed-expired" aria-live="polite">
-            <h2>フィードの閲覧時間が終了しました</h2>
-            <p>もう一度見る場合は、みんなを見るを押してください。</p>
-            <button
-              className="home-start-button"
-              type="button"
-              onClick={openFeed}
+        <section
+          className={`feed-list ${isFeedExpired ? 'feed-list-expired' : ''}`}
+          aria-label="みんなの投稿"
+          aria-hidden={isFeedExpired ? 'true' : undefined}
+        >
+          {visibleFeedPosts.map((post) => (
+            <article
+              className={`feed-card feed-card-${post.status}`}
+              key={post.id}
             >
-              もう一度見る
-            </button>
-          </section>
-        ) : (
-          <section className="feed-list" aria-label="みんなの投稿">
-            {visibleFeedPosts.map((post) => (
-              <article
-                className={`feed-card feed-card-${post.status}`}
-                key={post.id}
-              >
-                <div className="feed-card-header">
-                  <div className="feed-user">
-                    <span className="feed-avatar" aria-hidden="true" />
-                    <span className="feed-user-name">{post.userName}</span>
-                    <span className="feed-user-level">Lv.{post.level}</span>
-                  </div>
-                  <span className={`feed-status feed-status-${post.status}`}>
-                    {post.status === 'done' ? '✓ できた' : '⚑ やります'}
+              <div className="feed-card-header">
+                <div className="feed-user">
+                  <span className="feed-avatar" aria-hidden="true" />
+                  <span className="feed-user-name">{post.userName}</span>
+                  <span className="feed-user-level">Lv.{post.level}</span>
+                </div>
+                <span className={`feed-status feed-status-${post.status}`}>
+                  {post.status === 'done' ? '✓ できた' : '⚑ やります'}
+                </span>
+              </div>
+
+              <p className="feed-task">{post.task}</p>
+
+              <div className="feed-card-footer">
+                <button
+                  className={`feed-reaction ${post.liked ? 'active' : ''}`}
+                  type="button"
+                  aria-pressed={post.liked}
+                  onClick={() => togglePostLike(post.id)}
+                >
+                  <span className="feed-action-icon">
+                    <img
+                      src={post.liked ? likeActiveIcon : likeIcon}
+                      alt=""
+                      aria-hidden="true"
+                    />
                   </span>
-                </div>
+                  <span>{post.likes}</span>
+                </button>
+                <button
+                  className="feed-comment-count"
+                  type="button"
+                  aria-label={`${post.userName}さんのコメントを開く`}
+                  onClick={() => openCommentPanel(post.id)}
+                >
+                  <span className="feed-action-icon">
+                    <img src={commentIcon} alt="" aria-hidden="true" />
+                  </span>
+                  <span>{post.comments.length}</span>
+                </button>
+                <time
+                  className="feed-post-age"
+                  dateTime={new Date(post.createdAt).toISOString()}
+                >
+                  {formatFeedPostAge(post.createdAt, feedNow)}
+                </time>
+              </div>
+            </article>
+          ))}
+        </section>
 
-                <p className="feed-task">{post.task}</p>
-
-                <div className="feed-card-footer">
-                  <button
-                    className={`feed-reaction ${post.liked ? 'active' : ''}`}
-                    type="button"
-                    aria-pressed={post.liked}
-                    onClick={() => togglePostLike(post.id)}
-                  >
-                    <span className="feed-action-icon">
-                      <img
-                        src={post.liked ? likeActiveIcon : likeIcon}
-                        alt=""
-                        aria-hidden="true"
-                      />
-                    </span>
-                    <span>{post.likes}</span>
-                  </button>
-                  <button
-                    className="feed-comment-count"
-                    type="button"
-                    aria-label={`${post.userName}さんのコメントを開く`}
-                    onClick={() => openCommentPanel(post.id)}
-                  >
-                    <span className="feed-action-icon">
-                      <img src={commentIcon} alt="" aria-hidden="true" />
-                    </span>
-                    <span>{post.comments.length}</span>
-                  </button>
-                  <time
-                    className="feed-post-age"
-                    dateTime={new Date(post.createdAt).toISOString()}
-                  >
-                    {formatFeedPostAge(post.createdAt, feedNow)}
-                  </time>
-                </div>
-              </article>
-            ))}
-          </section>
-        )}
+        {isFeedExpired ? (
+          <div className="feed-expired-backdrop" role="presentation">
+            <section
+              className="feed-expired-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="feed-expired-title"
+              aria-describedby="feed-expired-description"
+            >
+              <div className="feed-expired-illustration" aria-hidden="true">
+                <span className="feed-expired-clock" />
+              </div>
+              <h2 id="feed-expired-title">5分経過しました</h2>
+              <p id="feed-expired-description">
+                リフレッシュできましたか？
+                <br />
+                次の一歩を始めましょう！
+              </p>
+              <button
+                className="feed-expired-start-button"
+                type="button"
+                onClick={startNextTaskFromExpiredFeed}
+              >
+                始める
+              </button>
+            </section>
+          </div>
+        ) : null}
 
         <HomeBottomNav
           activeItem="feed"
