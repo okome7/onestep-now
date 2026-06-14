@@ -94,7 +94,7 @@ body {
 
 .home-task-input {
   width: min(100%, 300px);
-  height: 48px;
+  height: 56px;
   border: 1px solid #b8c1cc;
   border-radius: 6px;
   padding: 0 14px;
@@ -136,7 +136,7 @@ body {
 
 .home-start-button {
   width: min(100%, 240px);
-  height: 56px;
+  height: 64px;
   margin-top: 34px;
   border: 0;
   border-radius: 999px;
