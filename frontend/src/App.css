@@ -272,7 +272,7 @@ body {
 
 .task-cancel-modal p {
   margin: 8px 0 20px;
-  color: #c7cfda;
+  color: #7b8797;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
@@ -758,6 +758,31 @@ body {
 }
 
 @media (min-width: 640px) {
+  .task-cancel-modal {
+    width: min(100%, 360px);
+    border-radius: 26px;
+    padding: 36px 36px 24px;
+  }
+
+  .task-cancel-modal h2 {
+    font-size: 20px;
+  }
+
+  .task-cancel-modal p {
+    margin: 10px 0 28px;
+    font-size: 15px;
+  }
+
+  .task-cancel-modal-actions {
+    gap: 20px;
+  }
+
+  .task-cancel-modal-actions button {
+    min-height: 48px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+
   .task-complete-screen {
     grid-template-rows: minmax(0, 1fr) auto;
     height: 100dvh;
