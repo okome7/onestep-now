@@ -1709,7 +1709,7 @@ body {
 
 .feed-card-footer {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: 52px auto 1fr;
   align-items: center;
   gap: 11px;
   color: #9aa6b8;
@@ -1722,6 +1722,10 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+.feed-reaction {
+  width: 52px;
 }
 
 .feed-reaction,
