@@ -2231,6 +2231,12 @@ body {
   font-weight: 500;
 }
 
+@media (max-width: 639px) {
+  .profile-achievement-list {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom));
+  }
+}
+
 @media (min-width: 640px) {
   .profile-content {
     padding-top: 28px;
