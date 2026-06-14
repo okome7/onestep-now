@@ -116,6 +116,12 @@ SMTP_RAISE_DELIVERY_ERRORS=true
 
 development環境ではSMTP送信失敗を画面・Railsログで確認できるように `raise_delivery_errors = true` を設定し、Active Jobは `:inline` アダプターでローカルプロセス内実行します。パスワード再設定メールは現在 `deliver_now` で同期送信されるため、`bundle exec rails s` だけで送信成否がRailsログに出力されます。
 
+Docker Composeで起動する場合も `backend/.env` がbackendコンテナに渡されます。`.env` を変更した後はbackendコンテナを再作成してください。
+
+```bash
+docker compose up -d --force-recreate backend frontend
+```
+
 Resendの `onboarding@resend.dev` はテスト用送信元です。Resendで独自ドメインを検証していない場合、送信できる宛先はResendアカウントに登録されているメールアドレスに制限されます。任意の宛先へ送るには、Resendで送信ドメインを検証し、`MAIL_FROM` を検証済みドメインのアドレスに変更してください。
 
 SMTP設定がない場合、再設定コードの発行APIは動きますが、実際のメール配送は行われません。
