@@ -116,19 +116,20 @@ body {
 }
 
 .home-task-input.has-error {
-  border-color: #ff6b6b;
+  border-color: #ef4444;
 }
 
 .home-task-input.has-error:focus {
-  border-color: #ff6b6b;
-  box-shadow: 0 0 0 2px rgb(255 107 107 / 18%);
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgb(239 68 68 / 18%);
 }
 
 .home-task-error {
   width: min(100%, 300px);
   margin: 8px 0 0;
-  color: #ff6b6b;
+  color: #ef4444;
   font-size: 12px;
+  text-align: left;
   font-weight: 700;
   line-height: 1.4;
 }
@@ -773,6 +774,10 @@ body {
     border-radius: 6px;
     padding-inline: 14px;
     font-size: 16px;
+  }
+
+  .home-task-error {
+    width: min(100%, 320px);
   }
 
   .home-start-button {
