@@ -1,5 +1,3 @@
-Dotenv.load(Rails.root.join(".env").to_s) if Rails.env.local? && defined?(Dotenv)
-
 smtp_address = ENV["SMTP_ADDRESS"].to_s.strip
 
 if smtp_address.present?
@@ -15,7 +13,6 @@ if smtp_address.present?
     user_name: ENV["SMTP_USERNAME"].presence,
     password: ENV["SMTP_PASSWORD"].presence,
     authentication: (ENV["SMTP_AUTHENTICATION"].presence || "plain").to_sym,
-    tls: ENV.fetch("SMTP_TLS", "false") == "true",
     enable_starttls_auto: ENV.fetch("SMTP_ENABLE_STARTTLS_AUTO", "true") == "true"
   }.compact
 end
