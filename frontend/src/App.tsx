@@ -1809,9 +1809,11 @@ function PasswordResetPage() {
 
 function HomePage() {
   const [taskText, setTaskText] = useState('')
+  const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
@@ -1871,13 +1873,20 @@ function HomePage() {
       return undefined
     }
 
+    const expirationTimerId = window.setTimeout(() => {
+      setFeedRemainingSeconds(0)
+      setFeedNow(Date.now())
+    }, feedRemainingSeconds * 1000)
     const timerId = window.setInterval(() => {
       setFeedRemainingSeconds((current) => Math.max(0, current - 1))
       setFeedNow(Date.now())
     }, 1000)
 
-    return () => window.clearInterval(timerId)
-  }, [isFeedExpired, isFeedOpen])
+    return () => {
+      window.clearInterval(timerId)
+      window.clearTimeout(expirationTimerId)
+    }
+  }, [feedRemainingSeconds, isFeedExpired, isFeedOpen])
 
   function addFeedPost(task: string, status: FeedPostStatus) {
     const postId = `${status}-${Date.now()}`
@@ -1915,6 +1924,14 @@ function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
+  function startNextTaskFromExpiredFeed(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    setIsFeedOpen(false)
+    setIsProfileOpen(false)
+    handleNextTask()
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
     setIsFeedOpen(false)
@@ -1928,9 +1945,11 @@ function HomePage() {
     const nextTask = taskText.trim()
 
     if (!nextTask) {
+      setTaskError('やることを入力してください')
       return
     }
 
+    setTaskError('')
     setActiveTask(nextTask)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
@@ -1938,9 +1957,22 @@ function HomePage() {
   }
 
   function handleTaskCancel() {
+    setIsCancelConfirmOpen(true)
+  }
+
+  function closeTaskCancelConfirm() {
+    setIsCancelConfirmOpen(false)
+  }
+
+  function confirmTaskCancel() {
     setActiveTask('')
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+    setIsCancelConfirmOpen(false)
+    setIsFeedOpen(false)
+    setIsProfileOpen(false)
+    window.history.pushState(null, '', '/home')
+    window.scrollTo({ top: 0, left: 0 })
   }
 
   function handleTaskDone() {
@@ -1950,6 +1982,7 @@ function HomePage() {
 
   function handleNextTask() {
     setTaskText('')
+    setTaskError('')
     setActiveTask('')
     setElapsedSeconds(0)
     setIsTaskComplete(false)
@@ -2092,7 +2125,7 @@ function HomePage() {
                   <strong>{achievement.task}</strong>
                   <div>
                     <span>
-                      <img src={likeActiveIcon} alt="" aria-hidden="true" />
+                      <img src={likeIcon} alt="" aria-hidden="true" />
                       {achievement.likes}
                     </span>
                     <span>
@@ -2446,6 +2479,37 @@ function HomePage() {
               やめる
             </button>
           </div>
+
+          {isCancelConfirmOpen ? (
+            <div className="task-cancel-modal-backdrop" role="presentation">
+              <div
+                className="task-cancel-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="task-cancel-modal-title"
+                aria-describedby="task-cancel-modal-description"
+              >
+                <h2 id="task-cancel-modal-title">このタスクをやめますか？</h2>
+                <p id="task-cancel-modal-description">投稿は削除されます</p>
+                <div className="task-cancel-modal-actions">
+                  <button
+                    className="task-cancel-modal-secondary"
+                    type="button"
+                    onClick={closeTaskCancelConfirm}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    className="task-cancel-modal-primary"
+                    type="button"
+                    onClick={confirmTaskCancel}
+                  >
+                    やめる
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : (
         <form
@@ -2455,18 +2519,26 @@ function HomePage() {
         >
           <h2 id="home-start-title">今できることから</h2>
           <input
-            className="home-task-input"
+            className={`home-task-input ${taskError ? 'has-error' : ''}`}
             type="text"
             aria-label="今できること"
+            aria-invalid={taskError ? 'true' : undefined}
+            aria-describedby={taskError ? 'home-task-error' : undefined}
             placeholder="やることを入力"
             value={taskText}
-            onChange={(event) => setTaskText(event.target.value)}
+            onChange={(event) => {
+              setTaskText(event.target.value)
+              if (taskError) {
+                setTaskError('')
+              }
+            }}
           />
-          <button
-            className="home-start-button"
-            type="submit"
-            disabled={!taskText.trim()}
-          >
+          {taskError ? (
+            <p className="home-task-error" id="home-task-error" role="alert">
+              {taskError}
+            </p>
+          ) : null}
+          <button className="home-start-button" type="submit">
             始める
           </button>
         </form>
