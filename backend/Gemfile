@@ -53,3 +53,5 @@ group :development, :test do
 
   gem "dotenv-rails", groups: [ :development, :test ]
 end
+
+gem "resend", "~> 1.3"
