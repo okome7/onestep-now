@@ -14,6 +14,7 @@ import type { SignupForm } from './signupApi'
 import passwordShowIcon from './assets/icons/password_show.svg'
 import passwordHideIcon from './assets/icons/password_hide.svg'
 import likeIcon from './assets/icons/like.svg'
+import likeActiveIcon from './assets/icons/like-active.svg'
 import commentIcon from './assets/icons/comment.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
 import avatarTwo from './assets/avatars/avatar-2.svg'
@@ -2034,7 +2035,11 @@ function HomePage() {
                     onClick={() => togglePostLike(post.id)}
                   >
                     <span className="feed-action-icon">
-                      <img src={likeIcon} alt="" aria-hidden="true" />
+                      <img
+                        src={post.liked ? likeActiveIcon : likeIcon}
+                        alt=""
+                        aria-hidden="true"
+                      />
                     </span>
                     <span>{post.likes}</span>
                   </button>
