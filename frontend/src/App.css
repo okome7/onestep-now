@@ -115,6 +115,25 @@ body {
   box-shadow: 0 0 0 2px rgb(77 149 229 / 18%);
 }
 
+.home-task-input.has-error {
+  border-color: #ef4444;
+}
+
+.home-task-input.has-error:focus {
+  border-color: #ef4444;
+  box-shadow: none;
+}
+
+.home-task-error {
+  width: min(100%, 300px);
+  margin: 8px 0 0;
+  color: #ef4444;
+  font-size: 12px;
+  text-align: left;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .home-start-button {
   width: min(100%, 240px);
   height: 56px;
@@ -755,6 +774,10 @@ body {
     border-radius: 6px;
     padding-inline: 14px;
     font-size: 16px;
+  }
+
+  .home-task-error {
+    width: min(100%, 320px);
   }
 
   .home-start-button {
