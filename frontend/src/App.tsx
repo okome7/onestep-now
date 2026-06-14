@@ -13,6 +13,9 @@ import { checkSignupEmail, signup } from './signupApi'
 import type { SignupForm } from './signupApi'
 import passwordShowIcon from './assets/icons/password_show.svg'
 import passwordHideIcon from './assets/icons/password_hide.svg'
+import likeIcon from './assets/icons/like.svg'
+import likeActiveIcon from './assets/icons/like-active.svg'
+import commentIcon from './assets/icons/comment.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
 import avatarTwo from './assets/avatars/avatar-2.svg'
 import avatarThree from './assets/avatars/avatar-3.svg'
@@ -131,6 +134,66 @@ const sampleFeedPosts: Array<
     likes: 12,
     comments: ['ナイス！', 'えらい！', '助かるね'],
     ageMinutes: 8,
+    liked: false,
+    isOwnPost: false,
+  },
+  {
+    id: 'sample-6',
+    userName: 'ゆい',
+    level: 9,
+    task: 'ストレッチを5分する',
+    status: 'doing',
+    likes: 4,
+    comments: ['一緒にがんばろう！'],
+    ageMinutes: 10,
+    liked: false,
+    isOwnPost: false,
+  },
+  {
+    id: 'sample-7',
+    userName: 'そうた',
+    level: 12,
+    task: '英単語を10個覚える',
+    status: 'done',
+    likes: 8,
+    comments: ['継続できててすごい！', 'ナイス一歩！'],
+    ageMinutes: 12,
+    liked: true,
+    isOwnPost: false,
+  },
+  {
+    id: 'sample-8',
+    userName: 'りん',
+    level: 3,
+    task: '机の上を整理する',
+    status: 'doing',
+    likes: 3,
+    comments: [],
+    ageMinutes: 15,
+    liked: false,
+    isOwnPost: false,
+  },
+  {
+    id: 'sample-9',
+    userName: 'なお',
+    level: 18,
+    task: 'メールを1件返信する',
+    status: 'done',
+    likes: 15,
+    comments: ['早い！', '助かるね'],
+    ageMinutes: 18,
+    liked: false,
+    isOwnPost: false,
+  },
+  {
+    id: 'sample-10',
+    userName: 'まい',
+    level: 6,
+    task: '明日の予定を3つ書く',
+    status: 'doing',
+    likes: 5,
+    comments: ['いい準備！'],
+    ageMinutes: 20,
     liked: false,
     isOwnPost: false,
   },
@@ -711,65 +774,6 @@ function HomeBottomNav({
         <ProfileNavIcon />
       </a>
     </nav>
-  )
-}
-
-function LikeIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
-        fill="currentColor"
-        opacity="0.24"
-      />
-      <path
-        d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.4 10.2V20.6"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-function CommentIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
-        fill="currentColor"
-        opacity="0.18"
-      />
-      <path
-        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
-        stroke="currentColor"
-        strokeWidth="2.3"
-        strokeLinecap="round"
-      />
-    </svg>
   )
 }
 
@@ -2031,7 +2035,11 @@ function HomePage() {
                     onClick={() => togglePostLike(post.id)}
                   >
                     <span className="feed-action-icon">
-                      <LikeIcon />
+                      <img
+                        src={post.liked ? likeActiveIcon : likeIcon}
+                        alt=""
+                        aria-hidden="true"
+                      />
                     </span>
                     <span>{post.likes}</span>
                   </button>
@@ -2042,7 +2050,7 @@ function HomePage() {
                     onClick={() => openCommentPanel(post.id)}
                   >
                     <span className="feed-action-icon">
-                      <CommentIcon />
+                      <img src={commentIcon} alt="" aria-hidden="true" />
                     </span>
                     <span>{post.comments.length}</span>
                   </button>
@@ -2060,83 +2068,94 @@ function HomePage() {
 
         <HomeBottomNav activeItem="feed" />
         {activeCommentPost ? (
-          <section
-            className={`feed-comment-panel feed-comment-panel-${activeCommentPost.status}`}
-            aria-labelledby="feed-comment-panel-title"
-          >
-            <div className="feed-comment-panel-header">
-              <h2 id="feed-comment-panel-title">コメント</h2>
-              <button
-                className="feed-comment-panel-close"
-                type="button"
-                aria-label="コメントを閉じる"
-                onClick={closeCommentPanel}
-              >
-                ×
-              </button>
-            </div>
+          <>
+            <button
+              className="feed-comment-backdrop"
+              type="button"
+              aria-label="コメントを閉じる"
+              onClick={closeCommentPanel}
+            />
+            <section
+              className={`feed-comment-panel feed-comment-panel-${activeCommentPost.status}`}
+              aria-labelledby="feed-comment-panel-title"
+            >
+              <div className="feed-comment-panel-header">
+                <h2 id="feed-comment-panel-title">コメント</h2>
+                <button
+                  className="feed-comment-panel-close"
+                  type="button"
+                  aria-label="コメントを閉じる"
+                  onClick={closeCommentPanel}
+                >
+                  ×
+                </button>
+              </div>
 
-            <div className="feed-comment-panel-task">
-              {activeCommentPost.task}
-            </div>
+              <div className="feed-comment-panel-task">
+                {activeCommentPost.task}
+              </div>
 
-            {activeCommentPost.comments.length > 0 ? (
-              <ul className="feed-comment-panel-list" aria-label="コメント一覧">
-                {activeCommentPost.comments.map((comment, index) => (
-                  <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
-                    <div className="feed-comment-author">
-                      <span
-                        className="feed-comment-avatar"
-                        aria-hidden="true"
-                      />
-                      <span>みき</span>
-                      <span className="feed-comment-level">Lv.7</span>
-                    </div>
-                    <div className="feed-comment-body">
-                      <span>{comment}</span>
-                      <time
-                        dateTime={new Date(
-                          activeCommentPost.createdAt,
-                        ).toISOString()}
-                      >
-                        {index === activeCommentPost.comments.length - 1
-                          ? formatFeedPostAge(
-                              activeCommentPost.createdAt,
-                              feedNow,
-                            )
-                          : '2時間前'}
-                      </time>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="feed-comment-empty">まだコメントはありません</p>
-            )}
+              {activeCommentPost.comments.length > 0 ? (
+                <ul
+                  className="feed-comment-panel-list"
+                  aria-label="コメント一覧"
+                >
+                  {activeCommentPost.comments.map((comment, index) => (
+                    <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>みき</span>
+                        <span className="feed-comment-level">Lv.7</span>
+                      </div>
+                      <div className="feed-comment-body">
+                        <span>{comment}</span>
+                        <time
+                          dateTime={new Date(
+                            activeCommentPost.createdAt,
+                          ).toISOString()}
+                        >
+                          {index === activeCommentPost.comments.length - 1
+                            ? formatFeedPostAge(
+                                activeCommentPost.createdAt,
+                                feedNow,
+                              )
+                            : '2時間前'}
+                        </time>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="feed-comment-empty">まだコメントはありません</p>
+              )}
 
-            <div className="feed-comment-panel-form">
-              <input
-                type="text"
-                aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
-                placeholder="コメントを入力"
-                value={commentDrafts[activeCommentPost.id] ?? ''}
-                onChange={(event) =>
-                  handleCommentDraftChange(
-                    activeCommentPost.id,
-                    event.target.value,
-                  )
-                }
-              />
-              <button
-                type="button"
-                aria-label="コメントを送信"
-                onClick={() => addPostComment(activeCommentPost.id)}
-                disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
-              >
-                ➤
-              </button>
-            </div>
-          </section>
+              <div className="feed-comment-panel-form">
+                <input
+                  type="text"
+                  aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
+                  placeholder="コメントを入力"
+                  value={commentDrafts[activeCommentPost.id] ?? ''}
+                  onChange={(event) =>
+                    handleCommentDraftChange(
+                      activeCommentPost.id,
+                      event.target.value,
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  aria-label="コメントを送信"
+                  onClick={() => addPostComment(activeCommentPost.id)}
+                  disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
+                >
+                  ➤
+                </button>
+              </div>
+            </section>
+          </>
         ) : null}
 
         <nav className="home-bottom-nav" aria-label="ホームメニュー">
@@ -2288,11 +2307,11 @@ function HomePage() {
 
             <div className="task-complete-stats" aria-label="リアクション">
               <span>
-                <LikeIcon />
+                <img src={likeIcon} alt="" aria-hidden="true" />
                 {taskCompleteLikeCount}件
               </span>
               <span>
-                <CommentIcon />
+                <img src={commentIcon} alt="" aria-hidden="true" />
                 {taskCompleteComments.length}件
               </span>
             </div>
