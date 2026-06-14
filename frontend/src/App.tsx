@@ -1870,13 +1870,20 @@ function HomePage() {
       return undefined
     }
 
+    const expirationTimerId = window.setTimeout(() => {
+      setFeedRemainingSeconds(0)
+      setFeedNow(Date.now())
+    }, feedRemainingSeconds * 1000)
     const timerId = window.setInterval(() => {
       setFeedRemainingSeconds((current) => Math.max(0, current - 1))
       setFeedNow(Date.now())
     }, 1000)
 
-    return () => window.clearInterval(timerId)
-  }, [isFeedExpired, isFeedOpen])
+    return () => {
+      window.clearInterval(timerId)
+      window.clearTimeout(expirationTimerId)
+    }
+  }, [feedRemainingSeconds, isFeedExpired, isFeedOpen])
 
   function addFeedPost(task: string, status: FeedPostStatus) {
     const postId = `${status}-${Date.now()}`
@@ -1911,6 +1918,14 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function startNextTaskFromExpiredFeed(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    setIsFeedOpen(false)
+    setIsProfileOpen(false)
+    handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -2214,7 +2229,7 @@ function HomePage() {
               <button
                 className="feed-expired-start-button"
                 type="button"
-                onClick={openHome}
+                onClick={startNextTaskFromExpiredFeed}
               >
                 始める
               </button>
