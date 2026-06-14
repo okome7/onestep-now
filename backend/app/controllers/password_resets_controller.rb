@@ -16,7 +16,7 @@ class PasswordResetsController < ApplicationController
 
     user = User.find_by(email: email)
     _record, code = PasswordResetCode.issue_for(email: email, user: user)
-    PasswordResetMailer.with(email: email, code: code).reset_code.deliver_now if user
+    deliver_reset_code(email:, code:, user:)
 
     render json: { status: "success", message: SUCCESS_MESSAGE }, status: :ok
   end
@@ -51,6 +51,25 @@ class PasswordResetsController < ApplicationController
     return unless reset_code&.authenticate_code(reset_params[:code])
 
     reset_code
+  end
+
+  def deliver_reset_code(email:, code:, user:)
+    unless user
+      Rails.logger.info(
+        "Password reset mail skipped: email=#{email} reason=user_not_found"
+      )
+      return
+    end
+
+    Rails.logger.info("Password reset mail delivery started: email=#{email}")
+    PasswordResetMailer.with(email: email, code: code).reset_code.deliver_now
+    Rails.logger.info("Password reset mail delivered: email=#{email}")
+  rescue StandardError => e
+    Rails.logger.error(
+      "Password reset mail delivery failed: email=#{email} " \
+        "error=#{e.class} message=#{e.message}"
+    )
+    raise
   end
 
   def reset_params
