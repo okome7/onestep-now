@@ -64,6 +64,13 @@
 
 body {
   margin: 0;
+  background: #f4f7fb;
+}
+
+html,
+:root,
+#root {
+  background: #f4f7fb;
 }
 
 h1,

@@ -1,0 +1,74 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">アラーム時計</title>
+  <desc id="desc">青いアラーム時計が鳴っているイラスト</desc>
+  <g stroke="#0B4D91" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M42 171C21 201 10 232 10 267C10 304 22 338 46 369" stroke-width="10"/>
+    <path d="M84 219C69 235 61 252 61 271C61 291 69 308 84 325" stroke-width="10"/>
+    <path d="M470 171C491 201 502 232 502 267C502 304 490 338 466 369" stroke-width="10"/>
+    <path d="M428 219C443 235 451 252 451 271C451 291 443 308 428 325" stroke-width="10"/>
+    <path d="M93 86L119 117" stroke-width="11"/>
+    <path d="M143 70L151 111" stroke-width="11"/>
+    <path d="M368 70L361 111" stroke-width="11"/>
+    <path d="M419 86L393 117" stroke-width="11"/>
+    <path d="M68 126L109 136" stroke-width="11"/>
+    <path d="M444 126L403 136" stroke-width="11"/>
+  </g>
+  <g filter="url(#softShadow)">
+    <path d="M154 392L128 439C123 449 127 461 137 466C147 471 159 467 164 457L191 411L154 392Z" fill="url(#metal)" stroke="#0B4D91" stroke-width="10"/>
+    <path d="M358 392L384 439C389 449 385 461 375 466C365 471 353 467 348 457L321 411L358 392Z" fill="url(#metal)" stroke="#0B4D91" stroke-width="10"/>
+
+    <path d="M211 127H301" stroke="#0B4D91" stroke-width="12"/>
+    <rect x="243" y="119" width="26" height="42" fill="url(#metal)" stroke="#0B4D91" stroke-width="10"/>
+    <rect x="224" y="96" width="64" height="41" rx="16" fill="url(#capBlue)" stroke="#0B4D91" stroke-width="10"/>
+
+    <path d="M87 178C80 147 91 113 117 93C143 74 178 77 202 99L105 204C96 200 90 190 87 178Z" fill="url(#bellLeft)" stroke="#0B4D91" stroke-width="11"/>
+    <path d="M425 178C432 147 421 113 395 93C369 74 334 77 310 99L407 204C416 200 422 190 425 178Z" fill="url(#bellRight)" stroke="#0B4D91" stroke-width="11"/>
+    <path d="M103 164C113 143 131 130 153 126" stroke="#FFFFFF" stroke-opacity="0.78" stroke-width="9"/>
+    <path d="M359 126C381 130 399 143 409 164" stroke="#FFFFFF" stroke-opacity="0.78" stroke-width="9"/>
+    <path d="M237 110H271" stroke="#FFFFFF" stroke-opacity="0.82" stroke-width="7"/>
+
+    <circle cx="256" cy="286" r="137" fill="url(#outerBlue)" stroke="#0B4D91" stroke-width="12"/>
+    <circle cx="256" cy="286" r="107" fill="url(#faceBlue)" stroke="#0B4D91" stroke-width="8"/>
+
+    <path d="M256 188V207" stroke="#0B4D91" stroke-width="8"/>
+    <path d="M256 366V386" stroke="#0B4D91" stroke-width="8"/>
+    <path d="M157 286H178" stroke="#0B4D91" stroke-width="8"/>
+    <path d="M334 286H355" stroke="#0B4D91" stroke-width="8"/>
+    <path d="M256 219V286" stroke="#0B4D91" stroke-width="15"/>
+    <path d="M256 286L312 326" stroke="#0B4D91" stroke-width="15"/>
+    <circle cx="256" cy="286" r="17" fill="#0B4D91"/>
+
+    <path d="M166 132C193 111 226 101 256 101" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="8"/>
+    <path d="M156 180C177 154 209 139 246 136" stroke="#FFFFFF" stroke-opacity="0.34" stroke-width="7"/>
+    <path d="M156 410L139 441" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="8"/>
+  </g>
+  <defs>
+    <filter id="softShadow" x="66" y="72" width="380" height="409" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0B4D91" flood-opacity="0.14"/>
+    </filter>
+    <linearGradient id="outerBlue" x1="132" y1="149" x2="376" y2="429" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#64C7FF"/>
+      <stop offset="1" stop-color="#2198F2"/>
+    </linearGradient>
+    <linearGradient id="faceBlue" x1="178" y1="179" x2="332" y2="397" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5FBFF"/>
+      <stop offset="1" stop-color="#DDF2FF"/>
+    </linearGradient>
+    <linearGradient id="bellLeft" x1="95" y1="85" x2="190" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#75CEFF"/>
+      <stop offset="1" stop-color="#35A7F7"/>
+    </linearGradient>
+    <linearGradient id="bellRight" x1="327" y1="85" x2="416" y2="194" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#75CEFF"/>
+      <stop offset="1" stop-color="#35A7F7"/>
+    </linearGradient>
+    <linearGradient id="capBlue" x1="229" y1="99" x2="278" y2="142" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#78D2FF"/>
+      <stop offset="1" stop-color="#39A9F8"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="127" y1="394" x2="180" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEEEEA"/>
+      <stop offset="1" stop-color="#BDBDB9"/>
+    </linearGradient>
+  </defs>
+</svg>

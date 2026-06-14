@@ -5,7 +5,7 @@ gem "rails", "~> 8.1.3"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", ">= 5.0"
+gem "puma", ">= 8.0.2"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 # gem "jbuilder"
 
@@ -50,4 +50,6 @@ group :development, :test do
 
   gem "rspec-rails"        # Rails用RSpec本体
   gem "factory_bot_rails"  # テストデータ作成用
+
+  gem "dotenv-rails", groups: [ :development, :test ]
 end

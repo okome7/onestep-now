@@ -1,0 +1,32 @@
+<svg
+  width="256"
+  height="256"
+  viewBox="0 0 256 256"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <circle cx="128" cy="128" r="128" fill="#E6F7FF" />
+  <g transform="translate(128 128) rotate(-25) translate(-128 -128)">
+    <path
+      d="M128 188C118 202 120 220 128 228C136 220 138 202 128 188Z"
+      fill="#FFD166"
+    />
+    <path
+      d="M128 48C158 70 172 108 172 144C172 176 152 196 128 196C104 196 84 176 84 144C84 108 98 70 128 48Z"
+      fill="#7DD3FC"
+    />
+    <circle cx="128" cy="118" r="18" fill="#FFFFFF" />
+    <circle cx="128" cy="118" r="10" fill="#60A5FA" />
+    <path
+      d="M84 146C64 152 54 170 56 188C72 182 88 170 96 152Z"
+      fill="#38BDF8"
+    />
+    <path
+      d="M172 146C192 152 202 170 200 188C184 182 168 170 160 152Z"
+      fill="#38BDF8"
+    />
+    <path
+      d="M128 48C140 56 148 68 152 82L104 82C108 68 116 56 128 48Z"
+      fill="#0EA5E9"
+    />
+  </g>
+</svg>

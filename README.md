@@ -38,6 +38,94 @@
 | **backendに入る** | `docker compose exec backend bash`                 |
 | **テスト実行**    | `docker compose exec backend bundle exec rspec`    |
 
+### 🧪 E2Eテスト (Playwright)
+
+E2Eテストはルートディレクトリの Playwright 設定で、Rails API と Vite フロントエンドを起動して実行します。
+
+#### ローカル実行
+
+事前に Node.js 依存関係、Frontend 依存関係、Backend の gem、Playwright ブラウザをインストールしてください。
+
+```bash
+npm ci
+npm --prefix frontend ci
+cd backend && bundle install && cd ..
+npx playwright install
+npm run test:e2e
+```
+
+ローカル実行時は `scripts/start-rails-e2e.mjs` が `RAILS_ENV=test` で `backend/bin/rails db:prepare` を実行し、Rails を `127.0.0.1:3001` で起動します。Frontend は Vite を `127.0.0.1:5173` で起動します。
+
+#### Docker 実行（推奨・最短手順）
+
+Ruby gem や PostgreSQL をホストに用意しない場合、または `npx playwright install` が CDN の 403 などで失敗する環境では、ブラウザ同梱の Playwright 公式イメージを使って実行してください。ローカル Docker 環境での最短手順は次のとおりです。
+
+```bash
+npm ci
+npm run test:e2e:docker
+```
+
+`npm run test:e2e:docker` は内部で `docker compose run --rm --build e2e` を実行します。直接実行する場合も同じコマンドを使えます。
+
+```bash
+docker compose run --rm --build e2e
+```
+
+`e2e` サービスは `backend` と `frontend` の healthcheck が成功してから Playwright を実行します。`backend` は PostgreSQL の起動完了を待ち、`db:prepare` 後に Rails を起動します。
+
+#### Codex 環境での注意
+
+Codex 環境では Docker CLI が利用できない場合や、RubyGems / Playwright CDN へのアクセスが 403 で制限される場合があります。その場合、この環境内では E2E を最後まで実行できないため、Docker CLI と外部ネットワークへアクセスできるローカル環境または CI で確認してください。
+
+#### その他の実行方法
+
+Docker 上で Playwright 設定から開発サーバーも起動したい場合は、次のように実行できます。
+
+```bash
+E2E_USE_DOCKER=1 npm run test:e2e
+```
+
+既に別プロセスや Docker Compose でサーバーを起動済みの場合は、以下の環境変数で接続先を指定できます。
+
+```bash
+E2E_SKIP_WEBSERVER=1 \
+BASE_URL=http://127.0.0.1:5173 \
+E2E_BACKEND_URL=http://127.0.0.1:3000 \
+npm run test:e2e
+```
+
+#### CI での E2E
+
+GitHub Actions の Playwright workflow では、PostgreSQL サービス、Ruby の `bundler-cache`、Node.js 依存関係をセットアップしたうえで、`npx playwright install --with-deps chromium` により Chromium と必要な OS 依存関係をインストールしてから `npm run test:e2e -- --project=chromium` を実行します。CI のブラウザ CDN 制限を避けたい場合は、同 workflow を Playwright 公式 Docker イメージ（例: `mcr.microsoft.com/playwright:v1.60.0-noble`）上で実行する構成に切り替えてください。
+
+### パスワード再設定メールの送信設定
+
+実際にメールを送信する場合は、`backend/.env` にSMTP用の環境変数を設定してください。Resend SMTPを使うローカル開発では、次の値を設定します。
+
+```bash
+MAIL_FROM=onboarding@resend.dev
+SMTP_ADDRESS=smtp.resend.com
+SMTP_PORT=587
+SMTP_DOMAIN=localhost
+SMTP_USERNAME=resend
+SMTP_PASSWORD=your-resend-api-key
+SMTP_AUTHENTICATION=plain
+SMTP_ENABLE_STARTTLS_AUTO=true
+SMTP_RAISE_DELIVERY_ERRORS=true
+```
+
+development環境ではSMTP送信失敗を画面・Railsログで確認できるように `raise_delivery_errors = true` を設定し、Active Jobは `:inline` アダプターでローカルプロセス内実行します。パスワード再設定メールは現在 `deliver_now` で同期送信されるため、`bundle exec rails s` だけで送信成否がRailsログに出力されます。
+
+Docker Composeで起動する場合も `backend/.env` がbackendコンテナに渡されます。`.env` を変更した後はbackendコンテナを再作成してください。
+
+```bash
+docker compose up -d --force-recreate backend frontend
+```
+
+Resendの `onboarding@resend.dev` はテスト用送信元です。Resendで独自ドメインを検証していない場合、送信できる宛先はResendアカウントに登録されているメールアドレスに制限されます。任意の宛先へ送るには、Resendで送信ドメインを検証し、`MAIL_FROM` を検証済みドメインのアドレスに変更してください。
+
+SMTP設定がない場合、再設定コードの発行APIは動きますが、実際のメール配送は行われません。
+
 ---
 
 ## 🛠 技術スタック

@@ -29,8 +29,8 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  # Don't care if the mailer can't send.
-  config.action_mailer.raise_delivery_errors = false
+  # Surface SMTP failures immediately while testing password reset emails locally.
+  config.action_mailer.raise_delivery_errors = true
 
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
@@ -49,6 +49,9 @@ Rails.application.configure do
 
   # Append comments with runtime information tags to SQL queries in logs.
   config.active_record.query_log_tags_enabled = true
+
+  # Run queued mail delivery jobs in-process during local development.
+  config.active_job.queue_adapter = :inline
 
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
@@ -73,5 +76,6 @@ Rails.application.configure do
 
   config.hosts << "localhost"
   config.hosts << "127.0.0.1"
+  config.hosts << "backend"
   config.hosts << ".wsl.localhost"
 end

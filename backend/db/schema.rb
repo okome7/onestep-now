@@ -10,28 +10,46 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_24_112147) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_11_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "password_reset_codes", force: :cascade do |t|
+    t.string "code_digest", null: false
+    t.datetime "created_at", null: false
+    t.string "email", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "used_at"
+    t.bigint "user_id"
+    t.index ["email"], name: "index_password_reset_codes_on_email"
+    t.index ["expires_at"], name: "index_password_reset_codes_on_expires_at"
+    t.index ["user_id"], name: "index_password_reset_codes_on_user_id"
+  end
 
   create_table "tasks", force: :cascade do |t|
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.datetime "started_at"
-    t.string "status"
-    t.string "title"
+    t.string "status", default: "pending", null: false
+    t.string "title", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_tasks_on_user_id"
+    t.index ["user_id"], name: "index_tasks_on_user_id_active_status", unique: true, where: "((status)::text = 'active'::text)"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'active'::character varying::text, 'completed'::character varying::text])", name: "check_tasks_status"
   end
 
   create_table "users", force: :cascade do |t|
+    t.string "avatar_key", default: "avatar-1", null: false
     t.datetime "created_at", null: false
-    t.string "email"
-    t.string "name"
-    t.string "password_digest"
+    t.string "email", null: false
+    t.string "name", null: false
+    t.string "password_digest", null: false
     t.datetime "updated_at", null: false
+    t.index "lower((email)::text)", name: "index_users_on_lower_email", unique: true
   end
 
+  add_foreign_key "password_reset_codes", "users"
   add_foreign_key "tasks", "users"
 end

@@ -2,7 +2,7 @@ default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  host: localhost
+  host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
   username: <%= ENV.fetch("DATABASE_USERNAME", "postgres") %>
   password: <%= ENV.fetch("DATABASE_PASSWORD", "password") %>
 
@@ -13,12 +13,14 @@ development:
 test:
   <<: *default
   database: onestep_now_test
+  url: <%= ENV["DATABASE_URL"] %>
 
 production:
   <<: *default
   database: onestep_now_production
+  url: <%= ENV["DATABASE_URL"] %>
 
 staging:
   <<: *default
   database: onestep_now_staging
-  url: <%= ENV['DATABASE_URL'] %>
+  url: <%= ENV["DATABASE_URL"] %>
