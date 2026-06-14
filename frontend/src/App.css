@@ -741,22 +741,27 @@ body {
   }
 
   .home-start {
-    padding-top: 88px;
+    padding: 88px 20px 24px;
+  }
+
+  .home-start h2 {
+    margin-bottom: 18px;
+    font-size: 17px;
   }
 
   .home-task-input {
-    width: min(100%, 228px);
-    height: 34px;
-    border-radius: 3px;
-    padding-inline: 11px;
-    font-size: 13px;
+    width: min(100%, 320px);
+    height: 48px;
+    border-radius: 6px;
+    padding-inline: 14px;
+    font-size: 16px;
   }
 
   .home-start-button {
-    width: min(100%, 208px);
-    height: 48px;
+    width: min(100%, 240px);
+    height: 56px;
     margin-top: 34px;
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .home-nav-item {
