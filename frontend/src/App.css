@@ -870,89 +870,11 @@ body {
 }
 
 .feed-expired-illustration {
-  position: relative;
+  display: block;
   width: 128px;
-  height: 86px;
-  margin: 0 auto 8px;
-}
-
-.feed-expired-illustration::before {
-  position: absolute;
-  right: 7px;
-  bottom: 1px;
-  left: 8px;
-  height: 13px;
-  border-radius: 999px;
-  background: #d8ebfb;
-  content: '';
-}
-
-.feed-expired-illustration::after {
-  position: absolute;
-  top: 19px;
-  left: 15px;
-  width: 96px;
-  height: 54px;
-  background:
-    radial-gradient(circle at 12px 28px, #b9ddfa 0 6px, transparent 7px),
-    radial-gradient(
-      circle at 86px 15px,
-      transparent 0 9px,
-      #78b9ec 10px 12px,
-      transparent 13px
-    ),
-    radial-gradient(
-      circle at 91px 39px,
-      transparent 0 5px,
-      #9bd0f5 6px 8px,
-      transparent 9px
-    ),
-    radial-gradient(
-      circle at 7px 12px,
-      transparent 0 5px,
-      #9bd0f5 6px 8px,
-      transparent 9px
-    );
-  content: '';
-}
-
-.feed-expired-clock {
-  position: absolute;
-  top: 18px;
-  left: 44px;
-  z-index: 1;
-  width: 58px;
-  height: 58px;
-  border: 3px solid #2f6fa9;
-  border-radius: 50%;
-  background: #80bff4;
-  box-shadow: inset -8px -6px 0 rgb(47 111 169 / 10%);
-}
-
-.feed-expired-clock::before {
-  position: absolute;
-  top: 9px;
-  left: 26px;
-  width: 2px;
-  height: 18px;
-  border-radius: 999px;
-  background: #1f4f7e;
-  transform: rotate(8deg);
-  transform-origin: bottom center;
-  content: '';
-}
-
-.feed-expired-clock::after {
-  position: absolute;
-  top: 26px;
-  left: 27px;
-  width: 12px;
-  height: 2px;
-  border-radius: 999px;
-  background: #1f4f7e;
-  transform: rotate(-68deg);
-  transform-origin: left center;
-  content: '';
+  height: 128px;
+  margin: -2px auto 8px;
+  object-fit: contain;
 }
 
 .feed-expired-modal h2 {
@@ -988,6 +910,34 @@ body {
 .feed-expired-start-button:focus-visible {
   outline: 3px solid rgb(77 149 229 / 35%);
   outline-offset: 3px;
+}
+
+@media (min-width: 640px) {
+  .feed-expired-modal {
+    width: min(100%, 380px);
+    border-radius: 28px;
+    padding: 30px 44px 28px;
+  }
+
+  .feed-expired-illustration {
+    width: 172px;
+    height: 172px;
+    margin-bottom: 12px;
+  }
+
+  .feed-expired-modal h2 {
+    font-size: 24px;
+  }
+
+  .feed-expired-modal p {
+    font-size: 16px;
+  }
+
+  .feed-expired-start-button {
+    height: 52px;
+    margin-top: 18px;
+    font-size: 20px;
+  }
 }
 
 @media (max-width: 639px) {

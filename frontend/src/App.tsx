@@ -19,6 +19,7 @@ import commentIcon from './assets/icons/comment.svg'
 import settingsIcon from './assets/icons/settings.svg'
 import achievementFlameIcon from './assets/icons/achievement-flame.svg'
 import achievementCheckIcon from './assets/icons/achievement-check.svg'
+import feedExpiredClockIcon from './assets/icons/feed-expired-clock.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
 import avatarTwo from './assets/avatars/avatar-2.svg'
 import avatarThree from './assets/avatars/avatar-3.svg'
@@ -2235,9 +2236,12 @@ function HomePage() {
               aria-labelledby="feed-expired-title"
               aria-describedby="feed-expired-description"
             >
-              <div className="feed-expired-illustration" aria-hidden="true">
-                <span className="feed-expired-clock" />
-              </div>
+              <img
+                className="feed-expired-illustration"
+                src={feedExpiredClockIcon}
+                alt=""
+                aria-hidden="true"
+              />
               <h2 id="feed-expired-title">5分経過しました</h2>
               <p id="feed-expired-description">
                 リフレッシュできましたか？
