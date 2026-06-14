@@ -2147,7 +2147,7 @@ body {
 }
 .profile-stat-card {
   display: grid;
-  min-height: 66px;
+  min-height: 70px;
   grid-template-columns: 24px max-content;
   align-items: center;
   justify-content: center;
