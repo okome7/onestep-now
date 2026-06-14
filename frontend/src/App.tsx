@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import './App.css'
 import { login } from './loginApi'
 import type { LoginForm } from './loginApi'
@@ -55,6 +55,80 @@ const taskCompleteComments = [
 ]
 const taskCompleteLikeCount = 12
 
+type FeedPostStatus = 'doing' | 'done'
+
+type FeedPost = {
+  id: string
+  userName: string
+  level: number
+  task: string
+  status: FeedPostStatus
+  likes: number
+  comments: string[]
+  createdAt: number
+  liked: boolean
+}
+
+const feedViewDurationSeconds = 5 * 60
+const feedCommentPlaceholder = 'いいね！一緒に頑張ろう'
+const sampleFeedPosts: Array<Omit<FeedPost, 'createdAt'> & { ageMinutes: number }> = [
+  {
+    id: 'sample-1',
+    userName: 'あや',
+    level: 5,
+    task: '参考記事を1つ読む',
+    status: 'done',
+    likes: 10,
+    comments: ['いいね！'],
+    ageMinutes: 1,
+    liked: false,
+  },
+  {
+    id: 'sample-2',
+    userName: 'たろう',
+    level: 20,
+    task: '問題5問解く',
+    status: 'doing',
+    likes: 1,
+    comments: [],
+    ageMinutes: 3,
+    liked: false,
+  },
+  {
+    id: 'sample-3',
+    userName: 'みき',
+    level: 7,
+    task: '洗い物をする',
+    status: 'done',
+    likes: 12,
+    comments: ['おつかれさま！', 'すごい！'],
+    ageMinutes: 4,
+    liked: true,
+  },
+  {
+    id: 'sample-4',
+    userName: 'けんじ',
+    level: 1,
+    task: 'バグを直す',
+    status: 'doing',
+    likes: 2,
+    comments: ['応援してる！'],
+    ageMinutes: 7,
+    liked: true,
+  },
+  {
+    id: 'sample-5',
+    userName: 'はる',
+    level: 16,
+    task: '部屋を片付ける',
+    status: 'done',
+    likes: 12,
+    comments: ['ナイス！', 'えらい！', '助かるね'],
+    ageMinutes: 8,
+    liked: false,
+  },
+]
+
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
   { id: 'avatar-2', src: avatarTwo, label: 'アイコン2' },
@@ -80,6 +154,21 @@ function formatElapsedTime(totalSeconds: number) {
   const seconds = totalSeconds % 60
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+
+function formatFeedRemainingTime(totalSeconds: number) {
+  const safeSeconds = Math.max(0, totalSeconds)
+  const minutes = Math.floor(safeSeconds / 60)
+  const seconds = safeSeconds % 60
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatFeedPostAge(createdAt: number, now: number) {
+  const elapsedMinutes = Math.max(1, Math.floor((now - createdAt) / 60000))
+
+  return `${elapsedMinutes}分前`
 }
 
 function validateForm(form: SignupForm) {
@@ -1488,9 +1577,29 @@ function HomePage() {
   const [activeTask, setActiveTask] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [isFeedOpen, setIsFeedOpen] = useState(false)
+  const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
+    feedViewDurationSeconds,
+  )
+  const [feedNow, setFeedNow] = useState(() => Date.now())
+  const [feedPosts, setFeedPosts] = useState<FeedPost[]>(() => {
+    const initialNow = Date.now()
+
+    return sampleFeedPosts.map(({ ageMinutes, ...post }) => ({
+      ...post,
+      createdAt: initialNow - ageMinutes * 60 * 1000,
+    }))
+  })
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
+  const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
+    null,
+  )
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = taskCompleteComments.length > 0
+  const isFeedExpired = feedRemainingSeconds <= 0
+  const activeCommentPost =
+    feedPosts.find((post) => post.id === activeCommentPostId) ?? null
 
   useEffect(() => {
     if (!isTaskRunning) {
@@ -1512,6 +1621,51 @@ function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }, [isTaskComplete])
 
+  useEffect(() => {
+    if (!isFeedOpen || isFeedExpired) {
+      return undefined
+    }
+
+    const timerId = window.setInterval(() => {
+      setFeedRemainingSeconds((current) => Math.max(0, current - 1))
+      setFeedNow(Date.now())
+    }, 1000)
+
+    return () => window.clearInterval(timerId)
+  }, [isFeedExpired, isFeedOpen])
+
+  function addFeedPost(task: string, status: FeedPostStatus) {
+    const postId = `${status}-${Date.now()}`
+
+    setFeedPosts((currentPosts) => [
+      {
+        id: postId,
+        userName: 'あなた',
+        level: 1,
+        task,
+        status,
+        likes: 0,
+        comments: [],
+        createdAt: Date.now(),
+        liked: false,
+      },
+      ...currentPosts,
+    ])
+  }
+
+  function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
+    event?.preventDefault()
+    setIsFeedOpen(true)
+    setFeedRemainingSeconds(feedViewDurationSeconds)
+    setFeedNow(Date.now())
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeFeed() {
+    setIsFeedOpen(false)
+    setActiveCommentPostId(null)
+  }
+
   function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -1524,6 +1678,7 @@ function HomePage() {
     setActiveTask(nextTask)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+    addFeedPost(nextTask, 'doing')
   }
 
   function handleTaskCancel() {
@@ -1534,6 +1689,7 @@ function HomePage() {
 
   function handleTaskDone() {
     setIsTaskComplete(true)
+    addFeedPost(activeTask, 'done')
   }
 
   function handleNextTask() {
@@ -1541,6 +1697,348 @@ function HomePage() {
     setActiveTask('')
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+  }
+
+  function togglePostLike(postId: string) {
+    setFeedPosts((currentPosts) =>
+      currentPosts.map((post) => {
+        if (post.id !== postId) {
+          return post
+        }
+
+        return {
+          ...post,
+          liked: !post.liked,
+          likes: post.liked ? Math.max(0, post.likes - 1) : post.likes + 1,
+        }
+      }),
+    )
+  }
+
+  function handleCommentDraftChange(postId: string, value: string) {
+    setCommentDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [postId]: value,
+    }))
+  }
+
+  function addPostComment(postId: string) {
+    const nextComment = (commentDrafts[postId] ?? '').trim()
+
+    if (!nextComment) {
+      return
+    }
+
+    setFeedPosts((currentPosts) =>
+      currentPosts.map((post) =>
+        post.id === postId
+          ? { ...post, comments: [...post.comments, nextComment] }
+          : post,
+      ),
+    )
+    setCommentDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [postId]: '',
+    }))
+    setActiveCommentPostId(null)
+  }
+
+  if (isFeedOpen) {
+    return (
+      <main className="home-page feed-page">
+        <header className="feed-header">
+          <button
+            className="feed-back-button"
+            type="button"
+            aria-label="ホームに戻る"
+            onClick={closeFeed}
+          >
+            ←
+          </button>
+          <h1>フィード</h1>
+          <time className="feed-countdown" dateTime={`PT${feedRemainingSeconds}S`}>
+            <span className="feed-countdown-icon" aria-hidden="true" />
+            残り {formatFeedRemainingTime(feedRemainingSeconds)}
+          </time>
+        </header>
+
+        {isFeedExpired ? (
+          <section className="feed-expired" aria-live="polite">
+            <h2>フィードの閲覧時間が終了しました</h2>
+            <p>もう一度見る場合は、みんなを見るを押してください。</p>
+            <button className="home-start-button" type="button" onClick={openFeed}>
+              もう一度見る
+            </button>
+          </section>
+        ) : (
+          <section className="feed-list" aria-label="みんなの投稿">
+            {feedPosts.map((post) => (
+              <article
+                className={`feed-card feed-card-${post.status}`}
+                key={post.id}
+              >
+                <div className="feed-card-header">
+                  <div className="feed-user">
+                    <span className="feed-avatar" aria-hidden="true" />
+                    <span className="feed-user-name">{post.userName}</span>
+                    <span className="feed-user-level">Lv.{post.level}</span>
+                  </div>
+                  <span className={`feed-status feed-status-${post.status}`}>
+                    {post.status === 'done' ? '✓ できた' : '⚑ やります'}
+                  </span>
+                </div>
+
+                <p className="feed-task">{post.task}</p>
+
+                <div className="feed-card-footer">
+                  <button
+                    className={`feed-reaction ${post.liked ? 'active' : ''}`}
+                    type="button"
+                    aria-pressed={post.liked}
+                    onClick={() => togglePostLike(post.id)}
+                  >
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M7.4 10.2V20.6H4.8C4.24772 20.6 3.8 20.1523 3.8 19.6V11.2C3.8 10.6477 4.24772 10.2 4.8 10.2H7.4Z"
+                        fill="currentColor"
+                        opacity="0.24"
+                      />
+                      <path
+                        d="M7.4 10.2L11.35 3.35C12.576 3.35 13.55 4.343 13.55 5.55V8.95H19.2C20.026 8.95 20.7 9.624 20.7 10.45C20.7 10.517 20.696 10.584 20.687 10.65L19.48 19.1C19.34 20.075 18.503 20.8 17.518 20.8H7.4V10.2Z"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M7.4 10.2V20.6"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span>{post.likes}</span>
+                  </button>
+                  <button
+                    className="feed-comment-count"
+                    type="button"
+                    aria-label={`${post.userName}さんの投稿のコメントを開く`}
+                    onClick={() => setActiveCommentPostId(post.id)}
+                  >
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+                        fill="currentColor"
+                        opacity="0.18"
+                      />
+                      <path
+                        d="M4.5 5.2C4.5 4.53726 5.03726 4 5.7 4H18.3C18.9627 4 19.5 4.53726 19.5 5.2V14.2C19.5 14.8627 18.9627 15.4 18.3 15.4H10.4L5.7 20V15.4C5.03726 15.4 4.5 14.8627 4.5 14.2V5.2Z"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M8.2 9.7H8.22M12 9.7H12.02M15.8 9.7H15.82"
+                        stroke="currentColor"
+                        strokeWidth="2.3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span>{post.comments.length}</span>
+                  </button>
+                  <time
+                    className="feed-post-age"
+                    dateTime={new Date(post.createdAt).toISOString()}
+                  >
+                    {formatFeedPostAge(post.createdAt, feedNow)}
+                  </time>
+                </div>
+
+                {post.comments.length > 0 ? (
+                  <ul className="feed-comments" aria-label="コメント一覧">
+                    {post.comments.slice(-2).map((comment, index) => (
+                      <li key={`${post.id}-comment-${index}`}>{comment}</li>
+                    ))}
+                  </ul>
+                ) : null}
+
+              </article>
+            ))}
+          </section>
+        )}
+
+
+        {activeCommentPost ? (
+          <div
+            className="feed-comment-panel-backdrop"
+            role="presentation"
+            onClick={() => setActiveCommentPostId(null)}
+          >
+            <section
+              className="feed-comment-panel"
+              aria-labelledby="feed-comment-panel-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                className="feed-comment-panel-close"
+                type="button"
+                aria-label="コメントパネルを閉じる"
+                onClick={() => setActiveCommentPostId(null)}
+              >
+                ×
+              </button>
+              <p className="feed-comment-panel-label">コメント</p>
+              <h2 id="feed-comment-panel-title">{activeCommentPost.task}</h2>
+
+              {activeCommentPost.comments.length > 0 ? (
+                <ul className="feed-comment-panel-list">
+                  {activeCommentPost.comments.map((comment, index) => (
+                    <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
+                      <span className="feed-avatar" aria-hidden="true" />
+                      <span>{comment}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="feed-comment-panel-empty">
+                  まだコメントはありません。最初に応援を送りましょう。
+                </p>
+              )}
+
+              <div className="feed-comment-form">
+                <input
+                  type="text"
+                  aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
+                  placeholder={feedCommentPlaceholder}
+                  value={commentDrafts[activeCommentPost.id] ?? ''}
+                  onChange={(event) =>
+                    handleCommentDraftChange(
+                      activeCommentPost.id,
+                      event.target.value,
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => addPostComment(activeCommentPost.id)}
+                  disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
+                >
+                  送信
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        <nav className="home-bottom-nav" aria-label="ホームメニュー">
+          <a className="home-nav-item" href="/home" aria-label="ホーム">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 10.5L12 3L21 10.5"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M5 10V20H10V15H14V20H19V10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+          <a className="home-nav-item active" href="/home" aria-label="投稿">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <rect
+                x="4"
+                y="5"
+                width="16"
+                height="14"
+                rx="3"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M8 9H16"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M8 13H13"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <path
+                d="M16 13.5L17 14.5L19 12"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </a>
+          <a className="home-nav-item" href="/home" aria-label="プロフィール">
+            <svg
+              className="home-nav-icon"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <circle
+                cx="12"
+                cy="8"
+                r="4"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M5 19C5 15.6863 8.13401 13 12 13C15.866 13 19 15.6863 19 19"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </a>
+        </nav>
+      </main>
+    )
   }
 
   return (
@@ -1675,7 +2173,7 @@ function HomePage() {
           </div>
 
           <div className="task-complete-actions">
-            <a className="complete-feed-button" href="/home">
+            <a className="complete-feed-button" href="/home" onClick={openFeed}>
               みんなを見る
             </a>
             <button
@@ -1766,7 +2264,12 @@ function HomePage() {
               />
             </svg>
           </a>
-          <a className="home-nav-item" href="/home" aria-label="投稿">
+          <a
+            className="home-nav-item"
+            href="/home"
+            aria-label="投稿"
+            onClick={openFeed}
+          >
             <svg
               className="home-nav-icon"
               width="24"
