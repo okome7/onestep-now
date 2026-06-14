@@ -10,7 +10,7 @@ const env = {
 
 const run = (args) =>
   new Promise((resolve, reject) => {
-    const child = spawn(bundleCommand, ["exec", "rails", ...args], {
+    const child = spawn(bundleCommand, ["exec", "ruby", "bin/rails", ...args], {
       cwd: "backend",
       env,
       shell: useShell,
@@ -30,7 +30,7 @@ await run(["db:prepare"]);
 
 const server = spawn(
   bundleCommand,
-  ["exec", "rails", "s", "-p", "3001", "-b", "127.0.0.1"],
+  ["exec", "ruby", "bin/rails", "s", "-p", "3001", "-b", "127.0.0.1"],
   {
     cwd: "backend",
     env,
