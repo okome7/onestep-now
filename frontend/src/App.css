@@ -1006,10 +1006,12 @@ body {
 
   .home-task-input {
     width: min(100%, 320px);
-    height: 48px;
+    height: 56px;
+    min-height: 56px;
     border-radius: 6px;
-    padding-inline: 14px;
-    font-size: 16px;
+    padding-inline: 16px;
+    font-size: 17px;
+    line-height: 1.2;
   }
 
   .home-task-error {
@@ -1017,10 +1019,12 @@ body {
   }
 
   .home-start-button {
-    width: min(100%, 240px);
-    height: 56px;
+    width: min(100%, 260px);
+    height: 64px;
+    min-height: 64px;
     margin-top: 34px;
-    font-size: 22px;
+    font-size: 24px;
+    line-height: 1;
   }
 
   .home-nav-item {
