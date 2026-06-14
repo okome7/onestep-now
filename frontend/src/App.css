@@ -115,6 +115,24 @@ body {
   box-shadow: 0 0 0 2px rgb(77 149 229 / 18%);
 }
 
+.home-task-input.has-error {
+  border-color: #ff6b6b;
+}
+
+.home-task-input.has-error:focus {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 0 2px rgb(255 107 107 / 18%);
+}
+
+.home-task-error {
+  width: min(100%, 300px);
+  margin: 8px 0 0;
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .home-start-button {
   width: min(100%, 240px);
   height: 56px;

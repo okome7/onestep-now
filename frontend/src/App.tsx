@@ -1808,6 +1808,7 @@ function PasswordResetPage() {
 
 function HomePage() {
   const [taskText, setTaskText] = useState('')
+  const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
@@ -1927,9 +1928,11 @@ function HomePage() {
     const nextTask = taskText.trim()
 
     if (!nextTask) {
+      setTaskError('やることを入力してください')
       return
     }
 
+    setTaskError('')
     setActiveTask(nextTask)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
@@ -1949,6 +1952,7 @@ function HomePage() {
 
   function handleNextTask() {
     setTaskText('')
+    setTaskError('')
     setActiveTask('')
     setElapsedSeconds(0)
     setIsTaskComplete(false)
@@ -2432,18 +2436,26 @@ function HomePage() {
         >
           <h2 id="home-start-title">今できることから</h2>
           <input
-            className="home-task-input"
+            className={`home-task-input ${taskError ? 'has-error' : ''}`}
             type="text"
             aria-label="今できること"
+            aria-invalid={taskError ? 'true' : undefined}
+            aria-describedby={taskError ? 'home-task-error' : undefined}
             placeholder="やることを入力"
             value={taskText}
-            onChange={(event) => setTaskText(event.target.value)}
+            onChange={(event) => {
+              setTaskText(event.target.value)
+              if (taskError) {
+                setTaskError('')
+              }
+            }}
           />
-          <button
-            className="home-start-button"
-            type="submit"
-            disabled={!taskText.trim()}
-          >
+          {taskError ? (
+            <p className="home-task-error" id="home-task-error" role="alert">
+              {taskError}
+            </p>
+          ) : null}
+          <button className="home-start-button" type="submit">
             始める
           </button>
         </form>

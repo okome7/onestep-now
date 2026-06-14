@@ -551,6 +551,19 @@ test("ホーム画面は末尾スラッシュ付きでも表示される", async
   ).toBeVisible();
 });
 
+test("ホーム画面でやることを入力せずに始めるとエラーが表示される", async ({ page }) => {
+  await page.goto("/home");
+
+  await page.getByRole("button", { name: "始める" }).click();
+
+  await expect(page.getByRole("alert")).toHaveText(
+    "やることを入力してください",
+  );
+  await expect(
+    page.getByRole("textbox", { name: "今できること" }),
+  ).toHaveAttribute("aria-invalid", "true");
+});
+
 test("ホーム画面でやることを始めるとタイマーが表示される", async ({ page }) => {
   await page.goto("/home");
 
