@@ -13,6 +13,8 @@ import { checkSignupEmail, signup } from './signupApi'
 import type { SignupForm } from './signupApi'
 import passwordShowIcon from './assets/icons/password_show.svg'
 import passwordHideIcon from './assets/icons/password_hide.svg'
+import likeIcon from './assets/icons/like.svg'
+import commentIcon from './assets/icons/comment.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
 import avatarTwo from './assets/avatars/avatar-2.svg'
 import avatarThree from './assets/avatars/avatar-3.svg'
@@ -771,53 +773,6 @@ function HomeBottomNav({
         <ProfileNavIcon />
       </a>
     </nav>
-  )
-}
-
-function LikeIcon() {
-  return (
-    <svg
-      width="64"
-      height="64"
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M25 28L34 10C35.2 7.7 39 8.6 39 11.2V24H50C53.1 24 55.4 26.8 54.8 29.8L51.2 47.8C50.7 50.2 48.6 52 46.1 52H25V28Z"
-        stroke="currentColor"
-        strokeWidth="5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10 30C10 27.8 11.8 26 14 26H25V52H14C11.8 52 10 50.2 10 48V30Z"
-        stroke="currentColor"
-        strokeWidth="5"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function CommentIcon() {
-  return (
-    <svg
-      width="64"
-      height="64"
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M16 14H48C51.3 14 54 16.7 54 20V36C54 39.3 51.3 42 48 42H27L16 52V42C12.7 42 10 39.3 10 36V20C10 16.7 12.7 14 16 14Z"
-        stroke="currentColor"
-        strokeWidth="5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
   )
 }
 
@@ -2079,7 +2034,7 @@ function HomePage() {
                     onClick={() => togglePostLike(post.id)}
                   >
                     <span className="feed-action-icon">
-                      <LikeIcon />
+                      <img src={likeIcon} alt="" aria-hidden="true" />
                     </span>
                     <span>{post.likes}</span>
                   </button>
@@ -2090,7 +2045,7 @@ function HomePage() {
                     onClick={() => openCommentPanel(post.id)}
                   >
                     <span className="feed-action-icon">
-                      <CommentIcon />
+                      <img src={commentIcon} alt="" aria-hidden="true" />
                     </span>
                     <span>{post.comments.length}</span>
                   </button>
@@ -2347,11 +2302,11 @@ function HomePage() {
 
             <div className="task-complete-stats" aria-label="リアクション">
               <span>
-                <LikeIcon />
+                <img src={likeIcon} alt="" aria-hidden="true" />
                 {taskCompleteLikeCount}件
               </span>
               <span>
-                <CommentIcon />
+                <img src={commentIcon} alt="" aria-hidden="true" />
                 {taskCompleteComments.length}件
               </span>
             </div>

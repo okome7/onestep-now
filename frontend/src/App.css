@@ -340,7 +340,7 @@ body {
   box-shadow: 0 10px 24px rgb(15 23 42 / 8%);
 }
 
-.task-complete-stats svg {
+.task-complete-stats img {
   width: 30px;
   height: 30px;
   color: #4d95e5;
@@ -1746,7 +1746,7 @@ body {
   justify-content: center;
 }
 
-.feed-action-icon svg {
+.feed-action-icon img {
   display: block;
   width: 20px;
   height: 20px;
