@@ -17,6 +17,8 @@ import likeIcon from './assets/icons/like.svg'
 import likeActiveIcon from './assets/icons/like-active.svg'
 import commentIcon from './assets/icons/comment.svg'
 import settingsIcon from './assets/icons/settings.svg'
+import achievementFlameIcon from './assets/icons/achievement-flame.svg'
+import achievementCheckIcon from './assets/icons/achievement-check.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
 import avatarTwo from './assets/avatars/avatar-2.svg'
 import avatarThree from './assets/avatars/avatar-3.svg'
@@ -2048,17 +2050,17 @@ function HomePage() {
             <h2 id="profile-stats-title">実績</h2>
             <div className="profile-stats-grid">
               <div className="profile-stat-card">
-                <span aria-hidden="true">✓</span>
+                <img src={achievementCheckIcon} alt="" aria-hidden="true" />
                 <strong>128回</strong>
                 <small>達成</small>
               </div>
               <div className="profile-stat-card">
-                <span aria-hidden="true">🔥</span>
+                <img src={achievementFlameIcon} alt="" aria-hidden="true" />
                 <strong>7日</strong>
                 <small>連続</small>
               </div>
               <div className="profile-stat-card">
-                <img src={likeIcon} alt="" aria-hidden="true" />
+                <img src={likeActiveIcon} alt="" aria-hidden="true" />
                 <strong>234</strong>
                 <small>いいね</small>
               </div>
@@ -2089,7 +2091,7 @@ function HomePage() {
                   <strong>{achievement.task}</strong>
                   <div>
                     <span>
-                      <img src={likeIcon} alt="" aria-hidden="true" />
+                      <img src={likeActiveIcon} alt="" aria-hidden="true" />
                       {achievement.likes}
                     </span>
                     <span>
