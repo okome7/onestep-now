@@ -29,7 +29,7 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  # Surface SMTP failures immediately while testing password reset emails locally.
+  # Surface mail delivery failures immediately while testing password reset emails locally.
   config.action_mailer.raise_delivery_errors = true
 
   # Make template changes take effect immediately.
