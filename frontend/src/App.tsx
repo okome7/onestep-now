@@ -624,16 +624,23 @@ function SignupHeader({ title, onBack }: SignupHeaderProps) {
 
 type AppHeaderProps = {
   title?: string
+  leftAction?: ReactNode
   rightAction?: ReactNode
 }
 
 function AppHeader({
   title = 'OneStep Now',
+  leftAction = null,
   rightAction = null,
 }: AppHeaderProps) {
   return (
     <header className="home-header">
-      <div className="home-header-action" aria-hidden="true" />
+      <div
+        className="home-header-action"
+        aria-hidden={leftAction ? undefined : 'true'}
+      >
+        {leftAction}
+      </div>
       <h1>{title}</h1>
       <div className="home-header-action home-header-action-right">
         {rightAction}
@@ -1816,6 +1823,7 @@ function HomePage() {
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
     feedViewDurationSeconds,
   )
@@ -1912,6 +1920,7 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(true)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
     setFeedRemainingSeconds(feedViewDurationSeconds)
     setFeedNow(Date.now())
     window.scrollTo({ top: 0, left: 0 })
@@ -1921,6 +1930,7 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1928,6 +1938,7 @@ function HomePage() {
     event.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1935,6 +1946,19 @@ function HomePage() {
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
     setIsFeedOpen(false)
+    setIsProfileOpen(true)
+    setIsSettingsOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openSettings() {
+    setIsSettingsOpen(true)
+    setIsFeedOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeSettings() {
+    setIsSettingsOpen(false)
     setIsProfileOpen(true)
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1971,6 +1995,7 @@ function HomePage() {
     setIsCancelConfirmOpen(false)
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
     window.history.pushState(null, '', '/home')
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -2039,6 +2064,61 @@ function HomePage() {
     }))
   }
 
+  if (isSettingsOpen) {
+    return (
+      <main className="home-page settings-page">
+        <AppHeader
+          title="設定"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="マイページに戻る"
+              onClick={closeSettings}
+            >
+              &lt;
+            </button>
+          }
+        />
+
+        <section className="settings-content" aria-label="設定">
+          <div className="settings-menu-group">
+            <button className="settings-menu-item" type="button">
+              <span>表示名変更</span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+            <button className="settings-menu-item" type="button">
+              <span>アイコン変更</span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+          </div>
+
+          <div className="settings-menu-group">
+            <button className="settings-menu-item" type="button">
+              <span>ログアウト</span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+            <button
+              className="settings-menu-item settings-menu-item-danger"
+              type="button"
+            >
+              <span>アカウント削除</span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   if (isProfileOpen) {
     return (
       <main className="home-page profile-page">
@@ -2049,6 +2129,7 @@ function HomePage() {
               className="profile-settings-button"
               type="button"
               aria-label="設定"
+              onClick={openSettings}
             >
               <img src={settingsIcon} alt="" aria-hidden="true" />
             </button>

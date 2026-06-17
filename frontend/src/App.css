@@ -2270,6 +2270,80 @@ body {
   height: 31px;
 }
 
+.settings-page {
+  min-height: 100dvh;
+  background: #f4f7fb;
+}
+
+.settings-back-button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #111827;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.settings-content {
+  width: min(100%, 350px);
+  margin: 0 auto;
+  padding: 18px 50px 0;
+}
+
+.settings-menu-group {
+  overflow: hidden;
+  border: 1px solid #bcc7d4;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgb(15 23 42 / 22%);
+}
+
+.settings-menu-group + .settings-menu-group {
+  margin-top: 18px;
+}
+
+.settings-menu-item {
+  display: flex;
+  width: 100%;
+  height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  padding: 0 12px 0 16px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-menu-item + .settings-menu-item {
+  border-top: 1px solid #d8e0ea;
+}
+
+.settings-menu-item-danger {
+  color: #ff0000;
+}
+
+.settings-menu-chevron {
+  display: grid;
+  width: 18px;
+  height: 100%;
+  place-items: center;
+  color: #9aa6b8;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+}
+
 .profile-content {
   display: flex;
   width: min(100%, 350px);
