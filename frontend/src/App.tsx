@@ -78,6 +78,7 @@ type FeedPost = {
 }
 
 const feedViewDurationSeconds = 5 * 60
+const currentPathname = () => window.location.pathname.replace(/\/+$/, '') || '/'
 const sampleFeedPosts: Array<
   Omit<FeedPost, 'createdAt'> & { ageMinutes: number }
 > = [
@@ -1367,7 +1368,11 @@ function SignupPage() {
   )
 }
 
-function LoginPage() {
+type LoginPageProps = {
+  onLoginSuccess: () => void
+}
+
+function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [form, setForm] = useState<LoginForm>({ email: '', password: '' })
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -1395,9 +1400,16 @@ function LoginPage() {
 
     setIsSubmitting(true)
 
+    let shouldResetSubmitting = true
+
     try {
-      await login(form)
-      window.location.href = '/home'
+      const user = await login(form)
+      saveCompleteProfile({
+        name: user.name,
+        avatarId: user.avatar_key ?? avatarOptions[0].id,
+      })
+      shouldResetSubmitting = false
+      onLoginSuccess()
     } catch (caughtError) {
       const nextError =
         caughtError instanceof Error
@@ -1412,7 +1424,9 @@ function LoginPage() {
 
       setFieldErrors((current) => ({ ...current, password: nextError }))
     } finally {
-      setIsSubmitting(false)
+      if (shouldResetSubmitting) {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -2543,10 +2557,24 @@ function HomePage() {
 }
 
 function App() {
-  const pathname = window.location.pathname.replace(/\/+$/, '') || '/'
+  const [pathname, setPathname] = useState(currentPathname)
+
+  useEffect(() => {
+    const updatePathname = () => setPathname(currentPathname())
+
+    window.addEventListener('popstate', updatePathname)
+
+    return () => window.removeEventListener('popstate', updatePathname)
+  }, [])
+
+  function openHomeAfterLogin() {
+    window.history.pushState(null, '', '/home')
+    setPathname('/home')
+    window.scrollTo({ top: 0, left: 0 })
+  }
 
   if (pathname === '/login') {
-    return <LoginPage />
+    return <LoginPage onLoginSuccess={openHomeAfterLogin} />
   }
 
   if (pathname === '/password-reset') {
