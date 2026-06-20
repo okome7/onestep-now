@@ -1824,6 +1824,15 @@ function HomePage() {
   const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isNameEditOpen, setIsNameEditOpen] = useState(false)
+  const [isNameDiscardConfirmOpen, setIsNameDiscardConfirmOpen] =
+    useState(false)
+  const [completeProfile, setCompleteProfile] = useState(() =>
+    getInitialCompleteProfile(),
+  )
+  const [displayNameDraft, setDisplayNameDraft] = useState(
+    completeProfile.name || 'おこめ',
+  )
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
     feedViewDurationSeconds,
   )
@@ -1845,9 +1854,12 @@ function HomePage() {
   const hasCompleteComments = taskCompleteComments.length > 0
   const isFeedExpired = feedRemainingSeconds <= 0
   const visibleFeedPosts = feedPosts.filter((post) => !post.isOwnPost)
-  const completedProfile = getInitialCompleteProfile()
-  const profileAvatarSrc = getCompleteAvatarSrc(completedProfile)
-  const profileName = completedProfile.name || 'おこめ'
+  const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
+  const profileName = completeProfile.name || 'おこめ'
+  const trimmedDisplayNameDraft = displayNameDraft.trim()
+  const hasDisplayNameDraftChanged = displayNameDraft !== profileName
+  const canSaveDisplayName =
+    trimmedDisplayNameDraft.length > 0 && trimmedDisplayNameDraft !== profileName
   const recentAchievements = [
     { task: 'スライド1枚作る', likes: 12, comments: 3, age: '4分前' },
     { task: '部屋の掃除をする', likes: 13, comments: 3, age: '2時間前' },
@@ -1921,6 +1933,8 @@ function HomePage() {
     setIsFeedOpen(true)
     setIsProfileOpen(false)
     setIsSettingsOpen(false)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
     setFeedRemainingSeconds(feedViewDurationSeconds)
     setFeedNow(Date.now())
     window.scrollTo({ top: 0, left: 0 })
@@ -1931,6 +1945,8 @@ function HomePage() {
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsSettingsOpen(false)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1939,6 +1955,8 @@ function HomePage() {
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsSettingsOpen(false)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1948,18 +1966,76 @@ function HomePage() {
     setIsFeedOpen(false)
     setIsProfileOpen(true)
     setIsSettingsOpen(false)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openSettings() {
     setIsSettingsOpen(true)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
     setIsFeedOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function closeSettings() {
     setIsSettingsOpen(false)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
     setIsProfileOpen(true)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openNameEdit() {
+    setDisplayNameDraft(profileName)
+    setIsNameEditOpen(true)
+    setIsNameDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeNameEdit() {
+    if (hasDisplayNameDraftChanged) {
+      setIsNameDiscardConfirmOpen(true)
+      return
+    }
+
+    setDisplayNameDraft(profileName)
+    setIsNameEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsNameDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function continueNameEdit() {
+    setIsNameDiscardConfirmOpen(false)
+  }
+
+  function discardNameEdit() {
+    setDisplayNameDraft(profileName)
+    setIsNameDiscardConfirmOpen(false)
+    setIsNameEditOpen(false)
+    setIsSettingsOpen(true)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function saveDisplayName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!canSaveDisplayName) {
+      return
+    }
+
+    const nextProfile = {
+      ...completeProfile,
+      name: trimmedDisplayNameDraft,
+    }
+
+    setCompleteProfile(nextProfile)
+    saveCompleteProfile(nextProfile)
+    setIsNameEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsNameDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1996,6 +2072,8 @@ function HomePage() {
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsSettingsOpen(false)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
     window.history.pushState(null, '', '/home')
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -2064,6 +2142,83 @@ function HomePage() {
     }))
   }
 
+  if (isSettingsOpen && isNameEditOpen) {
+    return (
+      <main className="home-page name-edit-page">
+        <AppHeader
+          title="名前"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="設定に戻る"
+              onClick={closeNameEdit}
+            >
+              &lt;
+            </button>
+          }
+          rightAction={
+            <button
+              className="name-edit-done-button"
+              type="submit"
+              form="display-name-form"
+              disabled={!canSaveDisplayName}
+            >
+              完了
+            </button>
+          }
+        />
+
+        <section className="name-edit-content" aria-label="表示名変更">
+          <form
+            id="display-name-form"
+            className="name-edit-form"
+            onSubmit={saveDisplayName}
+          >
+            <label htmlFor="display-name-input">表示名</label>
+            <input
+              id="display-name-input"
+              type="text"
+              value={displayNameDraft}
+              onChange={(event) => setDisplayNameDraft(event.target.value)}
+            />
+          </form>
+        </section>
+
+        {isNameDiscardConfirmOpen ? (
+          <div className="name-discard-modal-backdrop" role="presentation">
+            <section
+              className="name-discard-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="name-discard-modal-title"
+              aria-describedby="name-discard-modal-description"
+            >
+              <p id="name-discard-modal-title">変更は保存されていません。</p>
+              <p id="name-discard-modal-description">
+                このまま戻りますか？
+              </p>
+              <button
+                className="name-discard-modal-primary"
+                type="button"
+                onClick={continueNameEdit}
+              >
+                編集を続ける
+              </button>
+              <button
+                className="name-discard-modal-secondary"
+                type="button"
+                onClick={discardNameEdit}
+              >
+                編集せずに戻る
+              </button>
+            </section>
+          </div>
+        ) : null}
+      </main>
+    )
+  }
+
   if (isSettingsOpen) {
     return (
       <main className="home-page settings-page">
@@ -2083,7 +2238,11 @@ function HomePage() {
 
         <section className="settings-content" aria-label="設定">
           <div className="settings-menu-group">
-            <button className="settings-menu-item" type="button">
+            <button
+              className="settings-menu-item"
+              type="button"
+              onClick={openNameEdit}
+            >
               <span className="settings-menu-label">
                 <span
                   className="settings-menu-icon settings-menu-icon-name"
