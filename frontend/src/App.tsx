@@ -20,6 +20,8 @@ import settingsIcon from './assets/icons/settings.svg'
 import achievementFlameIcon from './assets/icons/achievement-flame.svg'
 import achievementCheckIcon from './assets/icons/achievement-check.svg'
 import feedExpiredClockIcon from './assets/icons/feed-expired-clock.svg'
+import cameraIcon from './assets/icons/camera.svg'
+import iconGridIcon from './assets/icons/icon-grid.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
 import avatarTwo from './assets/avatars/avatar-2.svg'
 import avatarThree from './assets/avatars/avatar-3.svg'
@@ -649,6 +651,45 @@ function AppHeader({
   )
 }
 
+type UnsavedChangesModalProps = {
+  onContinue: () => void
+  onDiscard: () => void
+}
+
+function UnsavedChangesModal({
+  onContinue,
+  onDiscard,
+}: UnsavedChangesModalProps) {
+  return (
+    <div className="unsaved-modal-backdrop" role="presentation">
+      <section
+        className="unsaved-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="unsaved-modal-title"
+        aria-describedby="unsaved-modal-description"
+      >
+        <p id="unsaved-modal-title">変更は保存されていません。</p>
+        <p id="unsaved-modal-description">このまま戻りますか？</p>
+        <button
+          className="unsaved-modal-primary"
+          type="button"
+          onClick={onContinue}
+        >
+          編集を続ける
+        </button>
+        <button
+          className="unsaved-modal-secondary"
+          type="button"
+          onClick={onDiscard}
+        >
+          編集せずに戻る
+        </button>
+      </section>
+    </div>
+  )
+}
+
 function HomeNavIcon() {
   return (
     <svg
@@ -1108,6 +1149,12 @@ function SignupPage() {
                 tabIndex={isPhotoChoiceOpen ? 0 : -1}
                 onClick={() => cameraInputRef.current?.click()}
               >
+                <img
+                  className="photo-button-icon"
+                  src={cameraIcon}
+                  alt=""
+                  aria-hidden="true"
+                />
                 カメラで撮影
               </button>
               <button
@@ -1815,6 +1862,8 @@ function PasswordResetPage() {
 }
 
 function HomePage() {
+  const settingsCameraInputRef = useRef<HTMLInputElement>(null)
+  const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
@@ -1825,7 +1874,10 @@ function HomePage() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isNameEditOpen, setIsNameEditOpen] = useState(false)
+  const [isIconEditOpen, setIsIconEditOpen] = useState(false)
   const [isNameDiscardConfirmOpen, setIsNameDiscardConfirmOpen] =
+    useState(false)
+  const [isIconDiscardConfirmOpen, setIsIconDiscardConfirmOpen] =
     useState(false)
   const [completeProfile, setCompleteProfile] = useState(() =>
     getInitialCompleteProfile(),
@@ -1833,6 +1885,18 @@ function HomePage() {
   const [displayNameDraft, setDisplayNameDraft] = useState(
     completeProfile.name || 'おこめ',
   )
+  const [selectedSettingsIconId, setSelectedSettingsIconId] = useState(
+    completeProfile.avatarId,
+  )
+  const [settingsCustomPhotoUrl, setSettingsCustomPhotoUrl] = useState(
+    isAvatarImageDataUrl(completeProfile.avatarId)
+      ? completeProfile.avatarId
+      : '',
+  )
+  const [isSettingsAvatarGridOpen, setIsSettingsAvatarGridOpen] =
+    useState(false)
+  const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
+    useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
     feedViewDurationSeconds,
   )
@@ -1860,6 +1924,8 @@ function HomePage() {
   const hasDisplayNameDraftChanged = displayNameDraft !== profileName
   const canSaveDisplayName =
     trimmedDisplayNameDraft.length > 0 && trimmedDisplayNameDraft !== profileName
+  const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
+  const canSaveSettingsIcon = selectedSettingsIconId !== completeProfile.avatarId
   const recentAchievements = [
     { task: 'スライド1枚作る', likes: 12, comments: 3, age: '4分前' },
     { task: '部屋の掃除をする', likes: 13, comments: 3, age: '2時間前' },
@@ -1879,6 +1945,19 @@ function HomePage() {
 
     return () => window.clearInterval(timerId)
   }, [isTaskRunning])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 639px)')
+    const updateCameraAvailability = () => {
+      setIsSettingsCameraAvailable(mediaQuery.matches)
+    }
+
+    updateCameraAvailability()
+    mediaQuery.addEventListener('change', updateCameraAvailability)
+
+    return () =>
+      mediaQuery.removeEventListener('change', updateCameraAvailability)
+  }, [])
 
   useEffect(() => {
     if (!isTaskComplete) {
@@ -1934,7 +2013,9 @@ function HomePage() {
     setIsProfileOpen(false)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     setFeedRemainingSeconds(feedViewDurationSeconds)
     setFeedNow(Date.now())
     window.scrollTo({ top: 0, left: 0 })
@@ -1946,7 +2027,9 @@ function HomePage() {
     setIsProfileOpen(false)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1956,7 +2039,9 @@ function HomePage() {
     setIsProfileOpen(false)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1967,14 +2052,18 @@ function HomePage() {
     setIsProfileOpen(true)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openSettings() {
     setIsSettingsOpen(true)
     setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     setIsFeedOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1982,7 +2071,9 @@ function HomePage() {
   function closeSettings() {
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     setIsProfileOpen(true)
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1990,7 +2081,9 @@ function HomePage() {
   function openNameEdit() {
     setDisplayNameDraft(profileName)
     setIsNameEditOpen(true)
+    setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -2007,8 +2100,86 @@ function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
+  function openIconEdit() {
+    const nextAvatarId = completeProfile.avatarId
+
+    setSelectedSettingsIconId(nextAvatarId)
+    setSettingsCustomPhotoUrl(
+      isAvatarImageDataUrl(nextAvatarId) ? nextAvatarId : '',
+    )
+    setIsSettingsAvatarGridOpen(false)
+    setIsIconEditOpen(true)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeIconEdit() {
+    if (canSaveSettingsIcon) {
+      setIsIconDiscardConfirmOpen(true)
+      setIsSettingsAvatarGridOpen(false)
+      return
+    }
+
+    setIsIconEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsSettingsAvatarGridOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function saveSettingsIcon() {
+    if (!canSaveSettingsIcon) {
+      return
+    }
+
+    const nextProfile = {
+      ...completeProfile,
+      avatarId: selectedSettingsIconId,
+    }
+
+    setCompleteProfile(nextProfile)
+    saveCompleteProfile(nextProfile)
+    setIsIconEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsSettingsAvatarGridOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function handleSettingsAvatarClick(avatarId: string) {
+    if (avatarId !== customPhotoIconId || settingsCustomPhotoUrl) {
+      setSelectedSettingsIconId(avatarId)
+    }
+  }
+
+  async function handleSettingsPhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFile = event.target.files?.[0]
+
+    if (!selectedFile) {
+      return
+    }
+
+    try {
+      const photoDataUrl = await createAvatarImageDataUrl(selectedFile)
+
+      setSettingsCustomPhotoUrl(photoDataUrl)
+      setSelectedSettingsIconId(photoDataUrl)
+      setIsSettingsAvatarGridOpen(false)
+    } catch {
+      // Keep the current icon when image loading fails.
+    } finally {
+      event.target.value = ''
+    }
+  }
+
   function continueNameEdit() {
     setIsNameDiscardConfirmOpen(false)
+  }
+
+  function continueIconEdit() {
+    setIsIconDiscardConfirmOpen(false)
   }
 
   function discardNameEdit() {
@@ -2016,6 +2187,20 @@ function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsNameEditOpen(false)
     setIsSettingsOpen(true)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function discardIconEdit() {
+    const currentAvatarId = completeProfile.avatarId
+
+    setSelectedSettingsIconId(currentAvatarId)
+    setSettingsCustomPhotoUrl(
+      isAvatarImageDataUrl(currentAvatarId) ? currentAvatarId : '',
+    )
+    setIsIconDiscardConfirmOpen(false)
+    setIsIconEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsSettingsAvatarGridOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -2073,7 +2258,9 @@ function HomePage() {
     setIsProfileOpen(false)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     window.history.pushState(null, '', '/home')
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -2186,34 +2373,189 @@ function HomePage() {
         </section>
 
         {isNameDiscardConfirmOpen ? (
-          <div className="name-discard-modal-backdrop" role="presentation">
-            <section
-              className="name-discard-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="name-discard-modal-title"
-              aria-describedby="name-discard-modal-description"
+          <UnsavedChangesModal
+            onContinue={continueNameEdit}
+            onDiscard={discardNameEdit}
+          />
+        ) : null}
+      </main>
+    )
+  }
+
+  if (isSettingsOpen && isIconEditOpen) {
+    return (
+      <main className="home-page icon-edit-page">
+        <AppHeader
+          title="アイコン"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="設定に戻る"
+              onClick={closeIconEdit}
             >
-              <p id="name-discard-modal-title">変更は保存されていません。</p>
-              <p id="name-discard-modal-description">
-                このまま戻りますか？
-              </p>
+              &lt;
+            </button>
+          }
+          rightAction={
+            <button
+              className="name-edit-done-button"
+              type="button"
+              disabled={!canSaveSettingsIcon}
+              onClick={saveSettingsIcon}
+            >
+              完了
+            </button>
+          }
+        />
+
+        <section className="icon-edit-content" aria-label="アイコン変更">
+          <img
+            className="icon-edit-preview"
+            src={settingsIconPreviewSrc}
+            alt=""
+            aria-hidden="true"
+          />
+
+          <div className="icon-edit-action-list">
+            <button
+              className="icon-edit-action"
+              type="button"
+              aria-expanded={isSettingsAvatarGridOpen}
+              onClick={() =>
+                setIsSettingsAvatarGridOpen((current) => !current)
+              }
+            >
+              <img
+                className="icon-edit-action-icon icon-edit-action-icon-grid"
+                src={iconGridIcon}
+                alt=""
+                aria-hidden="true"
+              />
+              <span className="icon-edit-action-text-grid">
+                アイコンを選択
+              </span>
+            </button>
+
+            {isSettingsCameraAvailable ? (
               <button
-                className="name-discard-modal-primary"
+                className="icon-edit-action icon-edit-camera-action"
                 type="button"
-                onClick={continueNameEdit}
+                onClick={() => settingsCameraInputRef.current?.click()}
               >
-                編集を続ける
+                <img
+                  className="icon-edit-action-icon icon-edit-action-icon-camera"
+                  src={cameraIcon}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span>カメラで撮影</span>
               </button>
-              <button
-                className="name-discard-modal-secondary"
-                type="button"
-                onClick={discardNameEdit}
-              >
-                編集せずに戻る
-              </button>
-            </section>
+            ) : null}
+
+            <button
+              className="icon-edit-action"
+              type="button"
+              onClick={() => settingsPhotoInputRef.current?.click()}
+            >
+              <span
+                className="icon-edit-action-icon icon-edit-action-icon-folder folder-icon"
+                aria-hidden="true"
+              />
+              <span>写真を選ぶ</span>
+            </button>
           </div>
+
+          {isSettingsAvatarGridOpen ? (
+            <div
+              className="icon-palette-backdrop"
+              role="presentation"
+              onClick={() => setIsSettingsAvatarGridOpen(false)}
+            >
+              <section
+                className="icon-palette-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="アイコンを選択"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button
+                  className="icon-palette-close-button"
+                  type="button"
+                  aria-label="閉じる"
+                  onClick={() => setIsSettingsAvatarGridOpen(false)}
+                >
+                  ×
+                </button>
+                <div
+                  className="avatar-grid icon-edit-avatar-grid"
+                  role="radiogroup"
+                  aria-label="アイコン"
+                >
+                  {avatarOptions.map((avatar) => {
+                    const isCustomPhoto = avatar.id === customPhotoIconId
+                    const hasCustomPhoto = isCustomPhoto && settingsCustomPhotoUrl
+                    const isCameraSlot = isCustomPhoto && !hasCustomPhoto
+                    const avatarId = hasCustomPhoto
+                      ? settingsCustomPhotoUrl
+                      : avatar.id
+
+                    return (
+                      <button
+                        key={avatar.id}
+                        className={`avatar-option ${
+                          selectedSettingsIconId === avatarId ? 'selected' : ''
+                        } ${isCameraSlot ? 'photo-slot-empty' : ''}`}
+                        type="button"
+                        role="radio"
+                        aria-checked={selectedSettingsIconId === avatarId}
+                        aria-label={isCameraSlot ? '写真未選択' : avatar.label}
+                        disabled={isCameraSlot}
+                        onClick={() => handleSettingsAvatarClick(avatarId)}
+                      >
+                        {hasCustomPhoto ? (
+                          <img
+                            src={settingsCustomPhotoUrl}
+                            alt=""
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          !isCustomPhoto && (
+                            <img src={avatar.src} alt="" aria-hidden="true" />
+                          )
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            </div>
+          ) : null}
+
+          <input
+            ref={settingsCameraInputRef}
+            className="photo-input"
+            type="file"
+            accept="image/*"
+            capture="user"
+            aria-label="撮影する写真"
+            onChange={handleSettingsPhotoChange}
+          />
+          <input
+            ref={settingsPhotoInputRef}
+            className="photo-input"
+            type="file"
+            accept="image/*"
+            aria-label="選択する写真"
+            onChange={handleSettingsPhotoChange}
+          />
+        </section>
+
+        {isIconDiscardConfirmOpen ? (
+          <UnsavedChangesModal
+            onContinue={continueIconEdit}
+            onDiscard={discardIconEdit}
+          />
         ) : null}
       </main>
     )
@@ -2295,7 +2637,11 @@ function HomePage() {
                 &gt;
               </span>
             </button>
-            <button className="settings-menu-item" type="button">
+            <button
+              className="settings-menu-item"
+              type="button"
+              onClick={openIconEdit}
+            >
               <span className="settings-menu-label">
                 <span
                   className="settings-menu-icon settings-menu-icon-avatar"
