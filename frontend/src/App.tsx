@@ -624,16 +624,23 @@ function SignupHeader({ title, onBack }: SignupHeaderProps) {
 
 type AppHeaderProps = {
   title?: string
+  leftAction?: ReactNode
   rightAction?: ReactNode
 }
 
 function AppHeader({
   title = 'OneStep Now',
+  leftAction = null,
   rightAction = null,
 }: AppHeaderProps) {
   return (
     <header className="home-header">
-      <div className="home-header-action" aria-hidden="true" />
+      <div
+        className="home-header-action"
+        aria-hidden={leftAction ? undefined : 'true'}
+      >
+        {leftAction}
+      </div>
       <h1>{title}</h1>
       <div className="home-header-action home-header-action-right">
         {rightAction}
@@ -1816,6 +1823,7 @@ function HomePage() {
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
     feedViewDurationSeconds,
   )
@@ -1912,6 +1920,7 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(true)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
     setFeedRemainingSeconds(feedViewDurationSeconds)
     setFeedNow(Date.now())
     window.scrollTo({ top: 0, left: 0 })
@@ -1921,6 +1930,7 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1928,6 +1938,7 @@ function HomePage() {
     event.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1935,6 +1946,19 @@ function HomePage() {
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
     setIsFeedOpen(false)
+    setIsProfileOpen(true)
+    setIsSettingsOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openSettings() {
+    setIsSettingsOpen(true)
+    setIsFeedOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeSettings() {
+    setIsSettingsOpen(false)
     setIsProfileOpen(true)
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1971,6 +1995,7 @@ function HomePage() {
     setIsCancelConfirmOpen(false)
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
     window.history.pushState(null, '', '/home')
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -2039,6 +2064,240 @@ function HomePage() {
     }))
   }
 
+  if (isSettingsOpen) {
+    return (
+      <main className="home-page settings-page">
+        <AppHeader
+          title="設定"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="マイページに戻る"
+              onClick={closeSettings}
+            >
+              &lt;
+            </button>
+          }
+        />
+
+        <section className="settings-content" aria-label="設定">
+          <div className="settings-menu-group">
+            <button className="settings-menu-item" type="button">
+              <span className="settings-menu-label">
+                <span
+                  className="settings-menu-icon settings-menu-icon-name"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M5 7.5H15.5"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M5 14H12.5"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M5 20.5H10"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M18.2 9.3L21.7 12.8"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M12.8 21.2L16.1 20.4L23.4 13.1C24.2 12.3 24.2 11 23.4 10.2L22.8 9.6C22 8.8 20.7 8.8 19.9 9.6L12.6 16.9L11.8 20.2C11.6 20.8 12.2 21.4 12.8 21.2Z"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>表示名変更</span>
+              </span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+            <button className="settings-menu-item" type="button">
+              <span className="settings-menu-label">
+                <span
+                  className="settings-menu-icon settings-menu-icon-avatar"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle
+                      cx="14"
+                      cy="10"
+                      r="4"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                    />
+                    <path
+                      d="M6.5 22C7.6 18.4 10.3 16.5 14 16.5C17.7 16.5 20.4 18.4 21.5 22"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M20.5 7.5L22.5 5.5"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M22.5 5.5L24.5 7.5"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M22.5 5.5V11"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <span>アイコン変更</span>
+              </span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+          </div>
+
+          <div className="settings-menu-group">
+            <button className="settings-menu-item" type="button">
+              <span className="settings-menu-label">
+                <span
+                  className="settings-menu-icon settings-menu-icon-logout"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M17 6H10C8.9 6 8 6.9 8 8V20C8 21.1 8.9 22 10 22H17"
+                      stroke="#24C58A"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M14 14H23"
+                      stroke="#24C58A"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M20 11L23 14L20 17"
+                      stroke="#24C58A"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>ログアウト</span>
+              </span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+            <button
+              className="settings-menu-item settings-menu-item-danger"
+              type="button"
+            >
+              <span className="settings-menu-label">
+                <span
+                  className="settings-menu-icon settings-menu-icon-delete"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect
+                      x="11"
+                      y="4.5"
+                      width="6"
+                      height="3"
+                      rx="1"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                    />
+                    <path
+                      d="M7 8H21"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <rect
+                      x="8"
+                      y="8"
+                      width="12"
+                      height="14"
+                      rx="2.5"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                    />
+                    <path
+                      d="M12 12V18"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M16 12V18"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <span>アカウント削除</span>
+              </span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   if (isProfileOpen) {
     return (
       <main className="home-page profile-page">
@@ -2049,6 +2308,7 @@ function HomePage() {
               className="profile-settings-button"
               type="button"
               aria-label="設定"
+              onClick={openSettings}
             >
               <img src={settingsIcon} alt="" aria-hidden="true" />
             </button>
