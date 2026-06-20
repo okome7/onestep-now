@@ -1175,6 +1175,9 @@ body {
 }
 
 .photo-choice-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 28px;
   border: 1px solid #a8b2c3;
   border-radius: 4px;
@@ -1187,40 +1190,12 @@ body {
 }
 
 .photo-button-icon {
-  position: relative;
-  display: inline-block;
+  display: block;
   flex: 0 0 18px;
   width: 18px;
   height: 18px;
   margin-right: 5px;
-}
-
-.camera-icon {
-  border: 2px solid #111827;
-  border-radius: 3px;
-}
-
-.camera-icon::before {
-  position: absolute;
-  top: -5px;
-  left: 4px;
-  width: 7px;
-  height: 4px;
-  border: 2px solid #111827;
-  border-bottom: 0;
-  border-radius: 2px 2px 0 0;
-  content: '';
-}
-
-.camera-icon::after {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 6px;
-  height: 6px;
-  border: 2px solid #111827;
-  border-radius: 50%;
-  content: '';
+  object-fit: contain;
 }
 
 .folder-icon {
@@ -2251,6 +2226,14 @@ body {
   .name-edit-page .home-header-action-right {
     padding-right: 28px;
   }
+
+  .icon-edit-page .home-header-action-right {
+    padding-right: 28px;
+  }
+
+  .icon-edit-action.icon-edit-camera-action {
+    display: none;
+  }
 }
 
 .profile-page {
@@ -2401,6 +2384,16 @@ body {
   padding-right: 14px;
 }
 
+.icon-edit-page {
+  min-height: 100dvh;
+  padding-bottom: 0;
+  background: #f4f7fb;
+}
+
+.icon-edit-page .home-header-action-right {
+  padding-right: 14px;
+}
+
 .name-edit-done-button {
   border: 0;
   padding: 0;
@@ -2454,7 +2447,7 @@ body {
   box-shadow: 0 0 0 2px rgb(77 149 229 / 18%);
 }
 
-.name-discard-modal-backdrop {
+.unsaved-modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 30;
@@ -2464,7 +2457,7 @@ body {
   background: rgb(244 247 251 / 70%);
 }
 
-.name-discard-modal {
+.unsaved-modal {
   display: grid;
   width: min(100%, 286px);
   justify-items: center;
@@ -2477,14 +2470,14 @@ body {
   text-align: center;
 }
 
-.name-discard-modal p {
+.unsaved-modal p {
   margin: 0;
   color: #111827;
   font-size: 14px;
   line-height: 1.8;
 }
 
-.name-discard-modal-primary {
+.unsaved-modal-primary {
   width: 210px;
   height: 36px;
   margin-top: 13px;
@@ -2499,7 +2492,7 @@ body {
   cursor: pointer;
 }
 
-.name-discard-modal-secondary {
+.unsaved-modal-secondary {
   margin-top: 18px;
   border: 0;
   padding: 0;
@@ -2509,6 +2502,128 @@ body {
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.icon-edit-content {
+  display: grid;
+  width: min(100%, 320px);
+  margin: 0 auto;
+  align-content: start;
+  align-items: start;
+  justify-items: center;
+  padding: 32px 0 0;
+}
+
+.icon-edit-preview {
+  display: block;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: #d9d9d9;
+  object-fit: cover;
+}
+
+.icon-edit-action-list {
+  width: min(100%, 250px);
+  margin-top: 25px;
+  overflow: hidden;
+  border: 1px solid #b8c1cc;
+  border-radius: 3px;
+  background: #ffffff;
+  align-self: start;
+}
+
+.icon-edit-action {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  gap: 15px;
+  border: 0;
+  padding: 0 18px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.icon-edit-action + .icon-edit-action {
+  border-top: 1px solid #e5eaf2;
+}
+
+.icon-edit-action-text-grid {
+  transform: translateY(1px);
+}
+
+.icon-edit-action-icon {
+  position: relative;
+  display: block;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  color: #111827;
+}
+
+.icon-edit-action-icon svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.icon-edit-action-icon-grid {
+  transform: translateY(1px) scale(1.12);
+}
+
+.icon-edit-action-icon.folder-icon {
+  background-size: 24px 24px;
+}
+
+.icon-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 18%);
+}
+
+.icon-palette-modal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  padding: 34px 22px 22px;
+  background: #ffffff;
+  box-shadow:
+    0 2px 3px rgb(15 23 42 / 18%),
+    0 14px 28px rgb(15 23 42 / 14%);
+}
+
+.icon-palette-close-button {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #667085;
+  font: inherit;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-edit-avatar-grid {
+  margin: 0;
 }
 
 .profile-content {
