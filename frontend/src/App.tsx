@@ -852,8 +852,6 @@ function SignupPage() {
   const [completedIconSrc, setCompletedIconSrc] = useState(() =>
     getCompleteAvatarSrc(getInitialCompleteProfile()),
   )
-  const [isMobilePhotoMenu, setIsMobilePhotoMenu] = useState(false)
-  const [isPhotoChoiceOpen, setIsPhotoChoiceOpen] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
@@ -869,19 +867,6 @@ function SignupPage() {
       }
     }
   }, [customPhotoUrl])
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 639px)')
-    const updatePhotoMenu = () => {
-      setIsMobilePhotoMenu(mediaQuery.matches)
-      setIsPhotoChoiceOpen(false)
-    }
-
-    updatePhotoMenu()
-    mediaQuery.addEventListener('change', updatePhotoMenu)
-
-    return () => mediaQuery.removeEventListener('change', updatePhotoMenu)
-  }, [])
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
@@ -1008,7 +993,6 @@ function SignupPage() {
         setCustomPhotoDataUrl(photoDataUrl)
         setCustomPhotoUrl(photoDataUrl)
         setSelectedIconId(customPhotoIconId)
-        setIsPhotoChoiceOpen(false)
         setMessage('')
         setError('')
       } catch (caughtError) {
@@ -1026,15 +1010,6 @@ function SignupPage() {
       setSelectedIconId(avatarId)
       return
     }
-  }
-
-  function handlePhotoButtonClick() {
-    if (isMobilePhotoMenu) {
-      setIsPhotoChoiceOpen((current) => !current)
-      return
-    }
-
-    photoInputRef.current?.click()
   }
 
   function handleStart() {
@@ -1122,51 +1097,32 @@ function SignupPage() {
             })}
           </div>
 
-          <div className="photo-actions">
+          <div className="icon-edit-action-list signup-photo-action-list">
             <button
-              className="photo-button"
+              className="icon-edit-action icon-edit-camera-action"
               type="button"
-              aria-expanded={isMobilePhotoMenu ? isPhotoChoiceOpen : undefined}
-              onClick={handlePhotoButtonClick}
+              onClick={() => cameraInputRef.current?.click()}
             >
-              <span
-                className="photo-button-icon folder-icon"
+              <img
+                className="icon-edit-action-icon icon-edit-action-icon-camera"
+                src={cameraIcon}
+                alt=""
                 aria-hidden="true"
               />
-              写真を選ぶ
+              <span>カメラで撮影</span>
+            </button>
+            <button
+              className="icon-edit-action"
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <span
+                className="icon-edit-action-icon icon-edit-action-icon-folder folder-icon"
+                aria-hidden="true"
+              />
+              <span>写真を選ぶ</span>
             </button>
           </div>
-
-          {isMobilePhotoMenu ? (
-            <div
-              className={`photo-choice-panel ${
-                isPhotoChoiceOpen ? 'is-open' : ''
-              }`}
-            >
-              <button
-                className="photo-choice-button"
-                type="button"
-                tabIndex={isPhotoChoiceOpen ? 0 : -1}
-                onClick={() => cameraInputRef.current?.click()}
-              >
-                <img
-                  className="photo-button-icon"
-                  src={cameraIcon}
-                  alt=""
-                  aria-hidden="true"
-                />
-                カメラで撮影
-              </button>
-              <button
-                className="photo-choice-button"
-                type="button"
-                tabIndex={isPhotoChoiceOpen ? 0 : -1}
-                onClick={() => photoInputRef.current?.click()}
-              >
-                写真を選択
-              </button>
-            </div>
-          ) : null}
 
           <input
             ref={cameraInputRef}
