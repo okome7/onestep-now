@@ -27,6 +27,7 @@ export const customPhotoIconId = 'custom-photo'
 export const signupScreenStorageKey = 'onestep-signup-screen'
 export const signupDraftStorageKey = 'onestep-signup-draft'
 export const signupCompleteStorageKey = 'onestep-signup-complete'
+export const authSessionStorageKey = 'onestep-auth-session'
 export const avatarImageSize = 256
 export const avatarImageQuality = 0.82
 export const feedViewDurationSeconds = 5 * 60

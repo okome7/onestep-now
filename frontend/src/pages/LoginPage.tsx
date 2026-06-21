@@ -8,6 +8,7 @@ import {
 } from '../appConstants'
 import {
   apiMessageToLoginFieldErrors,
+  clearAuthSession,
   errorFieldClass,
   formatPasswordInput,
   hasErrors,
@@ -84,6 +85,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   }
 
   function handleSignupLinkClick() {
+    clearAuthSession()
     window.localStorage.removeItem(signupCompleteStorageKey)
     window.sessionStorage.removeItem(signupScreenStorageKey)
     window.sessionStorage.removeItem(signupDraftStorageKey)
