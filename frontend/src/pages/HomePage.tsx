@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { deleteAccount } from '../accountApi'
 import {
@@ -485,7 +485,9 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function saveSettingsIcon() {
+  const saveSettingsIcon = useCallback((event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+
     if (!canSaveSettingsIcon) {
       return
     }
@@ -502,7 +504,43 @@ export function HomePage() {
     setIsSettingsAvatarGridOpen(false)
     setIsIconDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
-  }
+  }, [canSaveSettingsIcon, completeProfile, selectedSettingsIconId])
+
+  useEffect(() => {
+    if (!isSettingsOpen || !isIconEditOpen) {
+      return
+    }
+
+    function handleDocumentKeyDown(event: globalThis.KeyboardEvent) {
+      const target =
+        event.target instanceof HTMLElement ? event.target : document.body
+
+      if (
+        event.key !== 'Enter' ||
+        event.defaultPrevented ||
+        Boolean(target.closest('button, input, select, textarea, a')) ||
+        isSettingsAvatarGridOpen ||
+        !canSaveSettingsIcon
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      saveSettingsIcon()
+    }
+
+    document.addEventListener('keydown', handleDocumentKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown)
+    }
+  }, [
+    canSaveSettingsIcon,
+    isIconEditOpen,
+    isSettingsAvatarGridOpen,
+    isSettingsOpen,
+    saveSettingsIcon,
+  ])
 
   function handleSettingsAvatarClick(avatarId: string) {
     if (avatarId !== customPhotoIconId || settingsCustomPhotoUrl) {
@@ -756,16 +794,21 @@ export function HomePage() {
           rightAction={
             <button
               className="name-edit-done-button"
-              type="button"
+              type="submit"
+              form="settings-icon-form"
               disabled={!canSaveSettingsIcon}
-              onClick={saveSettingsIcon}
             >
               完了
             </button>
           }
         />
 
-        <section className="icon-edit-content" aria-label="アイコン変更">
+        <form
+          id="settings-icon-form"
+          className="icon-edit-content"
+          aria-label="アイコン変更"
+          onSubmit={saveSettingsIcon}
+        >
           <img
             className="icon-edit-preview"
             src={settingsIconPreviewSrc}
@@ -905,7 +948,7 @@ export function HomePage() {
             aria-label="選択する写真"
             onChange={handleSettingsPhotoChange}
           />
-        </section>
+        </form>
 
         {isIconDiscardConfirmOpen ? (
           <UnsavedChangesModal
