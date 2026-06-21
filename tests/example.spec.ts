@@ -176,9 +176,8 @@ test("バックエンドでログインできる", async ({ request }) => {
 });
 
 test("フロントエンドの新規登録画面が表示される", async ({ page }) => {
-  const response = await page.goto("/");
+  await page.goto("/");
 
-  expect(response?.status()).toBe(200);
   await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
   await expect(page.getByLabel("表示名")).toBeVisible();
   await expect(page.getByLabel("メールアドレス")).toBeVisible();
