@@ -2366,6 +2366,13 @@ body {
   line-height: 1.5;
 }
 
+.logout-modal .account-delete-error {
+  margin-top: 14px;
+  color: #ef4444;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .logout-modal-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2383,6 +2390,11 @@ body {
   cursor: pointer;
 }
 
+.logout-modal-actions button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 .logout-modal-secondary {
   border: 1px solid #b8c1cc;
   background: #ffffff;
@@ -2393,6 +2405,74 @@ body {
   border: 0;
   background: #24c58a;
   color: #ffffff;
+}
+
+.account-delete-modal-primary {
+  height: 52px;
+  border: 0;
+  border-radius: 10px;
+  background: #f2333b;
+  color: #ffffff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.account-deleted-page {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f4f7fb;
+}
+
+.account-deleted-modal {
+  display: grid;
+  width: min(100%, 530px);
+  justify-items: center;
+  border-radius: 16px;
+  padding: 75px 43px 48px;
+  background: #ffffff;
+  box-shadow: 0 14px 38px rgb(15 23 42 / 9%);
+  text-align: center;
+}
+
+.account-deleted-modal h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.account-deleted-modal p {
+  margin: 30px 0 0;
+  color: #8a95a5;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.account-deleted-divider {
+  width: 100%;
+  height: 1px;
+  margin: 39px 0 30px;
+  background: #d8e0ea;
+}
+
+.account-deleted-button {
+  width: 100%;
+  height: 60px;
+  border: 0;
+  border-radius: 8px;
+  background: #24c58a;
+  color: #ffffff;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .name-edit-page {

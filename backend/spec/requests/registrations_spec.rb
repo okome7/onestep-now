@@ -183,4 +183,49 @@ RSpec.describe "Registrations", type: :request do
       end
     end
   end
+
+  describe "DELETE /account" do
+    it "ユーザーを削除し、同じメールアドレスではログインできなくなること" do
+      user = User.create!(
+        name: "Delete User",
+        email: "delete@example.com",
+        password: "password1",
+        password_confirmation: "password1"
+      )
+
+      expect {
+        delete "/account", params: {
+          user: {
+            id: user.id,
+            email: " DELETE@example.com "
+          }
+        }, as: :json
+      }.to change(User, :count).by(-1)
+
+      expect(response).to have_http_status(:ok)
+      json_response = JSON.parse(response.body)
+      expect(json_response["status"]).to eq("success")
+
+      post "/login", params: {
+        user: {
+          email: "delete@example.com",
+          password: "password1"
+        }
+      }, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "存在しないユーザーは404を返すこと" do
+      delete "/account", params: {
+        user: {
+          email: "missing@example.com"
+        }
+      }, as: :json
+
+      expect(response).to have_http_status(:not_found)
+      json_response = JSON.parse(response.body)
+      expect(json_response["status"]).to eq("error")
+    end
+  end
 end

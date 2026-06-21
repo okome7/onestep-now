@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, MouseEvent, ReactNode } from 'react'
 import './App.css'
+import { deleteAccount } from './accountApi'
 import { login } from './loginApi'
 import type { LoginForm } from './loginApi'
 import {
@@ -554,7 +555,9 @@ function apiMessageToPasswordResetFieldErrors(
 }
 
 type CompleteProfile = {
+  id?: number
   name: string
+  email?: string
   avatarId: string
 }
 
@@ -640,7 +643,9 @@ function getInitialCompleteProfile(): CompleteProfile {
     const parsedProfile = JSON.parse(savedProfile) as Partial<CompleteProfile>
 
     return {
+      id: parsedProfile.id,
       name: parsedProfile.name ?? '',
+      email: parsedProfile.email ?? '',
       avatarId: parsedProfile.avatarId ?? avatarOptions[0].id,
     }
   } catch {
@@ -1102,7 +1107,9 @@ function SignupPage() {
       window.sessionStorage.removeItem(signupDraftStorageKey)
       window.sessionStorage.setItem(signupScreenStorageKey, 'complete')
       saveCompleteProfile({
+        id: createdUser.id,
         name: nextCompletedName,
+        email: createdUser.email,
         avatarId: nextCompletedAvatarId,
       })
       setScreen('complete')
@@ -1557,7 +1564,9 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
     try {
       const user = await login(form)
       saveCompleteProfile({
+        id: user.id,
         name: user.name,
+        email: user.email,
         avatarId: user.avatar_key ?? avatarOptions[0].id,
       })
       shouldResetSubmitting = false
@@ -1978,6 +1987,11 @@ function HomePage() {
     useState<AchievementDetailTab>('likes')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
+  const [isAccountDeleteConfirmOpen, setIsAccountDeleteConfirmOpen] =
+    useState(false)
+  const [isAccountDeletedOpen, setIsAccountDeletedOpen] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [accountDeleteError, setAccountDeleteError] = useState('')
   const [isNameEditOpen, setIsNameEditOpen] = useState(false)
   const [isIconEditOpen, setIsIconEditOpen] = useState(false)
   const [isNameDiscardConfirmOpen, setIsNameDiscardConfirmOpen] =
@@ -2140,6 +2154,8 @@ function HomePage() {
     setActiveAchievementId(null)
     setIsSettingsOpen(false)
     setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2157,6 +2173,8 @@ function HomePage() {
     setActiveAchievementId(null)
     setIsSettingsOpen(false)
     setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2172,6 +2190,8 @@ function HomePage() {
     setActiveAchievementId(null)
     setIsSettingsOpen(false)
     setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2188,6 +2208,8 @@ function HomePage() {
     setActiveAchievementId(null)
     setIsSettingsOpen(false)
     setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2203,6 +2225,8 @@ function HomePage() {
     setIsFeedOpen(false)
     setIsSettingsOpen(false)
     setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2234,6 +2258,8 @@ function HomePage() {
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
     setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2245,6 +2271,8 @@ function HomePage() {
   function closeSettings() {
     setIsSettingsOpen(false)
     setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2255,6 +2283,7 @@ function HomePage() {
 
   function openLogoutConfirm() {
     setIsLogoutConfirmOpen(true)
+    setIsAccountDeleteConfirmOpen(false)
   }
 
   function closeLogoutConfirm() {
@@ -2262,6 +2291,61 @@ function HomePage() {
   }
 
   function confirmLogout() {
+    window.location.href = '/login'
+  }
+
+  function openAccountDeleteConfirm() {
+    setIsAccountDeleteConfirmOpen(true)
+    setIsLogoutConfirmOpen(false)
+    setAccountDeleteError('')
+  }
+
+  function closeAccountDeleteConfirm() {
+    if (isDeletingAccount) {
+      return
+    }
+
+    setIsAccountDeleteConfirmOpen(false)
+    setAccountDeleteError('')
+  }
+
+  async function confirmAccountDelete() {
+    if (isDeletingAccount) {
+      return
+    }
+
+    if (!completeProfile.id && !completeProfile.email) {
+      setAccountDeleteError(
+        'アカウント情報を確認できませんでした。もう一度ログインしてから削除してください。',
+      )
+      return
+    }
+
+    setIsDeletingAccount(true)
+    setAccountDeleteError('')
+
+    try {
+      await deleteAccount({
+        id: completeProfile.id,
+        email: completeProfile.email,
+      })
+      window.localStorage.removeItem(signupCompleteStorageKey)
+      window.sessionStorage.removeItem(signupScreenStorageKey)
+      window.sessionStorage.removeItem(signupDraftStorageKey)
+      setIsAccountDeleteConfirmOpen(false)
+      setIsAccountDeletedOpen(true)
+    } catch (caughtError) {
+      setAccountDeleteError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'アカウント削除に失敗しました。',
+      )
+    } finally {
+      setIsDeletingAccount(false)
+    }
+  }
+
+  function goToLoginAfterAccountDelete() {
     window.location.href = '/login'
   }
 
@@ -2931,6 +3015,7 @@ function HomePage() {
             <button
               className="settings-menu-item settings-menu-item-danger"
               type="button"
+              onClick={openAccountDeleteConfirm}
             >
               <span className="settings-menu-label">
                 <span
@@ -3022,6 +3107,79 @@ function HomePage() {
                   ログアウト
                 </button>
               </div>
+            </section>
+          </div>
+        ) : null}
+
+        {isAccountDeleteConfirmOpen ? (
+          <div className="logout-modal-backdrop" role="presentation">
+            <section
+              className="logout-modal account-delete-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="account-delete-modal-title"
+              aria-describedby="account-delete-modal-description"
+            >
+              <div className="logout-modal-body">
+                <h2 id="account-delete-modal-title">
+                  アカウントを削除しますか？
+                </h2>
+                <p id="account-delete-modal-description">
+                  この操作は取り消せません。
+                  <br />
+                  アカウントとすべてのデータが削除されます。
+                </p>
+                {accountDeleteError ? (
+                  <p className="account-delete-error" role="alert">
+                    {accountDeleteError}
+                  </p>
+                ) : null}
+              </div>
+              <div className="logout-modal-actions">
+                <button
+                  className="logout-modal-secondary"
+                  type="button"
+                  onClick={closeAccountDeleteConfirm}
+                  disabled={isDeletingAccount}
+                >
+                  キャンセル
+                </button>
+                <button
+                  className="account-delete-modal-primary"
+                  type="button"
+                  onClick={confirmAccountDelete}
+                  disabled={isDeletingAccount}
+                >
+                  {isDeletingAccount ? '削除中' : '削除する'}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {isAccountDeletedOpen ? (
+          <div className="account-deleted-page" role="presentation">
+            <section
+              className="account-deleted-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="account-deleted-modal-title"
+              aria-describedby="account-deleted-modal-description"
+            >
+              <h2 id="account-deleted-modal-title">
+                アカウントを削除しました
+              </h2>
+              <p id="account-deleted-modal-description">
+                ご利用ありがとうございました。
+              </p>
+              <div className="account-deleted-divider" aria-hidden="true" />
+              <button
+                className="account-deleted-button"
+                type="button"
+                onClick={goToLoginAfterAccountDelete}
+              >
+                ログイン画面へ
+              </button>
             </section>
           </div>
         ) : null}

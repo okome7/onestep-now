@@ -28,7 +28,29 @@ class RegistrationsController < ApplicationController
     end
   end
 
+  def destroy
+    user = account_user
+
+    if user
+      user.destroy!
+      render json: { status: "success" }, status: :ok
+    else
+      render json: { status: "error", errors: [ "アカウントが見つかりません" ] }, status: :not_found
+    end
+  end
+
   private
+
+  def account_user
+    id = account_params[:id]
+    email = account_params[:email].to_s.strip.downcase
+
+    return User.find_by(id: id, email: email) if id.present? && email.present?
+    return User.find_by(id: id) if id.present?
+    return User.find_by(email: email) if email.present?
+
+    nil
+  end
 
   def user_params
     params.require(:user).permit(:name, :email, :password, :password_confirmation, :avatar_key)
@@ -36,5 +58,9 @@ class RegistrationsController < ApplicationController
 
   def email_check_params
     params.require(:user).permit(:email)
+  end
+
+  def account_params
+    params.require(:user).permit(:id, :email)
   end
 end
