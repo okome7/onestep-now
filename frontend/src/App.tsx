@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, MouseEvent, ReactNode } from 'react'
 import './App.css'
+import { deleteAccount } from './accountApi'
 import { login } from './loginApi'
 import type { LoginForm } from './loginApi'
 import {
@@ -20,6 +21,8 @@ import settingsIcon from './assets/icons/settings.svg'
 import achievementFlameIcon from './assets/icons/achievement-flame.svg'
 import achievementCheckIcon from './assets/icons/achievement-check.svg'
 import feedExpiredClockIcon from './assets/icons/feed-expired-clock.svg'
+import cameraIcon from './assets/icons/camera.svg'
+import iconGridIcon from './assets/icons/icon-grid.svg'
 import avatarOne from './assets/avatars/avatar-1.svg'
 import avatarTwo from './assets/avatars/avatar-2.svg'
 import avatarThree from './assets/avatars/avatar-3.svg'
@@ -77,7 +80,29 @@ type FeedPost = {
   isOwnPost: boolean
 }
 
+type ProfileAchievement = {
+  id: string
+  task: string
+  likes: number
+  comments: number
+  createdAt: number
+}
+
+type AchievementDetailTab = 'likes' | 'comments'
+
+type AchievementLikeUser = {
+  name: string
+  level: number
+  afterComplete: boolean
+}
+
+type AchievementComment = AchievementLikeUser & {
+  text: string
+  age: string
+}
+
 const feedViewDurationSeconds = 5 * 60
+const currentPathname = () => window.location.pathname.replace(/\/+$/, '') || '/'
 const sampleFeedPosts: Array<
   Omit<FeedPost, 'createdAt'> & { ageMinutes: number }
 > = [
@@ -202,6 +227,111 @@ const sampleFeedPosts: Array<
     isOwnPost: false,
   },
 ]
+const sampleProfileAchievements: Array<
+  Omit<ProfileAchievement, 'createdAt'> & { ageMinutes: number }
+> = [
+  { id: 'achievement-1', task: 'スライド1枚作る', likes: 12, comments: 5, ageMinutes: 4 },
+  {
+    id: 'achievement-2',
+    task: '部屋の掃除をする',
+    likes: 13,
+    comments: 3,
+    ageMinutes: 2 * 60,
+  },
+  {
+    id: 'achievement-3',
+    task: '英単語を10個覚える',
+    likes: 20,
+    comments: 4,
+    ageMinutes: 24 * 60,
+  },
+  {
+    id: 'achievement-4',
+    task: 'ランニング3km',
+    likes: 11,
+    comments: 1,
+    ageMinutes: 2 * 24 * 60,
+  },
+  {
+    id: 'achievement-5',
+    task: '読書を30分する',
+    likes: 8,
+    comments: 2,
+    ageMinutes: 3 * 24 * 60,
+  },
+  {
+    id: 'achievement-6',
+    task: 'セキュリティの勉強をする',
+    likes: 18,
+    comments: 3,
+    ageMinutes: 4 * 24 * 60,
+  },
+  {
+    id: 'achievement-7',
+    task: '洗い物をする',
+    likes: 7,
+    comments: 1,
+    ageMinutes: 5 * 24 * 60,
+  },
+  {
+    id: 'achievement-8',
+    task: 'AIを使ってみる',
+    likes: 10,
+    comments: 2,
+    ageMinutes: 6 * 24 * 60,
+  },
+  {
+    id: 'achievement-9',
+    task: 'エラーを解決する',
+    likes: 12,
+    comments: 1,
+    ageMinutes: 93 * 24 * 60,
+  },
+  {
+    id: 'achievement-10',
+    task: '新しいことを1つ調べる',
+    likes: 9,
+    comments: 2,
+    ageMinutes: 94 * 24 * 60,
+  },
+]
+const achievementLikeUsers: AchievementLikeUser[] = [
+  { name: 'みき', level: 7, afterComplete: false },
+  { name: 'あや', level: 5, afterComplete: false },
+  { name: 'けんじ', level: 1, afterComplete: false },
+  { name: 'さくら', level: 22, afterComplete: false },
+  { name: 'はる', level: 18, afterComplete: true },
+]
+const achievementComments: AchievementComment[] = [
+  {
+    name: 'みき',
+    level: 7,
+    afterComplete: false,
+    text: '頑張れ！',
+    age: '3時間前',
+  },
+  {
+    name: 'あや',
+    level: 5,
+    afterComplete: false,
+    text: 'ファイト🔥',
+    age: '2時間前',
+  },
+  {
+    name: 'けんじ',
+    level: 1,
+    afterComplete: false,
+    text: 'がんば！',
+    age: '2時間前',
+  },
+  {
+    name: 'さくら',
+    level: 22,
+    afterComplete: true,
+    text: 'いい感じ！',
+    age: '1時間前',
+  },
+]
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -241,7 +371,23 @@ function formatFeedRemainingTime(totalSeconds: number) {
 function formatFeedPostAge(createdAt: number, now: number) {
   const elapsedMinutes = Math.max(1, Math.floor((now - createdAt) / 60000))
 
-  return `${elapsedMinutes}分前`
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes}分前`
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60)
+  if (elapsedHours < 24) {
+    return `${elapsedHours}時間前`
+  }
+
+  const elapsedDays = Math.floor(elapsedHours / 24)
+  if (elapsedDays < 7) {
+    return `${elapsedDays}日前`
+  }
+
+  const date = new Date(createdAt)
+
+  return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
 function validateForm(form: SignupForm) {
@@ -409,7 +555,9 @@ function apiMessageToPasswordResetFieldErrors(
 }
 
 type CompleteProfile = {
+  id?: number
   name: string
+  email?: string
   avatarId: string
 }
 
@@ -495,7 +643,9 @@ function getInitialCompleteProfile(): CompleteProfile {
     const parsedProfile = JSON.parse(savedProfile) as Partial<CompleteProfile>
 
     return {
+      id: parsedProfile.id,
       name: parsedProfile.name ?? '',
+      email: parsedProfile.email ?? '',
       avatarId: parsedProfile.avatarId ?? avatarOptions[0].id,
     }
   } catch {
@@ -623,21 +773,67 @@ function SignupHeader({ title, onBack }: SignupHeaderProps) {
 
 type AppHeaderProps = {
   title?: string
+  leftAction?: ReactNode
   rightAction?: ReactNode
 }
 
 function AppHeader({
   title = 'OneStep Now',
+  leftAction = null,
   rightAction = null,
 }: AppHeaderProps) {
   return (
     <header className="home-header">
-      <div className="home-header-action" aria-hidden="true" />
+      <div
+        className="home-header-action"
+        aria-hidden={leftAction ? undefined : 'true'}
+      >
+        {leftAction}
+      </div>
       <h1>{title}</h1>
       <div className="home-header-action home-header-action-right">
         {rightAction}
       </div>
     </header>
+  )
+}
+
+type UnsavedChangesModalProps = {
+  onContinue: () => void
+  onDiscard: () => void
+}
+
+function UnsavedChangesModal({
+  onContinue,
+  onDiscard,
+}: UnsavedChangesModalProps) {
+  return (
+    <div className="unsaved-modal-backdrop" role="presentation">
+      <section
+        className="unsaved-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="unsaved-modal-title"
+        aria-describedby="unsaved-modal-description"
+      >
+        <p id="unsaved-modal-title">変更は保存されていません。</p>
+        <p id="unsaved-modal-description">このまま戻りますか？</p>
+        <button
+          className="unsaved-modal-primary"
+          type="button"
+          onClick={onContinue}
+        >
+          編集を続ける
+        </button>
+        <button
+          className="unsaved-modal-secondary"
+          type="button"
+          onClick={onDiscard}
+        >
+          編集せずに戻る
+        </button>
+      </section>
+    </div>
   )
 }
 
@@ -803,8 +999,6 @@ function SignupPage() {
   const [completedIconSrc, setCompletedIconSrc] = useState(() =>
     getCompleteAvatarSrc(getInitialCompleteProfile()),
   )
-  const [isMobilePhotoMenu, setIsMobilePhotoMenu] = useState(false)
-  const [isPhotoChoiceOpen, setIsPhotoChoiceOpen] = useState(false)
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isPasswordConfirmationVisible, setIsPasswordConfirmationVisible] =
     useState(false)
@@ -820,19 +1014,6 @@ function SignupPage() {
       }
     }
   }, [customPhotoUrl])
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 639px)')
-    const updatePhotoMenu = () => {
-      setIsMobilePhotoMenu(mediaQuery.matches)
-      setIsPhotoChoiceOpen(false)
-    }
-
-    updatePhotoMenu()
-    mediaQuery.addEventListener('change', updatePhotoMenu)
-
-    return () => mediaQuery.removeEventListener('change', updatePhotoMenu)
-  }, [])
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
@@ -926,7 +1107,9 @@ function SignupPage() {
       window.sessionStorage.removeItem(signupDraftStorageKey)
       window.sessionStorage.setItem(signupScreenStorageKey, 'complete')
       saveCompleteProfile({
+        id: createdUser.id,
         name: nextCompletedName,
+        email: createdUser.email,
         avatarId: nextCompletedAvatarId,
       })
       setScreen('complete')
@@ -959,7 +1142,6 @@ function SignupPage() {
         setCustomPhotoDataUrl(photoDataUrl)
         setCustomPhotoUrl(photoDataUrl)
         setSelectedIconId(customPhotoIconId)
-        setIsPhotoChoiceOpen(false)
         setMessage('')
         setError('')
       } catch (caughtError) {
@@ -979,17 +1161,7 @@ function SignupPage() {
     }
   }
 
-  function handlePhotoButtonClick() {
-    if (isMobilePhotoMenu) {
-      setIsPhotoChoiceOpen((current) => !current)
-      return
-    }
-
-    photoInputRef.current?.click()
-  }
-
   function handleStart() {
-    window.localStorage.removeItem(signupCompleteStorageKey)
     window.sessionStorage.removeItem(signupScreenStorageKey)
     window.location.href = '/home'
   }
@@ -1073,45 +1245,32 @@ function SignupPage() {
             })}
           </div>
 
-          <div className="photo-actions">
+          <div className="icon-edit-action-list signup-photo-action-list">
             <button
-              className="photo-button"
+              className="icon-edit-action icon-edit-camera-action"
               type="button"
-              aria-expanded={isMobilePhotoMenu ? isPhotoChoiceOpen : undefined}
-              onClick={handlePhotoButtonClick}
+              onClick={() => cameraInputRef.current?.click()}
             >
-              <span
-                className="photo-button-icon folder-icon"
+              <img
+                className="icon-edit-action-icon icon-edit-action-icon-camera"
+                src={cameraIcon}
+                alt=""
                 aria-hidden="true"
               />
-              写真を選ぶ
+              <span>カメラで撮影</span>
+            </button>
+            <button
+              className="icon-edit-action"
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <span
+                className="icon-edit-action-icon icon-edit-action-icon-folder folder-icon"
+                aria-hidden="true"
+              />
+              <span>写真を選ぶ</span>
             </button>
           </div>
-
-          {isMobilePhotoMenu ? (
-            <div
-              className={`photo-choice-panel ${
-                isPhotoChoiceOpen ? 'is-open' : ''
-              }`}
-            >
-              <button
-                className="photo-choice-button"
-                type="button"
-                tabIndex={isPhotoChoiceOpen ? 0 : -1}
-                onClick={() => cameraInputRef.current?.click()}
-              >
-                カメラで撮影
-              </button>
-              <button
-                className="photo-choice-button"
-                type="button"
-                tabIndex={isPhotoChoiceOpen ? 0 : -1}
-                onClick={() => photoInputRef.current?.click()}
-              >
-                写真を選択
-              </button>
-            </div>
-          ) : null}
 
           <input
             ref={cameraInputRef}
@@ -1367,14 +1526,14 @@ function SignupPage() {
   )
 }
 
-function LoginPage() {
+type LoginPageProps = {
+  onLoginSuccess: () => void
+}
+
+function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [form, setForm] = useState<LoginForm>({ email: '', password: '' })
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const handleBack = () => {
-    window.location.href = '/'
-  }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value } = event.target
@@ -1399,9 +1558,18 @@ function LoginPage() {
 
     setIsSubmitting(true)
 
+    let shouldResetSubmitting = true
+
     try {
-      await login(form)
-      window.location.href = '/home'
+      const user = await login(form)
+      saveCompleteProfile({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarId: user.avatar_key ?? avatarOptions[0].id,
+      })
+      shouldResetSubmitting = false
+      onLoginSuccess()
     } catch (caughtError) {
       const nextError =
         caughtError instanceof Error
@@ -1416,13 +1584,15 @@ function LoginPage() {
 
       setFieldErrors((current) => ({ ...current, password: nextError }))
     } finally {
-      setIsSubmitting(false)
+      if (shouldResetSubmitting) {
+        setIsSubmitting(false)
+      }
     }
   }
 
   return (
     <main className="signup-page login-page">
-      <SignupHeader title="ログイン" onBack={handleBack} />
+      <SignupHeader title="ログイン" />
 
       <section className="signup-content">
         <form className="signup-form" onSubmit={handleSubmit} noValidate>
@@ -1798,6 +1968,8 @@ function PasswordResetPage() {
 }
 
 function HomePage() {
+  const settingsCameraInputRef = useRef<HTMLInputElement>(null)
+  const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
@@ -1806,6 +1978,43 @@ function HomePage() {
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false)
+  const [activeAchievementId, setActiveAchievementId] = useState<string | null>(
+    null,
+  )
+  const [activeAchievementTab, setActiveAchievementTab] =
+    useState<AchievementDetailTab>('likes')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
+  const [isAccountDeleteConfirmOpen, setIsAccountDeleteConfirmOpen] =
+    useState(false)
+  const [isAccountDeletedOpen, setIsAccountDeletedOpen] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [accountDeleteError, setAccountDeleteError] = useState('')
+  const [isNameEditOpen, setIsNameEditOpen] = useState(false)
+  const [isIconEditOpen, setIsIconEditOpen] = useState(false)
+  const [isNameDiscardConfirmOpen, setIsNameDiscardConfirmOpen] =
+    useState(false)
+  const [isIconDiscardConfirmOpen, setIsIconDiscardConfirmOpen] =
+    useState(false)
+  const [completeProfile, setCompleteProfile] = useState(() =>
+    getInitialCompleteProfile(),
+  )
+  const [displayNameDraft, setDisplayNameDraft] = useState(
+    completeProfile.name || 'おこめ',
+  )
+  const [selectedSettingsIconId, setSelectedSettingsIconId] = useState(
+    completeProfile.avatarId,
+  )
+  const [settingsCustomPhotoUrl, setSettingsCustomPhotoUrl] = useState(
+    isAvatarImageDataUrl(completeProfile.avatarId)
+      ? completeProfile.avatarId
+      : '',
+  )
+  const [isSettingsAvatarGridOpen, setIsSettingsAvatarGridOpen] =
+    useState(false)
+  const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
+    useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
     feedViewDurationSeconds,
   )
@@ -1818,6 +2027,14 @@ function HomePage() {
       createdAt: initialNow - ageMinutes * 60 * 1000,
     }))
   })
+  const [profileAchievements] = useState<ProfileAchievement[]>(() => {
+    const initialNow = Date.now()
+
+    return sampleProfileAchievements.map(({ ageMinutes, ...achievement }) => ({
+      ...achievement,
+      createdAt: initialNow - ageMinutes * 60 * 1000,
+    }))
+  })
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
@@ -1827,13 +2044,30 @@ function HomePage() {
   const hasCompleteComments = taskCompleteComments.length > 0
   const isFeedExpired = feedRemainingSeconds <= 0
   const visibleFeedPosts = feedPosts.filter((post) => !post.isOwnPost)
-  const completedProfile = getInitialCompleteProfile()
-  const profileAvatarSrc = getCompleteAvatarSrc(completedProfile)
-  const profileName = completedProfile.name || 'おこめ'
-  const recentAchievements = [
-    { task: 'スライド1枚作る', likes: 12, comments: 3, age: '4分前' },
-    { task: '部屋の掃除をする', likes: 13, comments: 3, age: '2時間前' },
-  ]
+  const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
+  const profileName = completeProfile.name || 'おこめ'
+  const trimmedDisplayNameDraft = displayNameDraft.trim()
+  const hasDisplayNameDraftChanged = displayNameDraft !== profileName
+  const canSaveDisplayName =
+    trimmedDisplayNameDraft.length > 0 && trimmedDisplayNameDraft !== profileName
+  const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
+  const canSaveSettingsIcon = selectedSettingsIconId !== completeProfile.avatarId
+  const ownAchievements = feedPosts
+    .filter((post) => post.isOwnPost && post.status === 'done')
+    .map((post) => ({
+      id: post.id,
+      task: post.task,
+      likes: post.likes,
+      comments: post.comments.length,
+      createdAt: post.createdAt,
+    }))
+  const allProfileAchievements = [...ownAchievements, ...profileAchievements]
+  const recentAchievements = allProfileAchievements.slice(0, 2)
+  const activeAchievement = activeAchievementId
+    ? (allProfileAchievements.find(
+        (achievement) => achievement.id === activeAchievementId,
+      ) ?? null)
+    : null
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
@@ -1849,6 +2083,19 @@ function HomePage() {
 
     return () => window.clearInterval(timerId)
   }, [isTaskRunning])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 639px)')
+    const updateCameraAvailability = () => {
+      setIsSettingsCameraAvailable(mediaQuery.matches)
+    }
+
+    updateCameraAvailability()
+    mediaQuery.addEventListener('change', updateCameraAvailability)
+
+    return () =>
+      mediaQuery.removeEventListener('change', updateCameraAvailability)
+  }, [])
 
   useEffect(() => {
     if (!isTaskComplete) {
@@ -1902,6 +2149,16 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(true)
     setIsProfileOpen(false)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
+    setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     setFeedRemainingSeconds(feedViewDurationSeconds)
     setFeedNow(Date.now())
     window.scrollTo({ top: 0, left: 0 })
@@ -1911,6 +2168,16 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
+    setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1918,6 +2185,16 @@ function HomePage() {
     event.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
+    setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1926,6 +2203,300 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(true)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
+    setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault()
+    setIsAchievementsOpen(true)
+    setActiveAchievementId(null)
+    setIsProfileOpen(false)
+    setIsFeedOpen(false)
+    setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeAchievements() {
+    setIsAchievementsOpen(false)
+    setIsProfileOpen(true)
+    setActiveAchievementId(null)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openAchievementDetail(
+    achievementId: string,
+    tab: AchievementDetailTab,
+  ) {
+    setActiveAchievementId(achievementId)
+    setActiveAchievementTab(tab)
+  }
+
+  function closeAchievementDetail() {
+    setActiveAchievementId(null)
+  }
+
+  function openSettings() {
+    setIsSettingsOpen(true)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
+    setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    setIsFeedOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeSettings() {
+    setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
+    setIsAccountDeleteConfirmOpen(false)
+    setIsAccountDeletedOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    setIsProfileOpen(true)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openLogoutConfirm() {
+    setIsLogoutConfirmOpen(true)
+    setIsAccountDeleteConfirmOpen(false)
+  }
+
+  function closeLogoutConfirm() {
+    setIsLogoutConfirmOpen(false)
+  }
+
+  function confirmLogout() {
+    window.location.href = '/login'
+  }
+
+  function openAccountDeleteConfirm() {
+    setIsAccountDeleteConfirmOpen(true)
+    setIsLogoutConfirmOpen(false)
+    setAccountDeleteError('')
+  }
+
+  function closeAccountDeleteConfirm() {
+    if (isDeletingAccount) {
+      return
+    }
+
+    setIsAccountDeleteConfirmOpen(false)
+    setAccountDeleteError('')
+  }
+
+  async function confirmAccountDelete() {
+    if (isDeletingAccount) {
+      return
+    }
+
+    const hasAccountIdentifier = Boolean(
+      completeProfile.id ||
+        completeProfile.email ||
+        (completeProfile.name && completeProfile.avatarId),
+    )
+
+    if (!hasAccountIdentifier) {
+      setAccountDeleteError('アカウント情報を確認できませんでした。')
+      return
+    }
+
+    setIsDeletingAccount(true)
+    setAccountDeleteError('')
+
+    try {
+      await deleteAccount({
+        id: completeProfile.id,
+        email: completeProfile.email,
+        name: completeProfile.name,
+        avatarKey: completeProfile.avatarId,
+      })
+      window.localStorage.removeItem(signupCompleteStorageKey)
+      window.sessionStorage.removeItem(signupScreenStorageKey)
+      window.sessionStorage.removeItem(signupDraftStorageKey)
+      setIsAccountDeleteConfirmOpen(false)
+      setIsAccountDeletedOpen(true)
+    } catch (caughtError) {
+      setAccountDeleteError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'アカウント削除に失敗しました。',
+      )
+    } finally {
+      setIsDeletingAccount(false)
+    }
+  }
+
+  function goToLoginAfterAccountDelete() {
+    window.location.href = '/login'
+  }
+
+  function openNameEdit() {
+    setDisplayNameDraft(profileName)
+    setIsNameEditOpen(true)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeNameEdit() {
+    if (hasDisplayNameDraftChanged) {
+      setIsNameDiscardConfirmOpen(true)
+      return
+    }
+
+    setDisplayNameDraft(profileName)
+    setIsNameEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsNameDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openIconEdit() {
+    const nextAvatarId = completeProfile.avatarId
+
+    setSelectedSettingsIconId(nextAvatarId)
+    setSettingsCustomPhotoUrl(
+      isAvatarImageDataUrl(nextAvatarId) ? nextAvatarId : '',
+    )
+    setIsSettingsAvatarGridOpen(false)
+    setIsIconEditOpen(true)
+    setIsNameEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeIconEdit() {
+    if (canSaveSettingsIcon) {
+      setIsIconDiscardConfirmOpen(true)
+      setIsSettingsAvatarGridOpen(false)
+      return
+    }
+
+    setIsIconEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsSettingsAvatarGridOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function saveSettingsIcon() {
+    if (!canSaveSettingsIcon) {
+      return
+    }
+
+    const nextProfile = {
+      ...completeProfile,
+      avatarId: selectedSettingsIconId,
+    }
+
+    setCompleteProfile(nextProfile)
+    saveCompleteProfile(nextProfile)
+    setIsIconEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsSettingsAvatarGridOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function handleSettingsAvatarClick(avatarId: string) {
+    if (avatarId !== customPhotoIconId || settingsCustomPhotoUrl) {
+      setSelectedSettingsIconId(avatarId)
+    }
+  }
+
+  async function handleSettingsPhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFile = event.target.files?.[0]
+
+    if (!selectedFile) {
+      return
+    }
+
+    try {
+      const photoDataUrl = await createAvatarImageDataUrl(selectedFile)
+
+      setSettingsCustomPhotoUrl(photoDataUrl)
+      setSelectedSettingsIconId(photoDataUrl)
+      setIsSettingsAvatarGridOpen(false)
+    } catch {
+      // Keep the current icon when image loading fails.
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  function continueNameEdit() {
+    setIsNameDiscardConfirmOpen(false)
+  }
+
+  function continueIconEdit() {
+    setIsIconDiscardConfirmOpen(false)
+  }
+
+  function discardNameEdit() {
+    setDisplayNameDraft(profileName)
+    setIsNameDiscardConfirmOpen(false)
+    setIsNameEditOpen(false)
+    setIsSettingsOpen(true)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function discardIconEdit() {
+    const currentAvatarId = completeProfile.avatarId
+
+    setSelectedSettingsIconId(currentAvatarId)
+    setSettingsCustomPhotoUrl(
+      isAvatarImageDataUrl(currentAvatarId) ? currentAvatarId : '',
+    )
+    setIsIconDiscardConfirmOpen(false)
+    setIsIconEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsSettingsAvatarGridOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function saveDisplayName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!canSaveDisplayName) {
+      return
+    }
+
+    const nextProfile = {
+      ...completeProfile,
+      name: trimmedDisplayNameDraft,
+    }
+
+    setCompleteProfile(nextProfile)
+    saveCompleteProfile(nextProfile)
+    setIsNameEditOpen(false)
+    setIsSettingsOpen(true)
+    setIsNameDiscardConfirmOpen(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1961,6 +2532,11 @@ function HomePage() {
     setIsCancelConfirmOpen(false)
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsSettingsOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
     window.history.pushState(null, '', '/home')
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -2029,6 +2605,770 @@ function HomePage() {
     }))
   }
 
+  if (isSettingsOpen && isNameEditOpen) {
+    return (
+      <main className="home-page name-edit-page">
+        <AppHeader
+          title="名前"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="設定に戻る"
+              onClick={closeNameEdit}
+            >
+              &lt;
+            </button>
+          }
+          rightAction={
+            <button
+              className="name-edit-done-button"
+              type="submit"
+              form="display-name-form"
+              disabled={!canSaveDisplayName}
+            >
+              完了
+            </button>
+          }
+        />
+
+        <section className="name-edit-content" aria-label="表示名変更">
+          <form
+            id="display-name-form"
+            className="name-edit-form"
+            onSubmit={saveDisplayName}
+          >
+            <label htmlFor="display-name-input">表示名</label>
+            <input
+              id="display-name-input"
+              type="text"
+              value={displayNameDraft}
+              onChange={(event) => setDisplayNameDraft(event.target.value)}
+            />
+          </form>
+        </section>
+
+        {isNameDiscardConfirmOpen ? (
+          <UnsavedChangesModal
+            onContinue={continueNameEdit}
+            onDiscard={discardNameEdit}
+          />
+        ) : null}
+      </main>
+    )
+  }
+
+  if (isSettingsOpen && isIconEditOpen) {
+    return (
+      <main className="home-page icon-edit-page">
+        <AppHeader
+          title="アイコン"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="設定に戻る"
+              onClick={closeIconEdit}
+            >
+              &lt;
+            </button>
+          }
+          rightAction={
+            <button
+              className="name-edit-done-button"
+              type="button"
+              disabled={!canSaveSettingsIcon}
+              onClick={saveSettingsIcon}
+            >
+              完了
+            </button>
+          }
+        />
+
+        <section className="icon-edit-content" aria-label="アイコン変更">
+          <img
+            className="icon-edit-preview"
+            src={settingsIconPreviewSrc}
+            alt=""
+            aria-hidden="true"
+          />
+
+          <div className="icon-edit-action-list">
+            <button
+              className="icon-edit-action"
+              type="button"
+              aria-expanded={isSettingsAvatarGridOpen}
+              onClick={() =>
+                setIsSettingsAvatarGridOpen((current) => !current)
+              }
+            >
+              <img
+                className="icon-edit-action-icon icon-edit-action-icon-grid"
+                src={iconGridIcon}
+                alt=""
+                aria-hidden="true"
+              />
+              <span className="icon-edit-action-text-grid">
+                アイコンを選択
+              </span>
+            </button>
+
+            {isSettingsCameraAvailable ? (
+              <button
+                className="icon-edit-action icon-edit-camera-action"
+                type="button"
+                onClick={() => settingsCameraInputRef.current?.click()}
+              >
+                <img
+                  className="icon-edit-action-icon icon-edit-action-icon-camera"
+                  src={cameraIcon}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span>カメラで撮影</span>
+              </button>
+            ) : null}
+
+            <button
+              className="icon-edit-action"
+              type="button"
+              onClick={() => settingsPhotoInputRef.current?.click()}
+            >
+              <span
+                className="icon-edit-action-icon icon-edit-action-icon-folder folder-icon"
+                aria-hidden="true"
+              />
+              <span>写真を選ぶ</span>
+            </button>
+          </div>
+
+          {isSettingsAvatarGridOpen ? (
+            <div
+              className="icon-palette-backdrop"
+              role="presentation"
+              onClick={() => setIsSettingsAvatarGridOpen(false)}
+            >
+              <section
+                className="icon-palette-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="アイコンを選択"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <button
+                  className="icon-palette-close-button"
+                  type="button"
+                  aria-label="閉じる"
+                  onClick={() => setIsSettingsAvatarGridOpen(false)}
+                >
+                  ×
+                </button>
+                <div
+                  className="avatar-grid icon-edit-avatar-grid"
+                  role="radiogroup"
+                  aria-label="アイコン"
+                >
+                  {avatarOptions.map((avatar) => {
+                    const isCustomPhoto = avatar.id === customPhotoIconId
+                    const hasCustomPhoto = isCustomPhoto && settingsCustomPhotoUrl
+                    const isCameraSlot = isCustomPhoto && !hasCustomPhoto
+                    const avatarId = hasCustomPhoto
+                      ? settingsCustomPhotoUrl
+                      : avatar.id
+
+                    return (
+                      <button
+                        key={avatar.id}
+                        className={`avatar-option ${
+                          selectedSettingsIconId === avatarId ? 'selected' : ''
+                        } ${isCameraSlot ? 'photo-slot-empty' : ''}`}
+                        type="button"
+                        role="radio"
+                        aria-checked={selectedSettingsIconId === avatarId}
+                        aria-label={isCameraSlot ? '写真未選択' : avatar.label}
+                        disabled={isCameraSlot}
+                        onClick={() => handleSettingsAvatarClick(avatarId)}
+                      >
+                        {hasCustomPhoto ? (
+                          <img
+                            src={settingsCustomPhotoUrl}
+                            alt=""
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          !isCustomPhoto && (
+                            <img src={avatar.src} alt="" aria-hidden="true" />
+                          )
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            </div>
+          ) : null}
+
+          <input
+            ref={settingsCameraInputRef}
+            className="photo-input"
+            type="file"
+            accept="image/*"
+            capture="user"
+            aria-label="撮影する写真"
+            onChange={handleSettingsPhotoChange}
+          />
+          <input
+            ref={settingsPhotoInputRef}
+            className="photo-input"
+            type="file"
+            accept="image/*"
+            aria-label="選択する写真"
+            onChange={handleSettingsPhotoChange}
+          />
+        </section>
+
+        {isIconDiscardConfirmOpen ? (
+          <UnsavedChangesModal
+            onContinue={continueIconEdit}
+            onDiscard={discardIconEdit}
+          />
+        ) : null}
+      </main>
+    )
+  }
+
+  if (isSettingsOpen) {
+    return (
+      <main className="home-page settings-page">
+        <AppHeader
+          title="設定"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="マイページに戻る"
+              onClick={closeSettings}
+            >
+              &lt;
+            </button>
+          }
+        />
+
+        <section className="settings-content" aria-label="設定">
+          <div className="settings-menu-group">
+            <button
+              className="settings-menu-item"
+              type="button"
+              onClick={openNameEdit}
+            >
+              <span className="settings-menu-label">
+                <span
+                  className="settings-menu-icon settings-menu-icon-name"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M5 7.5H15.5"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M5 14H12.5"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M5 20.5H10"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M18.2 9.3L21.7 12.8"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M12.8 21.2L16.1 20.4L23.4 13.1C24.2 12.3 24.2 11 23.4 10.2L22.8 9.6C22 8.8 20.7 8.8 19.9 9.6L12.6 16.9L11.8 20.2C11.6 20.8 12.2 21.4 12.8 21.2Z"
+                      stroke="#9B6BFF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>表示名変更</span>
+              </span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+            <button
+              className="settings-menu-item"
+              type="button"
+              onClick={openIconEdit}
+            >
+              <span className="settings-menu-label">
+                <span
+                  className="settings-menu-icon settings-menu-icon-avatar"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle
+                      cx="14"
+                      cy="10"
+                      r="4"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                    />
+                    <path
+                      d="M6.5 22C7.6 18.4 10.3 16.5 14 16.5C17.7 16.5 20.4 18.4 21.5 22"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M20.5 7.5L22.5 5.5"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M22.5 5.5L24.5 7.5"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M22.5 5.5V11"
+                      stroke="#2EA8FF"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <span>アイコン変更</span>
+              </span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+          </div>
+
+          <div className="settings-menu-group">
+            <button
+              className="settings-menu-item"
+              type="button"
+              onClick={openLogoutConfirm}
+            >
+              <span className="settings-menu-label">
+                <span
+                  className="settings-menu-icon settings-menu-icon-logout"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M17 6H10C8.9 6 8 6.9 8 8V20C8 21.1 8.9 22 10 22H17"
+                      stroke="#24C58A"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M14 14H23"
+                      stroke="#24C58A"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M20 11L23 14L20 17"
+                      stroke="#24C58A"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span>ログアウト</span>
+              </span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+            <button
+              className="settings-menu-item settings-menu-item-danger"
+              type="button"
+              onClick={openAccountDeleteConfirm}
+            >
+              <span className="settings-menu-label">
+                <span
+                  className="settings-menu-icon settings-menu-icon-delete"
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <rect
+                      x="11"
+                      y="4.5"
+                      width="6"
+                      height="3"
+                      rx="1"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                    />
+                    <path
+                      d="M7 8H21"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <rect
+                      x="8"
+                      y="8"
+                      width="12"
+                      height="14"
+                      rx="2.5"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                    />
+                    <path
+                      d="M12 12V18"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M16 12V18"
+                      stroke="#FF5A5F"
+                      strokeWidth="2.3"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <span>アカウント削除</span>
+              </span>
+              <span className="settings-menu-chevron" aria-hidden="true">
+                &gt;
+              </span>
+            </button>
+          </div>
+        </section>
+
+        {isLogoutConfirmOpen ? (
+          <div className="logout-modal-backdrop" role="presentation">
+            <section
+              className="logout-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="logout-modal-title"
+              aria-describedby="logout-modal-description"
+            >
+              <div className="logout-modal-body">
+                <h2 id="logout-modal-title">ログアウトしますか？</h2>
+                <p id="logout-modal-description">
+                  現在のアカウントからログアウトします。
+                </p>
+              </div>
+              <div className="logout-modal-actions">
+                <button
+                  className="logout-modal-secondary"
+                  type="button"
+                  onClick={closeLogoutConfirm}
+                >
+                  キャンセル
+                </button>
+                <button
+                  className="logout-modal-primary"
+                  type="button"
+                  onClick={confirmLogout}
+                >
+                  ログアウト
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {isAccountDeleteConfirmOpen ? (
+          <div className="logout-modal-backdrop" role="presentation">
+            <section
+              className="logout-modal account-delete-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="account-delete-modal-title"
+              aria-describedby="account-delete-modal-description"
+            >
+              <div className="logout-modal-body">
+                <h2 id="account-delete-modal-title">
+                  アカウントを削除しますか？
+                </h2>
+                <p id="account-delete-modal-description">
+                  この操作は取り消せません。
+                  <br />
+                  アカウントとすべてのデータが削除されます。
+                </p>
+                {accountDeleteError ? (
+                  <p className="account-delete-error" role="alert">
+                    {accountDeleteError}
+                  </p>
+                ) : null}
+              </div>
+              <div className="logout-modal-actions">
+                <button
+                  className="logout-modal-secondary"
+                  type="button"
+                  onClick={closeAccountDeleteConfirm}
+                  disabled={isDeletingAccount}
+                >
+                  キャンセル
+                </button>
+                <button
+                  className="account-delete-modal-primary"
+                  type="button"
+                  onClick={confirmAccountDelete}
+                  disabled={isDeletingAccount}
+                >
+                  {isDeletingAccount ? '削除中' : '削除する'}
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {isAccountDeletedOpen ? (
+          <div className="account-deleted-page" role="presentation">
+            <section
+              className="account-deleted-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="account-deleted-modal-title"
+              aria-describedby="account-deleted-modal-description"
+            >
+              <h2 id="account-deleted-modal-title">
+                アカウントを削除しました
+              </h2>
+              <p id="account-deleted-modal-description">
+                ご利用ありがとうございました。
+              </p>
+              <div className="account-deleted-divider" aria-hidden="true" />
+              <button
+                className="account-deleted-button"
+                type="button"
+                onClick={goToLoginAfterAccountDelete}
+              >
+                ログイン画面へ
+              </button>
+            </section>
+          </div>
+        ) : null}
+      </main>
+    )
+  }
+
+  if (isAchievementsOpen) {
+    return (
+      <main
+        className={`home-page profile-page achievements-page ${
+          activeAchievement ? 'detail-open' : ''
+        }`}
+      >
+        <AppHeader
+          title="すべての達成"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="マイページに戻る"
+              onClick={closeAchievements}
+            >
+              &lt;
+            </button>
+          }
+        />
+
+        <section
+          className="all-achievements-content"
+          aria-label="すべての達成"
+        >
+          <div className="profile-achievement-list all-achievement-list">
+            {allProfileAchievements.map((achievement) => (
+              <article
+                className={`profile-achievement-card all-achievement-card ${
+                  activeAchievementId === achievement.id ? 'is-active' : ''
+                }`}
+                key={achievement.id}
+              >
+                <strong>{achievement.task}</strong>
+                <div>
+                  <button
+                    className="achievement-reaction-button"
+                    type="button"
+                    onClick={() => openAchievementDetail(achievement.id, 'likes')}
+                  >
+                    <img src={likeIcon} alt="" aria-hidden="true" />
+                    {achievement.likes}
+                  </button>
+                  <button
+                    className="achievement-reaction-button"
+                    type="button"
+                    onClick={() =>
+                      openAchievementDetail(achievement.id, 'comments')
+                    }
+                  >
+                    <img src={commentIcon} alt="" aria-hidden="true" />
+                    {achievement.comments}
+                  </button>
+                  <time dateTime={new Date(achievement.createdAt).toISOString()}>
+                    {formatFeedPostAge(achievement.createdAt, feedNow)}
+                  </time>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {activeAchievement ? (
+          <>
+            <button
+              className="feed-comment-backdrop achievement-detail-backdrop"
+              type="button"
+              aria-label="詳細を閉じる"
+              onClick={closeAchievementDetail}
+            />
+            <section
+              className="feed-comment-panel feed-comment-panel-done achievement-detail-panel"
+              aria-labelledby="achievement-detail-title"
+            >
+              <div className="feed-comment-panel-header">
+                <h2 id="achievement-detail-title">
+                  {activeAchievementTab === 'likes' ? 'いいね' : 'コメント'}
+                </h2>
+                <button
+                  className="feed-comment-panel-close"
+                  type="button"
+                  aria-label="詳細を閉じる"
+                  onClick={closeAchievementDetail}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="achievement-detail-tabs" role="tablist">
+                <button
+                  className={activeAchievementTab === 'likes' ? 'active' : ''}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAchievementTab === 'likes'}
+                  onClick={() => setActiveAchievementTab('likes')}
+                >
+                  いいね({activeAchievement.likes})
+                </button>
+                <button
+                  className={
+                    activeAchievementTab === 'comments' ? 'active' : ''
+                  }
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAchievementTab === 'comments'}
+                  onClick={() => setActiveAchievementTab('comments')}
+                >
+                  コメント({activeAchievement.comments})
+                </button>
+              </div>
+
+              <div className="feed-comment-panel-task">
+                {activeAchievement.task}
+              </div>
+
+              {activeAchievementTab === 'likes' ? (
+                <ul
+                  className="feed-comment-panel-list achievement-detail-list"
+                  aria-label="いいねした人"
+                >
+                  {achievementLikeUsers.map((user) => (
+                    <li
+                      className={
+                        user.afterComplete ? 'achievement-after-complete' : ''
+                      }
+                      key={user.name}
+                    >
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>{user.name}</span>
+                        <span className="feed-comment-level">Lv.{user.level}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul
+                  className="feed-comment-panel-list"
+                  aria-label="コメント一覧"
+                >
+                  {achievementComments.map((comment) => (
+                    <li
+                      className={
+                        comment.afterComplete
+                          ? 'achievement-after-complete'
+                          : ''
+                      }
+                      key={`${comment.name}-${comment.text}`}
+                    >
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>{comment.name}</span>
+                        <span className="feed-comment-level">
+                          Lv.{comment.level}
+                        </span>
+                      </div>
+                      <div className="feed-comment-body">
+                        <span>{comment.text}</span>
+                        <time>{comment.age}</time>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        ) : null}
+      </main>
+    )
+  }
+
   if (isProfileOpen) {
     return (
       <main className="home-page profile-page">
@@ -2039,6 +3379,7 @@ function HomePage() {
               className="profile-settings-button"
               type="button"
               aria-label="設定"
+              onClick={openSettings}
             >
               <img src={settingsIcon} alt="" aria-hidden="true" />
             </button>
@@ -2102,7 +3443,7 @@ function HomePage() {
           >
             <div className="profile-section-heading">
               <h2 id="profile-recent-title">最近の達成</h2>
-              <a href="/home" onClick={(event) => event.preventDefault()}>
+              <a href="/home" onClick={openAchievements}>
                 すべて見る&gt;
               </a>
             </div>
@@ -2122,7 +3463,9 @@ function HomePage() {
                       <img src={commentIcon} alt="" aria-hidden="true" />
                       {achievement.comments}
                     </span>
-                    <time>{achievement.age}</time>
+                    <time dateTime={new Date(achievement.createdAt).toISOString()}>
+                      {formatFeedPostAge(achievement.createdAt, feedNow)}
+                    </time>
                   </div>
                 </article>
               ))}
@@ -2547,10 +3890,24 @@ function HomePage() {
 }
 
 function App() {
-  const pathname = window.location.pathname.replace(/\/+$/, '') || '/'
+  const [pathname, setPathname] = useState(currentPathname)
+
+  useEffect(() => {
+    const updatePathname = () => setPathname(currentPathname())
+
+    window.addEventListener('popstate', updatePathname)
+
+    return () => window.removeEventListener('popstate', updatePathname)
+  }, [])
+
+  function openHomeAfterLogin() {
+    window.history.pushState(null, '', '/home')
+    setPathname('/home')
+    window.scrollTo({ top: 0, left: 0 })
+  }
 
   if (pathname === '/login') {
-    return <LoginPage />
+    return <LoginPage onLoginSuccess={openHomeAfterLogin} />
   }
 
   if (pathname === '/password-reset') {

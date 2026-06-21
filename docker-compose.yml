@@ -36,6 +36,7 @@ services:
       DATABASE_HOST: db
       DATABASE_USERNAME: postgres
       DATABASE_PASSWORD: password
+      DATABASE_URL: postgresql://postgres:password@db:5432/onestep_now_development
     depends_on:
       db:
         condition: service_healthy
@@ -45,6 +46,7 @@ services:
           "CMD-SHELL",
           'ruby -r net/http -e ''response = Net::HTTP.get_response(URI("http://127.0.0.1:3000/up")); exit(response.is_a?(Net::HTTPSuccess) ? 0 : 1)''',
         ]
+      start_period: 120s
       interval: 5s
       timeout: 5s
       retries: 20
