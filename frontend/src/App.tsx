@@ -112,7 +112,7 @@ const sampleFeedPosts: Array<
     level: 5,
     task: '参考記事を1つ読む',
     status: 'done',
-    likes: 10,
+    likes: 120,
     comments: ['いいね！'],
     ageMinutes: 1,
     liked: false,
