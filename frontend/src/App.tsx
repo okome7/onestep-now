@@ -1162,7 +1162,6 @@ function SignupPage() {
   }
 
   function handleStart() {
-    window.localStorage.removeItem(signupCompleteStorageKey)
     window.sessionStorage.removeItem(signupScreenStorageKey)
     window.location.href = '/home'
   }
