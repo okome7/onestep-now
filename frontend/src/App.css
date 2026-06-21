@@ -2323,6 +2323,78 @@ body {
   color: #ff4545;
 }
 
+.logout-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(17 24 39 / 36%);
+  backdrop-filter: blur(3px);
+}
+
+.logout-modal {
+  display: grid;
+  width: min(100%, 410px);
+  overflow: hidden;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow:
+    0 10px 30px rgb(15 23 42 / 22%),
+    0 2px 5px rgb(15 23 42 / 14%);
+  text-align: center;
+}
+
+.logout-modal-body {
+  padding: 39px 28px 31px;
+}
+
+.logout-modal h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.logout-modal p {
+  margin: 20px 0 0;
+  color: #8a95a5;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.logout-modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  border-top: 1px solid #d8e0ea;
+  padding: 22px 24px 24px;
+}
+
+.logout-modal-actions button {
+  height: 52px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.logout-modal-secondary {
+  border: 1px solid #b8c1cc;
+  background: #ffffff;
+  color: #6b7280;
+}
+
+.logout-modal-primary {
+  border: 0;
+  background: #24c58a;
+  color: #ffffff;
+}
+
 .name-edit-page {
   min-height: 100dvh;
   padding-bottom: 0;

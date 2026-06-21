@@ -1977,6 +1977,7 @@ function HomePage() {
   const [activeAchievementTab, setActiveAchievementTab] =
     useState<AchievementDetailTab>('likes')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
   const [isNameEditOpen, setIsNameEditOpen] = useState(false)
   const [isIconEditOpen, setIsIconEditOpen] = useState(false)
   const [isNameDiscardConfirmOpen, setIsNameDiscardConfirmOpen] =
@@ -2138,6 +2139,7 @@ function HomePage() {
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
     setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2154,6 +2156,7 @@ function HomePage() {
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
     setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2168,6 +2171,7 @@ function HomePage() {
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
     setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2183,6 +2187,7 @@ function HomePage() {
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
     setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2197,6 +2202,7 @@ function HomePage() {
     setIsProfileOpen(false)
     setIsFeedOpen(false)
     setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2227,6 +2233,7 @@ function HomePage() {
     setIsSettingsOpen(true)
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
+    setIsLogoutConfirmOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2237,12 +2244,25 @@ function HomePage() {
 
   function closeSettings() {
     setIsSettingsOpen(false)
+    setIsLogoutConfirmOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     setIsProfileOpen(true)
     window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openLogoutConfirm() {
+    setIsLogoutConfirmOpen(true)
+  }
+
+  function closeLogoutConfirm() {
+    setIsLogoutConfirmOpen(false)
+  }
+
+  function confirmLogout() {
+    window.location.href = '/login'
   }
 
   function openNameEdit() {
@@ -2863,7 +2883,11 @@ function HomePage() {
           </div>
 
           <div className="settings-menu-group">
-            <button className="settings-menu-item" type="button">
+            <button
+              className="settings-menu-item"
+              type="button"
+              onClick={openLogoutConfirm}
+            >
               <span className="settings-menu-label">
                 <span
                   className="settings-menu-icon settings-menu-icon-logout"
@@ -2966,6 +2990,41 @@ function HomePage() {
             </button>
           </div>
         </section>
+
+        {isLogoutConfirmOpen ? (
+          <div className="logout-modal-backdrop" role="presentation">
+            <section
+              className="logout-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="logout-modal-title"
+              aria-describedby="logout-modal-description"
+            >
+              <div className="logout-modal-body">
+                <h2 id="logout-modal-title">ログアウトしますか？</h2>
+                <p id="logout-modal-description">
+                  現在のアカウントからログアウトします。
+                </p>
+              </div>
+              <div className="logout-modal-actions">
+                <button
+                  className="logout-modal-secondary"
+                  type="button"
+                  onClick={closeLogoutConfirm}
+                >
+                  キャンセル
+                </button>
+                <button
+                  className="logout-modal-primary"
+                  type="button"
+                  onClick={confirmLogout}
+                >
+                  ログアウト
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
       </main>
     )
   }
