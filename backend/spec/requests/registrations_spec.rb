@@ -192,6 +192,12 @@ RSpec.describe "Registrations", type: :request do
         password: "password1",
         password_confirmation: "password1"
       )
+      PasswordResetCode.create!(
+        user: user,
+        email: user.email,
+        code_digest: BCrypt::Password.create("123456"),
+        expires_at: 10.minutes.from_now
+      )
 
       expect {
         delete "/account", params: {
