@@ -321,6 +321,32 @@ test("ログイン画面の入力エラーをフォーム内に表示する", as
   );
 });
 
+test("ログイン画面の新規登録リンクは登録入力画面へ遷移する", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.evaluate(() => {
+    localStorage.setItem(
+      "onestep-signup-complete",
+      JSON.stringify({
+        id: 1,
+        name: "おこめ",
+        email: "okome@example.com",
+        avatarId: "avatar-1",
+      }),
+    );
+    sessionStorage.setItem("onestep-signup-screen", "complete");
+  });
+
+  await page.getByRole("link", { name: "新規登録" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "登録が完了しました！" }),
+  ).toHaveCount(0);
+});
+
 test("ログイン画面からログインできる", async ({ page }) => {
   await mockLogin(page, {
     status: 200,
