@@ -16,6 +16,7 @@ import {
   taskCompleteLikeCount,
 } from '../appConstants'
 import {
+  clearAuthSession,
   createAvatarImageDataUrl,
   formatElapsedTime,
   formatFeedPostAge,
@@ -370,6 +371,7 @@ export function HomePage() {
   }
 
   function confirmLogout() {
+    clearAuthSession()
     window.location.href = '/login'
   }
 
@@ -414,6 +416,7 @@ export function HomePage() {
         name: completeProfile.name,
         avatarKey: completeProfile.avatarId,
       })
+      clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
       window.sessionStorage.removeItem(signupScreenStorageKey)
       window.sessionStorage.removeItem(signupDraftStorageKey)
