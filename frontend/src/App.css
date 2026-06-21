@@ -1841,23 +1841,24 @@ body {
 
 .feed-card-footer {
   display: grid;
-  grid-template-columns: 52px auto 1fr;
+  grid-template-columns: 48px max-content 1fr;
   align-items: center;
-  gap: 11px;
-  color: #9aa6b8;
-  font-size: 12px;
-  font-weight: 800;
+  gap: 4px;
+  color: #93a0b1;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .feed-reaction,
 .feed-comment-count {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
 }
 
 .feed-reaction {
-  width: 52px;
+  width: 48px;
 }
 
 .feed-reaction,
@@ -1876,23 +1877,23 @@ body {
 
 .feed-action-icon {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   align-items: center;
   justify-content: center;
 }
 
 .feed-action-icon img {
   display: block;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .feed-post-age {
   justify-self: end;
   color: #9aa6b8;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .feed-comment-backdrop {
