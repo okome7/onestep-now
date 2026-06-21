@@ -183,4 +183,100 @@ RSpec.describe "Registrations", type: :request do
       end
     end
   end
+
+  describe "DELETE /account" do
+    it "ユーザーを削除し、同じメールアドレスではログインできなくなること" do
+      user = User.create!(
+        name: "Delete User",
+        email: "delete@example.com",
+        password: "password1",
+        password_confirmation: "password1"
+      )
+      PasswordResetCode.create!(
+        user: user,
+        email: user.email,
+        code_digest: BCrypt::Password.create("123456"),
+        expires_at: 10.minutes.from_now
+      )
+
+      expect {
+        delete "/account", params: {
+          user: {
+            id: user.id,
+            email: " DELETE@example.com "
+          }
+        }, as: :json
+      }.to change(User, :count).by(-1)
+
+      expect(response).to have_http_status(:ok)
+      json_response = JSON.parse(response.body)
+      expect(json_response["status"]).to eq("success")
+
+      post "/login", params: {
+        user: {
+          email: "delete@example.com",
+          password: "password1"
+        }
+      }, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "存在しないユーザーは404を返すこと" do
+      delete "/account", params: {
+        user: {
+          email: "missing@example.com"
+        }
+      }, as: :json
+
+      expect(response).to have_http_status(:not_found)
+      json_response = JSON.parse(response.body)
+      expect(json_response["status"]).to eq("error")
+    end
+
+    it "古い保存データの表示名とアイコンからユーザーを削除できること" do
+      user = User.create!(
+        name: "Legacy User",
+        email: "legacy-delete@example.com",
+        password: "password1",
+        password_confirmation: "password1",
+        avatar_key: "avatar-3"
+      )
+
+      expect {
+        delete "/account", params: {
+          user: {
+            name: user.name,
+            avatar_key: user.avatar_key
+          }
+        }, as: :json
+      }.to change(User, :count).by(-1)
+
+      expect(response).to have_http_status(:ok)
+      expect(User.exists?(user.id)).to be(false)
+    end
+
+    it "表示名とアイコンだけで複数一致する場合は削除しないこと" do
+      2.times do |index|
+        User.create!(
+          name: "Duplicate User",
+          email: "duplicate#{index}@example.com",
+          password: "password1",
+          password_confirmation: "password1",
+          avatar_key: "avatar-4"
+        )
+      end
+
+      expect {
+        delete "/account", params: {
+          user: {
+            name: "Duplicate User",
+            avatar_key: "avatar-4"
+          }
+        }, as: :json
+      }.not_to change(User, :count)
+
+      expect(response).to have_http_status(:conflict)
+    end
+  end
 end
