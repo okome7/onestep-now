@@ -79,6 +79,27 @@ type FeedPost = {
   isOwnPost: boolean
 }
 
+type ProfileAchievement = {
+  id: string
+  task: string
+  likes: number
+  comments: number
+  createdAt: number
+}
+
+type AchievementDetailTab = 'likes' | 'comments'
+
+type AchievementLikeUser = {
+  name: string
+  level: number
+  afterComplete: boolean
+}
+
+type AchievementComment = AchievementLikeUser & {
+  text: string
+  age: string
+}
+
 const feedViewDurationSeconds = 5 * 60
 const currentPathname = () => window.location.pathname.replace(/\/+$/, '') || '/'
 const sampleFeedPosts: Array<
@@ -205,6 +226,111 @@ const sampleFeedPosts: Array<
     isOwnPost: false,
   },
 ]
+const sampleProfileAchievements: Array<
+  Omit<ProfileAchievement, 'createdAt'> & { ageMinutes: number }
+> = [
+  { id: 'achievement-1', task: 'スライド1枚作る', likes: 12, comments: 5, ageMinutes: 4 },
+  {
+    id: 'achievement-2',
+    task: '部屋の掃除をする',
+    likes: 13,
+    comments: 3,
+    ageMinutes: 2 * 60,
+  },
+  {
+    id: 'achievement-3',
+    task: '英単語を10個覚える',
+    likes: 20,
+    comments: 4,
+    ageMinutes: 24 * 60,
+  },
+  {
+    id: 'achievement-4',
+    task: 'ランニング3km',
+    likes: 11,
+    comments: 1,
+    ageMinutes: 2 * 24 * 60,
+  },
+  {
+    id: 'achievement-5',
+    task: '読書を30分する',
+    likes: 8,
+    comments: 2,
+    ageMinutes: 3 * 24 * 60,
+  },
+  {
+    id: 'achievement-6',
+    task: 'セキュリティの勉強をする',
+    likes: 18,
+    comments: 3,
+    ageMinutes: 4 * 24 * 60,
+  },
+  {
+    id: 'achievement-7',
+    task: '洗い物をする',
+    likes: 7,
+    comments: 1,
+    ageMinutes: 5 * 24 * 60,
+  },
+  {
+    id: 'achievement-8',
+    task: 'AIを使ってみる',
+    likes: 10,
+    comments: 2,
+    ageMinutes: 6 * 24 * 60,
+  },
+  {
+    id: 'achievement-9',
+    task: 'エラーを解決する',
+    likes: 12,
+    comments: 1,
+    ageMinutes: 93 * 24 * 60,
+  },
+  {
+    id: 'achievement-10',
+    task: '新しいことを1つ調べる',
+    likes: 9,
+    comments: 2,
+    ageMinutes: 94 * 24 * 60,
+  },
+]
+const achievementLikeUsers: AchievementLikeUser[] = [
+  { name: 'みき', level: 7, afterComplete: false },
+  { name: 'あや', level: 5, afterComplete: false },
+  { name: 'けんじ', level: 1, afterComplete: false },
+  { name: 'さくら', level: 22, afterComplete: false },
+  { name: 'はる', level: 18, afterComplete: true },
+]
+const achievementComments: AchievementComment[] = [
+  {
+    name: 'みき',
+    level: 7,
+    afterComplete: false,
+    text: '頑張れ！',
+    age: '3時間前',
+  },
+  {
+    name: 'あや',
+    level: 5,
+    afterComplete: false,
+    text: 'ファイト🔥',
+    age: '2時間前',
+  },
+  {
+    name: 'けんじ',
+    level: 1,
+    afterComplete: false,
+    text: 'がんば！',
+    age: '2時間前',
+  },
+  {
+    name: 'さくら',
+    level: 22,
+    afterComplete: true,
+    text: 'いい感じ！',
+    age: '1時間前',
+  },
+]
 
 const avatarOptions = [
   { id: 'avatar-1', src: avatarOne, label: 'アイコン1' },
@@ -244,7 +370,23 @@ function formatFeedRemainingTime(totalSeconds: number) {
 function formatFeedPostAge(createdAt: number, now: number) {
   const elapsedMinutes = Math.max(1, Math.floor((now - createdAt) / 60000))
 
-  return `${elapsedMinutes}分前`
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes}分前`
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60)
+  if (elapsedHours < 24) {
+    return `${elapsedHours}時間前`
+  }
+
+  const elapsedDays = Math.floor(elapsedHours / 24)
+  if (elapsedDays < 7) {
+    return `${elapsedDays}日前`
+  }
+
+  const date = new Date(createdAt)
+
+  return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
 function validateForm(form: SignupForm) {
@@ -1828,6 +1970,12 @@ function HomePage() {
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false)
+  const [activeAchievementId, setActiveAchievementId] = useState<string | null>(
+    null,
+  )
+  const [activeAchievementTab, setActiveAchievementTab] =
+    useState<AchievementDetailTab>('likes')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isNameEditOpen, setIsNameEditOpen] = useState(false)
   const [isIconEditOpen, setIsIconEditOpen] = useState(false)
@@ -1865,6 +2013,14 @@ function HomePage() {
       createdAt: initialNow - ageMinutes * 60 * 1000,
     }))
   })
+  const [profileAchievements] = useState<ProfileAchievement[]>(() => {
+    const initialNow = Date.now()
+
+    return sampleProfileAchievements.map(({ ageMinutes, ...achievement }) => ({
+      ...achievement,
+      createdAt: initialNow - ageMinutes * 60 * 1000,
+    }))
+  })
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
@@ -1882,10 +2038,22 @@ function HomePage() {
     trimmedDisplayNameDraft.length > 0 && trimmedDisplayNameDraft !== profileName
   const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
   const canSaveSettingsIcon = selectedSettingsIconId !== completeProfile.avatarId
-  const recentAchievements = [
-    { task: 'スライド1枚作る', likes: 12, comments: 3, age: '4分前' },
-    { task: '部屋の掃除をする', likes: 13, comments: 3, age: '2時間前' },
-  ]
+  const ownAchievements = feedPosts
+    .filter((post) => post.isOwnPost && post.status === 'done')
+    .map((post) => ({
+      id: post.id,
+      task: post.task,
+      likes: post.likes,
+      comments: post.comments.length,
+      createdAt: post.createdAt,
+    }))
+  const allProfileAchievements = [...ownAchievements, ...profileAchievements]
+  const recentAchievements = allProfileAchievements.slice(0, 2)
+  const activeAchievement = activeAchievementId
+    ? (allProfileAchievements.find(
+        (achievement) => achievement.id === activeAchievementId,
+      ) ?? null)
+    : null
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
@@ -1967,6 +2135,8 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(true)
     setIsProfileOpen(false)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
@@ -1981,6 +2151,8 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
@@ -1993,6 +2165,8 @@ function HomePage() {
     event.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(false)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
@@ -2006,6 +2180,8 @@ function HomePage() {
     event?.preventDefault()
     setIsFeedOpen(false)
     setIsProfileOpen(true)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
     setIsSettingsOpen(false)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
@@ -2014,8 +2190,43 @@ function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
+  function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault()
+    setIsAchievementsOpen(true)
+    setActiveAchievementId(null)
+    setIsProfileOpen(false)
+    setIsFeedOpen(false)
+    setIsSettingsOpen(false)
+    setIsNameEditOpen(false)
+    setIsIconEditOpen(false)
+    setIsNameDiscardConfirmOpen(false)
+    setIsIconDiscardConfirmOpen(false)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function closeAchievements() {
+    setIsAchievementsOpen(false)
+    setIsProfileOpen(true)
+    setActiveAchievementId(null)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openAchievementDetail(
+    achievementId: string,
+    tab: AchievementDetailTab,
+  ) {
+    setActiveAchievementId(achievementId)
+    setActiveAchievementTab(tab)
+  }
+
+  function closeAchievementDetail() {
+    setActiveAchievementId(null)
+  }
+
   function openSettings() {
     setIsSettingsOpen(true)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
     setIsNameEditOpen(false)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -2759,6 +2970,183 @@ function HomePage() {
     )
   }
 
+  if (isAchievementsOpen) {
+    return (
+      <main
+        className={`home-page profile-page achievements-page ${
+          activeAchievement ? 'detail-open' : ''
+        }`}
+      >
+        <AppHeader
+          title="すべての達成"
+          leftAction={
+            <button
+              className="settings-back-button"
+              type="button"
+              aria-label="マイページに戻る"
+              onClick={closeAchievements}
+            >
+              &lt;
+            </button>
+          }
+        />
+
+        <section
+          className="all-achievements-content"
+          aria-label="すべての達成"
+        >
+          <div className="profile-achievement-list all-achievement-list">
+            {allProfileAchievements.map((achievement) => (
+              <article
+                className={`profile-achievement-card all-achievement-card ${
+                  activeAchievementId === achievement.id ? 'is-active' : ''
+                }`}
+                key={achievement.id}
+              >
+                <strong>{achievement.task}</strong>
+                <div>
+                  <button
+                    className="achievement-reaction-button"
+                    type="button"
+                    onClick={() => openAchievementDetail(achievement.id, 'likes')}
+                  >
+                    <img src={likeIcon} alt="" aria-hidden="true" />
+                    {achievement.likes}
+                  </button>
+                  <button
+                    className="achievement-reaction-button"
+                    type="button"
+                    onClick={() =>
+                      openAchievementDetail(achievement.id, 'comments')
+                    }
+                  >
+                    <img src={commentIcon} alt="" aria-hidden="true" />
+                    {achievement.comments}
+                  </button>
+                  <time dateTime={new Date(achievement.createdAt).toISOString()}>
+                    {formatFeedPostAge(achievement.createdAt, feedNow)}
+                  </time>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {activeAchievement ? (
+          <>
+            <button
+              className="feed-comment-backdrop achievement-detail-backdrop"
+              type="button"
+              aria-label="詳細を閉じる"
+              onClick={closeAchievementDetail}
+            />
+            <section
+              className="feed-comment-panel feed-comment-panel-done achievement-detail-panel"
+              aria-labelledby="achievement-detail-title"
+            >
+              <div className="feed-comment-panel-header">
+                <h2 id="achievement-detail-title">
+                  {activeAchievementTab === 'likes' ? 'いいね' : 'コメント'}
+                </h2>
+                <button
+                  className="feed-comment-panel-close"
+                  type="button"
+                  aria-label="詳細を閉じる"
+                  onClick={closeAchievementDetail}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="achievement-detail-tabs" role="tablist">
+                <button
+                  className={activeAchievementTab === 'likes' ? 'active' : ''}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAchievementTab === 'likes'}
+                  onClick={() => setActiveAchievementTab('likes')}
+                >
+                  いいね({activeAchievement.likes})
+                </button>
+                <button
+                  className={
+                    activeAchievementTab === 'comments' ? 'active' : ''
+                  }
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAchievementTab === 'comments'}
+                  onClick={() => setActiveAchievementTab('comments')}
+                >
+                  コメント({activeAchievement.comments})
+                </button>
+              </div>
+
+              <div className="feed-comment-panel-task">
+                {activeAchievement.task}
+              </div>
+
+              {activeAchievementTab === 'likes' ? (
+                <ul
+                  className="feed-comment-panel-list achievement-detail-list"
+                  aria-label="いいねした人"
+                >
+                  {achievementLikeUsers.map((user) => (
+                    <li
+                      className={
+                        user.afterComplete ? 'achievement-after-complete' : ''
+                      }
+                      key={user.name}
+                    >
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>{user.name}</span>
+                        <span className="feed-comment-level">Lv.{user.level}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul
+                  className="feed-comment-panel-list"
+                  aria-label="コメント一覧"
+                >
+                  {achievementComments.map((comment) => (
+                    <li
+                      className={
+                        comment.afterComplete
+                          ? 'achievement-after-complete'
+                          : ''
+                      }
+                      key={`${comment.name}-${comment.text}`}
+                    >
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>{comment.name}</span>
+                        <span className="feed-comment-level">
+                          Lv.{comment.level}
+                        </span>
+                      </div>
+                      <div className="feed-comment-body">
+                        <span>{comment.text}</span>
+                        <time>{comment.age}</time>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        ) : null}
+      </main>
+    )
+  }
+
   if (isProfileOpen) {
     return (
       <main className="home-page profile-page">
@@ -2833,7 +3221,7 @@ function HomePage() {
           >
             <div className="profile-section-heading">
               <h2 id="profile-recent-title">最近の達成</h2>
-              <a href="/home" onClick={(event) => event.preventDefault()}>
+              <a href="/home" onClick={openAchievements}>
                 すべて見る&gt;
               </a>
             </div>
@@ -2853,7 +3241,9 @@ function HomePage() {
                       <img src={commentIcon} alt="" aria-hidden="true" />
                       {achievement.comments}
                     </span>
-                    <time>{achievement.age}</time>
+                    <time dateTime={new Date(achievement.createdAt).toISOString()}>
+                      {formatFeedPostAge(achievement.createdAt, feedNow)}
+                    </time>
                   </div>
                 </article>
               ))}
