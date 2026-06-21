@@ -1,6 +1,8 @@
 type DeleteAccountParams = {
   id?: number
   email?: string
+  name?: string
+  avatarKey?: string
 }
 
 type DeleteAccountSuccessResponse = {
@@ -52,6 +54,8 @@ export async function deleteAccount(
         user: {
           id: params.id,
           email: params.email,
+          name: params.name,
+          avatar_key: params.avatarKey,
         },
       }),
     })

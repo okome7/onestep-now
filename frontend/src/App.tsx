@@ -2314,10 +2314,14 @@ function HomePage() {
       return
     }
 
-    if (!completeProfile.id && !completeProfile.email) {
-      setAccountDeleteError(
-        'アカウント情報を確認できませんでした。もう一度ログインしてから削除してください。',
-      )
+    const hasAccountIdentifier = Boolean(
+      completeProfile.id ||
+        completeProfile.email ||
+        (completeProfile.name && completeProfile.avatarId),
+    )
+
+    if (!hasAccountIdentifier) {
+      setAccountDeleteError('アカウント情報を確認できませんでした。')
       return
     }
 
@@ -2328,6 +2332,8 @@ function HomePage() {
       await deleteAccount({
         id: completeProfile.id,
         email: completeProfile.email,
+        name: completeProfile.name,
+        avatarKey: completeProfile.avatarId,
       })
       window.localStorage.removeItem(signupCompleteStorageKey)
       window.sessionStorage.removeItem(signupScreenStorageKey)
