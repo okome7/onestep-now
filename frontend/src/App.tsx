@@ -1590,6 +1590,12 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
     }
   }
 
+  function handleSignupLinkClick() {
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
+    window.sessionStorage.removeItem(signupDraftStorageKey)
+  }
+
   return (
     <main className="signup-page login-page">
       <SignupHeader title="ログイン" />
@@ -1671,7 +1677,11 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
         <div className="login-link-area">
           <p>アカウントをお持ちでないですか？</p>
-          <a className="login-action-link" href="/">
+          <a
+            className="login-action-link"
+            href="/"
+            onClick={handleSignupLinkClick}
+          >
             新規登録
           </a>
         </div>
