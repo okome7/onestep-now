@@ -1,4 +1,5 @@
 import {
+  authSessionStorageKey,
   avatarImageQuality,
   avatarImageSize,
   avatarOptions,
@@ -20,6 +21,18 @@ import type { SignupForm } from './signupApi'
 
 export const currentPathname = () =>
   window.location.pathname.replace(/\/+$/, '') || '/'
+
+export function hasActiveAuthSession() {
+  return window.localStorage.getItem(authSessionStorageKey) === 'active'
+}
+
+export function saveAuthSession() {
+  window.localStorage.setItem(authSessionStorageKey, 'active')
+}
+
+export function clearAuthSession() {
+  window.localStorage.removeItem(authSessionStorageKey)
+}
 
 export function formatPasswordInput(value: string) {
   return value.replace(/[^A-Za-z0-9]/g, '')
@@ -324,6 +337,7 @@ export function getInitialCompleteProfile(): CompleteProfile {
 
 export function saveCompleteProfile(profile: CompleteProfile) {
   window.localStorage.setItem(signupCompleteStorageKey, JSON.stringify(profile))
+  saveAuthSession()
 }
 
 export function getCompleteAvatarSrc(profile: CompleteProfile) {

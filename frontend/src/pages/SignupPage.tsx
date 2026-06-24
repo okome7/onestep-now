@@ -17,6 +17,7 @@ import {
   getCompleteAvatarSrc,
   getInitialCompleteProfile,
   getInitialForm,
+  hasActiveAuthSession,
   hasErrors,
   isPasswordGuidanceError,
   saveCompleteProfile,
@@ -41,7 +42,7 @@ function getInitialScreen(): SignupScreen {
     return savedScreen
   }
 
-  if (savedCompleteProfile) {
+  if (savedCompleteProfile && hasActiveAuthSession()) {
     return 'complete'
   }
 

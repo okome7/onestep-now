@@ -1,18 +1,44 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { currentPathname } from './appHelpers'
+import { currentPathname, hasActiveAuthSession } from './appHelpers'
 import { LoginPage } from './pages/LoginPage'
 import { PasswordResetPage } from './pages/PasswordResetPage'
 import { SignupPage } from './pages/SignupPage'
 import { HomePage } from './pages/HomePage'
 
+function pathForAuthState(pathname: string) {
+  const isAuthenticated = hasActiveAuthSession()
+
+  if (isAuthenticated && pathname === '/') {
+    return '/home'
+  }
+
+  if (!isAuthenticated && pathname === '/home') {
+    return '/'
+  }
+
+  return pathname
+}
+
 function App() {
-  const [pathname, setPathname] = useState(currentPathname)
+  const [pathname, setPathname] = useState(() =>
+    pathForAuthState(currentPathname()),
+  )
 
   useEffect(() => {
-    const updatePathname = () => setPathname(currentPathname())
+    const updatePathname = () => {
+      const currentPath = currentPathname()
+      const nextPath = pathForAuthState(currentPath)
+
+      if (nextPath !== currentPath) {
+        window.history.replaceState(null, '', nextPath)
+      }
+
+      setPathname(nextPath)
+    }
 
     window.addEventListener('popstate', updatePathname)
+    updatePathname()
 
     return () => window.removeEventListener('popstate', updatePathname)
   }, [])

@@ -9,6 +9,34 @@ const backendURL =
   (isTruthy(process.env.E2E_USE_DOCKER)
     ? "http://127.0.0.1:3000"
     : "http://127.0.0.1:3001");
+const authSessionStorageKey = "onestep-auth-session";
+const signupCompleteStorageKey = "onestep-signup-complete";
+
+async function markLoggedIn(page: Page) {
+  await page.evaluate(
+    ({ authKey, profileKey }) => {
+      localStorage.setItem(authKey, "active");
+      localStorage.setItem(
+        profileKey,
+        JSON.stringify({
+          id: 1,
+          name: "おこめ",
+          email: "okome@example.com",
+          avatarId: "avatar-1",
+        }),
+      );
+    },
+    {
+      authKey: authSessionStorageKey,
+      profileKey: signupCompleteStorageKey,
+    },
+  );
+}
+
+async function gotoHome(page: Page, path = "/home") {
+  await markLoggedIn(page);
+  await page.goto(path);
+}
 
 async function mockSignupEmailCheck(page: Page) {
   await page.route(/.*\/(?:api\/)?signup\/email_check$/, async (route) => {
@@ -370,6 +398,68 @@ test("ログイン画面からログインできる", async ({ page }) => {
   await expect(
     page.getByRole("textbox", { name: "今できること" }),
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate((key) => localStorage.getItem(key), authSessionStorageKey),
+    )
+    .toBe("active");
+});
+
+test("ログイン済みならアプリを開いたときにホーム画面を表示する", async ({
+  page,
+}) => {
+  await mockLogin(page, {
+    status: 200,
+    body: {
+      status: "success",
+      data: { id: 1, name: "おこめ", email: "okome@example.com" },
+    },
+  });
+  await page.goto("/login");
+
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード").fill("password1");
+  await page.getByRole("button", { name: "ログイン" }).click();
+  await expect(page).toHaveURL(/\/home$/);
+
+  await page.goto("/");
+
+  await expect(page).toHaveURL(/\/home$/);
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
+});
+
+test("未ログインでホーム画面を開くと新規登録画面を表示する", async ({
+  page,
+}) => {
+  await page.goto("/home");
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+});
+
+test("ログアウトするとログイン状態を削除してログイン画面へ遷移する", async ({
+  page,
+}) => {
+  await gotoHome(page);
+
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  await page.getByRole("button", { name: "設定" }).click();
+  await page.getByRole("button", { name: "ログアウト" }).click();
+  const dialog = page.getByRole("dialog", { name: "ログアウトしますか？" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "ログアウト" }).click();
+
+  await expect(page).toHaveURL(/\/login$/);
+  await expect
+    .poll(() =>
+      page.evaluate((key) => localStorage.getItem(key), authSessionStorageKey),
+    )
+    .toBeNull();
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
 });
 
 test("ログイン情報が違う場合はエラーを表示する", async ({ page }) => {
@@ -508,13 +598,20 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "最初の一歩を始める" }),
   ).toBeVisible();
+  const pageSize = await page.evaluate(() => ({
+    height: window.innerHeight,
+    scrollHeight: document.documentElement.scrollHeight,
+  }));
+
+  expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
+
   await page.reload();
+  await expect(page).toHaveURL(/\/home$/);
   await expect(
-    page.getByRole("heading", { name: "登録が完了しました！" }),
+    page.getByRole("heading", { name: "OneStep Now" }),
   ).toBeVisible();
-  await expect(page.getByText("おこめ")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "最初の一歩を始める" }),
+    page.getByRole("textbox", { name: "今できること" }),
   ).toBeVisible();
 
   expect(signupRequests).toEqual([
@@ -528,27 +625,10 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
       },
     },
   ]);
-
-  const pageSize = await page.evaluate(() => ({
-    height: window.innerHeight,
-    scrollHeight: document.documentElement.scrollHeight,
-  }));
-
-  expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
-
-  await page.getByRole("button", { name: "最初の一歩を始める" }).click();
-  await expect(page).toHaveURL(/\/home$/);
-  await expect(
-    page.getByRole("heading", { name: "OneStep Now" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "今できることから" }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: "始める" })).toBeVisible();
 });
 
 test("ホーム画面が表示される", async ({ page }) => {
-  await page.goto("/home");
+  await gotoHome(page);
 
   await expect(
     page.getByRole("heading", { name: "OneStep Now" }),
@@ -566,7 +646,7 @@ test("ホーム画面が表示される", async ({ page }) => {
 });
 
 test("ホーム画面は末尾スラッシュ付きでも表示される", async ({ page }) => {
-  await page.goto("/home/");
+  await gotoHome(page, "/home/");
 
   await expect(
     page.getByRole("heading", { name: "OneStep Now" }),
@@ -577,7 +657,7 @@ test("ホーム画面は末尾スラッシュ付きでも表示される", async
 });
 
 test("ホーム画面でやることを入力せずに始めるとエラーが表示される", async ({ page }) => {
-  await page.goto("/home");
+  await gotoHome(page);
 
   await page.getByRole("button", { name: "始める" }).click();
 
@@ -590,7 +670,7 @@ test("ホーム画面でやることを入力せずに始めるとエラーが�
 });
 
 test("ホーム画面でやることを始めるとタイマーが表示される", async ({ page }) => {
-  await page.goto("/home");
+  await gotoHome(page);
 
   await page
     .getByRole("textbox", { name: "今できること" })
@@ -611,7 +691,7 @@ test("ホーム画面でやることを始めるとタイマーが表示され�
 test("集中画面でやめるを押すと確認モーダルが表示され、確定するとホーム画面に戻る", async ({
   page,
 }) => {
-  await page.goto("/home");
+  await gotoHome(page);
 
   await page
     .getByRole("textbox", { name: "今できること" })
@@ -637,7 +717,7 @@ test("集中画面でやめるを押すと確認モーダルが表示され、�
 });
 
 test("集中画面でできたを押すと完了画面が表示される", async ({ page }) => {
-  await page.goto("/home");
+  await gotoHome(page);
 
   await page
     .getByRole("textbox", { name: "今できること" })
@@ -679,7 +759,7 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   page,
 }) => {
   await page.clock.install();
-  await page.goto("/home");
+  await gotoHome(page);
 
   await page
     .getByRole("textbox", { name: "今できること" })
@@ -855,8 +935,9 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
     page.getByRole("heading", { name: "登録が完了しました！" }),
   ).toBeVisible();
   await page.reload();
+  await expect(page).toHaveURL(/\/home$/);
   await expect(
-    page.getByRole("heading", { name: "登録が完了しました！" }),
+    page.getByRole("heading", { name: "OneStep Now" }),
   ).toBeVisible();
 
   expect(signupRequests).toHaveLength(1);
