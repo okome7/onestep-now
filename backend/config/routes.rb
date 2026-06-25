@@ -10,4 +10,12 @@ Rails.application.routes.draw do
   post "password_reset", to: "password_resets#create"
   post "password_reset/verify", to: "password_resets#verify"
   patch "password_reset", to: "password_resets#update"
+
+  scope "/api" do
+    get "feed", to: "feed#index"
+    patch "tasks/:id/start", to: "tasks#start"
+    patch "tasks/:id/complete", to: "tasks#complete"
+    post "completion_posts/:completion_post_id/likes", to: "completion_post_likes#create"
+    post "completion_posts/:completion_post_id/comments", to: "comments#create"
+  end
 end
