@@ -2,7 +2,7 @@ class CreateCompletionPostsCommentsLikes < ActiveRecord::Migration[8.1]
   def change
     create_table :completion_posts do |t|
       t.references :user, null: false, foreign_key: true
-      t.references :task, null: false, foreign_key: true
+      t.references :task, null: false, foreign_key: true, index: { unique: true }
       t.string :status, null: false, default: "doing"
       t.text :content
       t.datetime :completed_at
@@ -10,17 +10,15 @@ class CreateCompletionPostsCommentsLikes < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :completion_posts, :task_id, unique: true
     add_check_constraint :completion_posts,
       "status IN ('doing', 'completed')",
       name: "check_completion_posts_status"
 
-    create_table :completion_posts do |t|
+    create_table :comments do |t|
       t.references :user, null: false, foreign_key: true
-      t.references :task, null: false, foreign_key: true, index: { unique: true }
-      t.string :status, null: false, default: "doing"
-      t.text :content
-      t.datetime :completed_at
+      t.references :completion_post, null: false, foreign_key: true
+      t.text :body, null: false
+      t.string :post_status_when_commented, null: false
 
       t.timestamps
     end

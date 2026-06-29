@@ -7,7 +7,6 @@ import {
   avatarOptions,
   customPhotoIconId,
   feedViewDurationSeconds,
-  sampleFeedPosts,
   sampleProfileAchievements,
   signupCompleteStorageKey,
   signupDraftStorageKey,
@@ -30,7 +29,6 @@ import {
 import type {
   AchievementDetailTab,
   FeedPost,
-  FeedPostStatus,
   ProfileAchievement,
 } from '../appTypes'
 import achievementCheckIcon from '../assets/icons/achievement-check.svg'
@@ -47,6 +45,18 @@ import {
   HomeBottomNav,
   UnsavedChangesModal,
 } from '../sharedComponents'
+import {
+  FeedAccessDeniedError,
+  completeTask,
+  createComment,
+  createTask,
+  fetchFeed,
+  likePost,
+  startTask,
+  unlikePost,
+} from '../feedApi'
+
+const feedIntroStorageKey = 'onestep-feed-intro-seen'
 
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
@@ -54,8 +64,10 @@ export function HomePage() {
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
+  const [activeTaskId, setActiveTaskId] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [isTaskSubmitting, setIsTaskSubmitting] = useState(false)
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [isFeedOpen, setIsFeedOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -97,17 +109,13 @@ export function HomePage() {
   const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
     useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
-    feedViewDurationSeconds,
+    0,
   )
   const [feedNow, setFeedNow] = useState(() => Date.now())
-  const [feedPosts, setFeedPosts] = useState<FeedPost[]>(() => {
-    const initialNow = Date.now()
-
-    return sampleFeedPosts.map(({ ageMinutes, ...post }) => ({
-      ...post,
-      createdAt: initialNow - ageMinutes * 60 * 1000,
-    }))
-  })
+  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
+  const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
+  const [feedError, setFeedError] = useState('')
+  const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [profileAchievements] = useState<ProfileAchievement[]>(() => {
     const initialNow = Date.now()
 
@@ -123,8 +131,9 @@ export function HomePage() {
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = taskCompleteComments.length > 0
-  const isFeedExpired = feedRemainingSeconds <= 0
-  const visibleFeedPosts = feedPosts.filter((post) => !post.isOwnPost)
+  const isFeedExpired =
+    isFeedOpen && !isFeedAccessDenied && feedRemainingSeconds <= 0
+  const visibleFeedPosts = feedPosts
   const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
   const profileName = completeProfile.name || 'おこめ'
   const trimmedDisplayNameDraft = displayNameDraft.trim()
@@ -206,24 +215,39 @@ export function HomePage() {
     }
   }, [feedRemainingSeconds, isFeedExpired, isFeedOpen])
 
-  function addFeedPost(task: string, status: FeedPostStatus) {
-    const postId = `${status}-${Date.now()}`
+  const loadFeed = useCallback(async () => {
+    setFeedError('')
 
-    setFeedPosts((currentPosts) => [
-      {
-        id: postId,
-        userName: 'あなた',
-        level: 1,
-        task,
-        status,
-        likes: 0,
-        comments: [],
-        createdAt: Date.now(),
-        liked: false,
-        isOwnPost: true,
-      },
-      ...currentPosts,
-    ])
+    try {
+      const result = await fetchFeed(completeProfile.id)
+      setFeedPosts(result.posts)
+      setFeedRemainingSeconds(result.remainingSeconds ?? feedViewDurationSeconds)
+      setIsFeedAccessDenied(false)
+      setFeedNow(Date.now())
+
+      if (!window.localStorage.getItem(feedIntroStorageKey)) {
+        setIsFeedIntroOpen(true)
+      }
+    } catch (caughtError) {
+      if (caughtError instanceof FeedAccessDeniedError) {
+        setFeedPosts([])
+        setFeedRemainingSeconds(0)
+        setIsFeedAccessDenied(true)
+        setIsFeedIntroOpen(false)
+        return
+      }
+
+      setFeedError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'フィード取得に失敗しました。',
+      )
+    }
+  }, [completeProfile.id])
+
+  function closeFeedIntro() {
+    window.localStorage.setItem(feedIntroStorageKey, 'true')
+    setIsFeedIntroOpen(false)
   }
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
@@ -240,8 +264,7 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    setFeedRemainingSeconds(feedViewDurationSeconds)
-    setFeedNow(Date.now())
+    void loadFeed()
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -259,6 +282,8 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
+    setIsFeedAccessDenied(false)
+    setFeedError('')
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -276,6 +301,7 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
+    setIsFeedAccessDenied(false)
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -621,8 +647,12 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function handleTaskStart(event: FormEvent<HTMLFormElement>) {
+  async function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (isTaskSubmitting) {
+      return
+    }
 
     const nextTask = taskText.trim()
 
@@ -632,10 +662,25 @@ export function HomePage() {
     }
 
     setTaskError('')
-    setActiveTask(nextTask)
-    setElapsedSeconds(0)
-    setIsTaskComplete(false)
-    addFeedPost(nextTask, 'doing')
+    setIsTaskSubmitting(true)
+
+    try {
+      const task = await createTask(nextTask, completeProfile.id)
+      const startedTask = await startTask(task.id, completeProfile.id)
+      setActiveTaskId(startedTask.id)
+      setActiveTask(startedTask.title)
+      setElapsedSeconds(0)
+      setIsTaskComplete(false)
+      await loadFeed()
+    } catch (caughtError) {
+      setTaskError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'タスク開始に失敗しました。',
+      )
+    } finally {
+      setIsTaskSubmitting(false)
+    }
   }
 
   function handleTaskCancel() {
@@ -648,6 +693,7 @@ export function HomePage() {
 
   function confirmTaskCancel() {
     setActiveTask('')
+    setActiveTaskId(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
     setIsCancelConfirmOpen(false)
@@ -662,20 +708,44 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function handleTaskDone() {
-    setIsTaskComplete(true)
-    addFeedPost(activeTask, 'done')
+  async function handleTaskDone() {
+    if (!activeTaskId || isTaskSubmitting) {
+      return
+    }
+
+    setIsTaskSubmitting(true)
+
+    try {
+      await completeTask(activeTaskId, completeProfile.id)
+      setIsTaskComplete(true)
+      await loadFeed()
+    } catch (caughtError) {
+      setTaskError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'タスク完了に失敗しました。',
+      )
+    } finally {
+      setIsTaskSubmitting(false)
+    }
   }
 
   function handleNextTask() {
     setTaskText('')
     setTaskError('')
     setActiveTask('')
+    setActiveTaskId(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
   }
 
-  function togglePostLike(postId: string) {
+  async function togglePostLike(postId: string) {
+    const targetPost = feedPosts.find((post) => post.id === postId)
+
+    if (!targetPost?.canLike || targetPost.isOwnPost) {
+      return
+    }
+
     setFeedPosts((currentPosts) =>
       currentPosts.map((post) => {
         if (post.id !== postId) {
@@ -689,6 +759,16 @@ export function HomePage() {
         }
       }),
     )
+
+    try {
+      if (targetPost.liked) {
+        await unlikePost(postId, completeProfile.id)
+      } else {
+        await likePost(postId, completeProfile.id)
+      }
+    } catch {
+      await loadFeed()
+    }
   }
 
   function handleCommentDraftChange(postId: string, value: string) {
@@ -706,24 +786,40 @@ export function HomePage() {
     setActiveCommentPostId(null)
   }
 
-  function addPostComment(postId: string) {
+  async function addPostComment(postId: string) {
+    const targetPost = feedPosts.find((post) => post.id === postId)
+
+    if (!targetPost?.canComment || targetPost.isOwnPost) {
+      return
+    }
+
     const nextComment = (commentDrafts[postId] ?? '').trim()
 
     if (!nextComment) {
       return
     }
 
-    setFeedPosts((currentPosts) =>
-      currentPosts.map((post) =>
-        post.id === postId
-          ? { ...post, comments: [...post.comments, nextComment] }
-          : post,
-      ),
-    )
-    setCommentDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [postId]: '',
-    }))
+    try {
+      const createdComment = await createComment(
+        postId,
+        nextComment,
+        completeProfile.id,
+      )
+
+      setFeedPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? { ...post, comments: [...post.comments, createdComment] }
+            : post,
+        ),
+      )
+      setCommentDrafts((currentDrafts) => ({
+        ...currentDrafts,
+        [postId]: '',
+      }))
+    } catch {
+      await loadFeed()
+    }
   }
 
   if (isSettingsOpen && isNameEditOpen) {
@@ -1630,61 +1726,107 @@ export function HomePage() {
           aria-label="みんなの投稿"
           aria-hidden={isFeedExpired ? 'true' : undefined}
         >
-          {visibleFeedPosts.map((post) => (
-            <article
-              className={`feed-card feed-card-${post.status}`}
-              key={post.id}
-            >
-              <div className="feed-card-header">
-                <div className="feed-user">
-                  <span className="feed-avatar" aria-hidden="true" />
-                  <span className="feed-user-name">{post.userName}</span>
-                  <span className="feed-user-level">Lv.{post.level}</span>
+          {isFeedAccessDenied ? (
+            <section className="feed-start-gate" aria-labelledby="feed-start-title">
+              <h2 id="feed-start-title">最初の一歩を始めよう</h2>
+              <p>タスクを完了すると、みんなのフィードを5分だけ見られます。</p>
+              <button
+                className="feed-expired-start-button"
+                type="button"
+                onClick={startNextTaskFromExpiredFeed}
+              >
+                始める
+              </button>
+            </section>
+          ) : feedError ? (
+            <p className="feed-error" role="alert">
+              {feedError}
+            </p>
+          ) : (
+            visibleFeedPosts.map((post) => (
+              <article
+                className={`feed-card feed-card-${post.status}`}
+                key={post.id}
+              >
+                <div className="feed-card-header">
+                  <div className="feed-user">
+                    <span className="feed-avatar" aria-hidden="true" />
+                    <span className="feed-user-name">{post.userName}</span>
+                    <span className="feed-user-level">Lv.{post.level}</span>
+                  </div>
+                  <span className={`feed-status feed-status-${post.status}`}>
+                    {post.status === 'done' ? '✓ ' : '⚑ '}
+                    {post.statusLabel}
+                  </span>
                 </div>
-                <span className={`feed-status feed-status-${post.status}`}>
-                  {post.status === 'done' ? '✓ できた' : '⚑ やります'}
-                </span>
-              </div>
 
-              <p className="feed-task">{post.task}</p>
+                <p className="feed-task">{post.task}</p>
 
-              <div className="feed-card-footer">
-                <button
-                  className={`feed-reaction ${post.liked ? 'active' : ''}`}
-                  type="button"
-                  aria-pressed={post.liked}
-                  onClick={() => togglePostLike(post.id)}
-                >
-                  <span className="feed-action-icon">
-                    <img
-                      src={post.liked ? likeActiveIcon : likeIcon}
-                      alt=""
-                      aria-hidden="true"
-                    />
-                  </span>
-                  <span>{post.likes}</span>
-                </button>
-                <button
-                  className="feed-comment-count"
-                  type="button"
-                  aria-label={`${post.userName}さんのコメントを開く`}
-                  onClick={() => openCommentPanel(post.id)}
-                >
-                  <span className="feed-action-icon">
-                    <img src={commentIcon} alt="" aria-hidden="true" />
-                  </span>
-                  <span>{post.comments.length}</span>
-                </button>
-                <time
-                  className="feed-post-age"
-                  dateTime={new Date(post.createdAt).toISOString()}
-                >
-                  {formatFeedPostAge(post.createdAt, feedNow)}
-                </time>
-              </div>
-            </article>
-          ))}
+                <div className="feed-card-footer">
+                  <button
+                    className={`feed-reaction ${post.liked ? 'active' : ''}`}
+                    type="button"
+                    aria-pressed={post.liked}
+                    onClick={() => void togglePostLike(post.id)}
+                    disabled={!post.canLike || post.isOwnPost}
+                  >
+                    <span className="feed-action-icon">
+                      <img
+                        src={post.liked ? likeActiveIcon : likeIcon}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <span>{post.likes}</span>
+                  </button>
+                  <button
+                    className="feed-comment-count"
+                    type="button"
+                    aria-label={`${post.userName}さんのコメントを開く`}
+                    onClick={() => openCommentPanel(post.id)}
+                    disabled={!post.canComment || post.isOwnPost}
+                  >
+                    <span className="feed-action-icon">
+                      <img src={commentIcon} alt="" aria-hidden="true" />
+                    </span>
+                    <span>{post.comments.length}</span>
+                  </button>
+                  <time
+                    className="feed-post-age"
+                    dateTime={new Date(post.createdAt).toISOString()}
+                  >
+                    {formatFeedPostAge(post.createdAt, feedNow)}
+                  </time>
+                </div>
+              </article>
+            ))
+          )}
         </section>
+
+        {isFeedIntroOpen ? (
+          <div className="feed-expired-backdrop" role="presentation">
+            <section
+              className="feed-expired-modal feed-intro-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="feed-intro-title"
+            >
+              <h2 id="feed-intro-title">利用時間は5分限定！</h2>
+              <p>
+                みんなの「やります」「できた」にリアクションして応援しましょう！
+                <br />
+                フィードは5分だけ見られます
+              </p>
+              <button
+                className="feed-expired-start-button"
+                type="button"
+                onClick={closeFeedIntro}
+              >
+                OK
+              </button>
+            </section>
+          </div>
+        ) : null}
 
         {isFeedExpired ? (
           <div className="feed-expired-backdrop" role="presentation">
@@ -1757,29 +1899,27 @@ export function HomePage() {
                   className="feed-comment-panel-list"
                   aria-label="コメント一覧"
                 >
-                  {activeCommentPost.comments.map((comment, index) => (
-                    <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
+                  {activeCommentPost.comments.map((comment) => (
+                    <li
+                      className={`feed-comment-item-${comment.postStatusWhenCommented}`}
+                      key={comment.id}
+                    >
                       <div className="feed-comment-author">
                         <span
                           className="feed-comment-avatar"
                           aria-hidden="true"
                         />
-                        <span>みき</span>
-                        <span className="feed-comment-level">Lv.7</span>
+                        <span>{comment.userName}</span>
+                        <span className="feed-comment-level">
+                          Lv.{comment.level}
+                        </span>
                       </div>
                       <div className="feed-comment-body">
-                        <span>{comment}</span>
+                        <span>{comment.body}</span>
                         <time
-                          dateTime={new Date(
-                            activeCommentPost.createdAt,
-                          ).toISOString()}
+                          dateTime={new Date(comment.createdAt).toISOString()}
                         >
-                          {index === activeCommentPost.comments.length - 1
-                            ? formatFeedPostAge(
-                                activeCommentPost.createdAt,
-                                feedNow,
-                              )
-                            : '2時間前'}
+                          {formatFeedPostAge(comment.createdAt, feedNow)}
                         </time>
                       </div>
                     </li>
@@ -1795,6 +1935,7 @@ export function HomePage() {
                   aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
                   placeholder="コメントを入力"
                   value={commentDrafts[activeCommentPost.id] ?? ''}
+                  disabled={!activeCommentPost.canComment}
                   onChange={(event) =>
                     handleCommentDraftChange(
                       activeCommentPost.id,
@@ -1805,8 +1946,11 @@ export function HomePage() {
                 <button
                   type="button"
                   aria-label="コメントを送信"
-                  onClick={() => addPostComment(activeCommentPost.id)}
-                  disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
+                  onClick={() => void addPostComment(activeCommentPost.id)}
+                  disabled={
+                    !activeCommentPost.canComment ||
+                    !(commentDrafts[activeCommentPost.id] ?? '').trim()
+                  }
                 >
                   ➤
                 </button>
@@ -1927,6 +2071,7 @@ export function HomePage() {
               className="focus-done-button"
               type="button"
               onClick={handleTaskDone}
+              disabled={isTaskSubmitting}
             >
               できた！
             </button>
@@ -1997,7 +2142,11 @@ export function HomePage() {
               {taskError}
             </p>
           ) : null}
-          <button className="home-start-button" type="submit">
+          <button
+            className="home-start-button"
+            type="submit"
+            disabled={isTaskSubmitting}
+          >
             始める
           </button>
         </form>

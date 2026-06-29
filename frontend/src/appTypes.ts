@@ -12,17 +12,29 @@ export type SignupScreen = 'signup' | 'icon' | 'complete'
 
 export type FeedPostStatus = 'doing' | 'done'
 
+export type FeedComment = {
+  id: string
+  body: string
+  userName: string
+  level: number
+  postStatusWhenCommented: FeedPostStatus
+  createdAt: number
+}
+
 export type FeedPost = {
   id: string
   userName: string
   level: number
   task: string
   status: FeedPostStatus
+  statusLabel: string
   likes: number
-  comments: string[]
+  comments: FeedComment[]
   createdAt: number
   liked: boolean
   isOwnPost: boolean
+  canLike: boolean
+  canComment: boolean
 }
 
 export type ProfileAchievement = {

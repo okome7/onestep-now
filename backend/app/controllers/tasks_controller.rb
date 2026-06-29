@@ -1,6 +1,13 @@
 class TasksController < ApplicationController
   before_action :require_current_user
-  before_action :set_task
+  before_action :set_task, only: [ :start, :complete ]
+
+  def create
+    task = current_user.tasks.create!(task_params.merge(status: :pending))
+    render json: { status: "success", data: task_payload(task) }, status: :created
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { status: "error", errors: e.record.errors.full_messages }, status: :unprocessable_entity
+  end
 
   def start
     return render_forbidden unless owns_task?
@@ -44,6 +51,10 @@ class TasksController < ApplicationController
 
   def owns_task?
     @task.user_id == current_user.id
+  end
+
+  def task_params
+    params.require(:task).permit(:title)
   end
 
   def task_payload(task)

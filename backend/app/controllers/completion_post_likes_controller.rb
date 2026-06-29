@@ -9,6 +9,13 @@ class CompletionPostLikesController < ApplicationController
     render json: { status: "success" }, status: :created
   end
 
+  def destroy
+    return render_forbidden if own_post?
+
+    @completion_post.completion_post_likes.where(user: current_user).destroy_all
+    render json: { status: "success" }, status: :ok
+  end
+
   private
 
   def set_completion_post

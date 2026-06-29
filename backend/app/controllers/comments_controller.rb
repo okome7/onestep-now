@@ -29,6 +29,7 @@ class CommentsController < ApplicationController
     {
       id: comment.id,
       user_id: comment.user_id,
+      user_name: comment.user.name,
       completion_post_id: comment.completion_post_id,
       body: comment.body,
       post_status_when_commented: comment.post_status_when_commented,

@@ -13,9 +13,11 @@ Rails.application.routes.draw do
 
   scope "/api" do
     get "feed", to: "feed#index"
+    post "tasks", to: "tasks#create"
     patch "tasks/:id/start", to: "tasks#start"
     patch "tasks/:id/complete", to: "tasks#complete"
     post "completion_posts/:completion_post_id/likes", to: "completion_post_likes#create"
+    delete "completion_posts/:completion_post_id/likes", to: "completion_post_likes#destroy"
     post "completion_posts/:completion_post_id/comments", to: "comments#create"
   end
 end

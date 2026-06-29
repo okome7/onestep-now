@@ -13,6 +13,21 @@ RSpec.describe "Feed posts", type: :request do
   let(:user) { create_user(email: "owner@example.com") }
   let(:other_user) { create_user(email: "other@example.com") }
 
+  describe "POST /api/tasks" do
+    it "現在のユーザーのタスクを作成する" do
+      post "/api/tasks",
+        params: { task: { title: "参考記事を1つ読む" } },
+        headers: { "X-User-Id" => user.id.to_s },
+        as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(user.tasks.last).to have_attributes(
+        title: "参考記事を1つ読む",
+        status: "pending"
+      )
+    end
+  end
+
   describe "PATCH /api/tasks/:id/start" do
     it "タスク開始時にdoingの投稿を作成する" do
       task = user.tasks.create!(title: "参考記事を1つ読む")
@@ -50,6 +65,7 @@ RSpec.describe "Feed posts", type: :request do
 
   describe "GET /api/feed" do
     it "自分の投稿も含め、操作可否を返す" do
+      user.update!(feed_access_expires_at: 5.minutes.from_now)
       own_task = user.tasks.create!(title: "自分のタスク")
       own_post = own_task.create_completion_post!(user: user, status: :completed, completed_at: Time.current)
       other_task = other_user.tasks.create!(title: "他人のタスク")
@@ -60,10 +76,13 @@ RSpec.describe "Feed posts", type: :request do
       get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
 
       expect(response).to have_http_status(:ok)
-      data = JSON.parse(response.body).fetch("data")
+      body = JSON.parse(response.body)
+      data = body.fetch("data")
       own_payload = data.find { |post| post["id"] == own_post.id }
       other_payload = data.find { |post| post["id"] == other_completion_post.id }
 
+      expect(body.fetch("remaining_seconds")).to be_between(1, 300)
+      expect(body.fetch("feed_access_expires_at")).to be_present
       expect(own_payload).to include(
         "task_title" => "自分のタスク",
         "status" => "completed",
@@ -82,6 +101,18 @@ RSpec.describe "Feed posts", type: :request do
         "likes_count" => 1,
         "comments_count" => 1
       )
+      expect(other_payload.fetch("comments").first).to include(
+        "body" => "応援しています",
+        "post_status_when_commented" => "doing"
+      )
+    end
+
+    it "閲覧時間外は403を返す" do
+      user.update!(feed_access_expires_at: 1.second.ago)
+
+      get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
+
+      expect(response).to have_http_status(:forbidden)
     end
   end
 
@@ -116,6 +147,18 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "POST /api/completion_posts/:id/likes" do
+    it "いいね解除できる" do
+      task = other_user.tasks.create!(title: "他人のタスク")
+      completion_post = task.create_completion_post!(user: other_user, status: :doing)
+      completion_post.completion_post_likes.create!(user: user)
+
+      expect {
+        delete "/api/completion_posts/#{completion_post.id}/likes", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      }.to change(CompletionPostLike, :count).by(-1)
+
+      expect(response).to have_http_status(:ok)
+    end
+
     it "自分の投稿にはいいねできない" do
       task = user.tasks.create!(title: "自分のタスク")
       completion_post = task.create_completion_post!(user: user, status: :doing)
