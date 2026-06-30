@@ -106,6 +106,104 @@ async function mockPasswordReset(page: Page) {
   });
 }
 
+async function mockTaskAndFeedApi(page: Page) {
+  let taskId = 1;
+  let activeTask = "";
+  let completionPostId = 1;
+  let completedAt: string | null = null;
+
+  await page.route(/.*\/(?:api\/)?tasks$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
+
+    const body = route.request().postDataJSON() as {
+      task?: { title?: string };
+    };
+    activeTask = body.task?.title ?? "";
+
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: taskId,
+          title: activeTask,
+          status: "pending",
+        },
+      }),
+    });
+  });
+
+  await page.route(/.*\/(?:api\/)?tasks\/\d+\/start$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: taskId,
+          title: activeTask,
+          status: "active",
+          completion_post_id: completionPostId,
+        },
+      }),
+    });
+  });
+
+  await page.route(/.*\/(?:api\/)?tasks\/\d+\/complete$/, async (route) => {
+    completedAt = new Date().toISOString();
+
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: taskId,
+          title: activeTask,
+          status: "completed",
+          completed_at: completedAt,
+          completion_post_id: completionPostId,
+        },
+      }),
+    });
+  });
+
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 5 * 60,
+        feed_access_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        data: activeTask
+          ? [
+              {
+                id: completionPostId,
+                user_name: "おこめ",
+                level: 1,
+                task_title: activeTask,
+                status: completedAt ? "completed" : "doing",
+                status_label: completedAt ? "できた" : "やります",
+                card_variant: completedAt ? "completed" : "doing",
+                is_mine: true,
+                can_like: false,
+                can_comment: false,
+                likes_count: 0,
+                comments_count: 0,
+                liked_by_me: false,
+                comments: [],
+                created_at: new Date().toISOString(),
+                completed_at: completedAt,
+              },
+            ]
+          : [],
+      }),
+    });
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
@@ -670,6 +768,7 @@ test("ホーム画面でやることを入力せずに始めるとエラーが�
 });
 
 test("ホーム画面でやることを始めるとタイマーが表示される", async ({ page }) => {
+  await mockTaskAndFeedApi(page);
   await gotoHome(page);
 
   await page
@@ -691,6 +790,7 @@ test("ホーム画面でやることを始めるとタイマーが表示され�
 test("集中画面でやめるを押すと確認モーダルが表示され、確定するとホーム画面に戻る", async ({
   page,
 }) => {
+  await mockTaskAndFeedApi(page);
   await gotoHome(page);
 
   await page
@@ -717,6 +817,7 @@ test("集中画面でやめるを押すと確認モーダルが表示され、�
 });
 
 test("集中画面でできたを押すと完了画面が表示される", async ({ page }) => {
+  await mockTaskAndFeedApi(page);
   await gotoHome(page);
 
   await page
@@ -758,6 +859,7 @@ test("集中画面でできたを押すと完了画面が表示される", async
 test("フィード閲覧時間が終了するとモーダルからホームへ戻れる", async ({
   page,
 }) => {
+  await mockTaskAndFeedApi(page);
   await page.clock.install();
   await gotoHome(page);
 
