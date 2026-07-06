@@ -64,6 +64,12 @@ export class FeedAccessDeniedError extends Error {
   }
 }
 
+export class AuthRequiredError extends Error {
+  constructor() {
+    super('ログインが必要です。')
+  }
+}
+
 function apiUrl(apiBaseUrl: string, path: string) {
   const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
   return `${trimmedApiBaseUrl.replace(/\/$/, '')}${path}`
@@ -176,6 +182,11 @@ export async function createTask(title: string, userId?: number) {
     headers: userHeaders(userId),
     body: JSON.stringify({ task: { title } }),
   })
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
   const result = await readJson<TaskResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {
@@ -190,6 +201,11 @@ export async function startTask(taskId: number, userId?: number) {
     method: 'PATCH',
     headers: userHeaders(userId),
   })
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
   const result = await readJson<TaskResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {
@@ -207,6 +223,11 @@ export async function completeTask(taskId: number, userId?: number) {
       headers: userHeaders(userId),
     },
   )
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
   const result = await readJson<TaskResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {
@@ -225,6 +246,10 @@ export async function likePost(postId: string, userId?: number) {
     },
   )
 
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
   if (!response.ok) {
     throw new Error('いいねに失敗しました。')
   }
@@ -238,6 +263,10 @@ export async function unlikePost(postId: string, userId?: number) {
       headers: userHeaders(userId),
     },
   )
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
 
   if (!response.ok) {
     throw new Error('いいね解除に失敗しました。')
@@ -257,6 +286,11 @@ export async function createComment(
       body: JSON.stringify({ comment: { body } }),
     },
   )
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
   const result = await readJson<CommentResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {

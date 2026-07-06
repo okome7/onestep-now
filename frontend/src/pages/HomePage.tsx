@@ -46,6 +46,7 @@ import {
   UnsavedChangesModal,
 } from '../sharedComponents'
 import {
+  AuthRequiredError,
   FeedAccessDeniedError,
   completeTask,
   createComment,
@@ -434,6 +435,14 @@ export function HomePage() {
     window.location.href = '/login'
   }
 
+  function redirectToLoginForAuthRequired() {
+    clearAuthSession()
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
+    window.sessionStorage.removeItem(signupDraftStorageKey)
+    window.location.assign('/login')
+  }
+
   function openAccountDeleteConfirm() {
     setIsAccountDeleteConfirmOpen(true)
     setIsLogoutConfirmOpen(false)
@@ -694,6 +703,11 @@ export function HomePage() {
       return
     }
 
+    if (!completeProfile.id) {
+      redirectToLoginForAuthRequired()
+      return
+    }
+
     setTaskError('')
     setIsTaskSubmitting(true)
 
@@ -706,6 +720,11 @@ export function HomePage() {
       setIsTaskComplete(false)
       await loadFeed()
     } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
       setTaskError(
         caughtError instanceof Error
           ? caughtError.message
@@ -746,6 +765,11 @@ export function HomePage() {
       return
     }
 
+    if (!completeProfile.id) {
+      redirectToLoginForAuthRequired()
+      return
+    }
+
     setIsTaskSubmitting(true)
 
     try {
@@ -753,6 +777,11 @@ export function HomePage() {
       setIsTaskComplete(true)
       await loadFeed()
     } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
       setTaskError(
         caughtError instanceof Error
           ? caughtError.message
@@ -799,7 +828,12 @@ export function HomePage() {
       } else {
         await likePost(postId, completeProfile.id)
       }
-    } catch {
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
       await loadFeed()
     }
   }
@@ -850,7 +884,12 @@ export function HomePage() {
         ...currentDrafts,
         [postId]: '',
       }))
-    } catch {
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
       await loadFeed()
     }
   }
