@@ -115,6 +115,7 @@ export function HomePage() {
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
   const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
   const [isFeedLoading, setIsFeedLoading] = useState(false)
+  const [isFeedTimeoutModalOpen, setIsFeedTimeoutModalOpen] = useState(false)
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [profileAchievements] = useState<ProfileAchievement[]>(() => {
@@ -132,11 +133,7 @@ export function HomePage() {
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = taskCompleteComments.length > 0
-  const isFeedExpired =
-    isFeedOpen &&
-    !isFeedAccessDenied &&
-    !isFeedLoading &&
-    feedRemainingSeconds <= 0
+  const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
   const visibleFeedPosts = feedPosts
   const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
   const profileName = completeProfile.name || 'おこめ'
@@ -200,16 +197,34 @@ export function HomePage() {
   }, [isTaskComplete])
 
   useEffect(() => {
-    if (!isFeedOpen || isFeedExpired) {
+    if (
+      !isFeedOpen ||
+      isFeedAccessDenied ||
+      isFeedLoading ||
+      isFeedExpired
+    ) {
+      return undefined
+    }
+
+    if (feedRemainingSeconds <= 0) {
       return undefined
     }
 
     const expirationTimerId = window.setTimeout(() => {
       setFeedRemainingSeconds(0)
+      setIsFeedTimeoutModalOpen(true)
       setFeedNow(Date.now())
     }, feedRemainingSeconds * 1000)
     const timerId = window.setInterval(() => {
-      setFeedRemainingSeconds((current) => Math.max(0, current - 1))
+      setFeedRemainingSeconds((current) => {
+        const nextSeconds = Math.max(0, current - 1)
+
+        if (nextSeconds === 0) {
+          setIsFeedTimeoutModalOpen(true)
+        }
+
+        return nextSeconds
+      })
       setFeedNow(Date.now())
     }, 1000)
 
@@ -217,11 +232,18 @@ export function HomePage() {
       window.clearInterval(timerId)
       window.clearTimeout(expirationTimerId)
     }
-  }, [feedRemainingSeconds, isFeedExpired, isFeedOpen])
+  }, [
+    feedRemainingSeconds,
+    isFeedAccessDenied,
+    isFeedExpired,
+    isFeedLoading,
+    isFeedOpen,
+  ])
 
   const loadFeed = useCallback(async () => {
     setFeedError('')
     setIsFeedLoading(true)
+    setIsFeedTimeoutModalOpen(false)
 
     try {
       const result = await fetchFeed(completeProfile.id)
@@ -238,6 +260,7 @@ export function HomePage() {
         setFeedPosts([])
         setFeedRemainingSeconds(0)
         setIsFeedAccessDenied(true)
+        setIsFeedTimeoutModalOpen(false)
         setIsFeedIntroOpen(false)
         return
       }
@@ -271,6 +294,7 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
+    setIsFeedTimeoutModalOpen(false)
     void loadFeed()
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -290,6 +314,7 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     setIsFeedAccessDenied(false)
+    setIsFeedTimeoutModalOpen(false)
     setFeedError('')
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -309,6 +334,7 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     setIsFeedAccessDenied(false)
+    setIsFeedTimeoutModalOpen(false)
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
