@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const backendScopedApiPaths =
+  /^\/api\/(?:feed|tasks(?:\/|$)|completion_posts(?:\/|$))/
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -14,7 +17,8 @@ export default defineConfig({
           process.env.VITE_API_BASE_URL ||
           'http://localhost:3001',
         changeOrigin: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) =>
+          backendScopedApiPaths.test(path) ? path : path.replace(/^\/api/, ''),
       },
     },
   },
