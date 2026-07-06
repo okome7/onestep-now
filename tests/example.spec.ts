@@ -856,6 +856,43 @@ test("集中画面でできたを押すと完了画面が表示される", async
     .toBe(true);
 });
 
+test("フィード閲覧時間外は案内画面からホームへ戻れる", async ({ page }) => {
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "error",
+        errors: ["フィード閲覧時間外です"],
+      }),
+    });
+  });
+  await gotoHome(page);
+
+  await page.getByRole("link", { name: "投稿" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "フィード", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "フィードは5分だけ見られます" }),
+  ).toBeVisible();
+  await expect(page.getByText("フィードってなに？")).toBeVisible();
+  await expect(page.getByText("1. やります")).toBeVisible();
+  await expect(page.getByText("2. できた！")).toBeVisible();
+  await expect(page.getByText("3. フィード解放")).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "5分経過しました" }),
+  ).toHaveCount(0);
+
+  await page.getByRole("button", { name: "最初の一歩を始める" }).click();
+
+  await expect(page.getByRole("heading", { name: "フィード" })).toHaveCount(0);
+  await expect(
+    page.getByRole("textbox", { name: "今できること" }),
+  ).toBeVisible();
+});
+
 test("フィード閲覧時間が終了するとモーダルからホームへ戻れる", async ({
   page,
 }) => {

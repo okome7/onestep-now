@@ -114,6 +114,7 @@ export function HomePage() {
   const [feedNow, setFeedNow] = useState(() => Date.now())
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
   const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
+  const [isFeedLoading, setIsFeedLoading] = useState(false)
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [profileAchievements] = useState<ProfileAchievement[]>(() => {
@@ -132,7 +133,10 @@ export function HomePage() {
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = taskCompleteComments.length > 0
   const isFeedExpired =
-    isFeedOpen && !isFeedAccessDenied && feedRemainingSeconds <= 0
+    isFeedOpen &&
+    !isFeedAccessDenied &&
+    !isFeedLoading &&
+    feedRemainingSeconds <= 0
   const visibleFeedPosts = feedPosts
   const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
   const profileName = completeProfile.name || 'おこめ'
@@ -217,6 +221,7 @@ export function HomePage() {
 
   const loadFeed = useCallback(async () => {
     setFeedError('')
+    setIsFeedLoading(true)
 
     try {
       const result = await fetchFeed(completeProfile.id)
@@ -242,6 +247,8 @@ export function HomePage() {
           ? caughtError.message
           : 'フィード取得に失敗しました。',
       )
+    } finally {
+      setIsFeedLoading(false)
     }
   }, [completeProfile.id])
 
@@ -1729,7 +1736,23 @@ export function HomePage() {
           aria-hidden={isFeedExpired ? 'true' : undefined}
         >
           {isFeedAccessDenied ? (
-            <section className="feed-start-gate" aria-labelledby="feed-start-title">
+            <section
+              className="feed-start-gate"
+              aria-labelledby="feed-start-title"
+            >
+              <div className="feed-start-illustration" aria-hidden="true">
+                <span className="feed-sparkle feed-sparkle-one" />
+                <span className="feed-sparkle feed-sparkle-two" />
+                <span className="feed-sparkle feed-sparkle-three" />
+                <span className="feed-sparkle feed-sparkle-four" />
+                <span className="feed-sparkle feed-sparkle-five" />
+                <span className="feed-paper">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                <span className="feed-pencil" />
+              </div>
               <div className="feed-start-gate-card">
                 <h2 id="feed-start-title">
                   <span className="feed-start-clock" aria-hidden="true" />
@@ -1743,9 +1766,40 @@ export function HomePage() {
                   5分間だけチェックできます。
                 </p>
               </div>
-              <p className="feed-start-gate-lead">
-                最初の一歩を始めてみましょう！
-              </p>
+              <section
+                className="feed-start-guide"
+                aria-labelledby="feed-start-guide-title"
+              >
+                <h3 id="feed-start-guide-title">フィードってなに？</h3>
+                <p>
+                  みんなの「やります」「できた」を見て、
+                  <br />
+                  応援したり、コメントしたりできる場所です。
+                </p>
+                <ol className="feed-start-steps" aria-label="フィードの流れ">
+                  <li>
+                    <span className="feed-start-step-icon feed-start-step-flag">
+                      ⚑
+                    </span>
+                    <strong>1. やります</strong>
+                    <small>タスクを決めて宣言しよう</small>
+                  </li>
+                  <li>
+                    <span className="feed-start-step-icon feed-start-step-check">
+                      ✓
+                    </span>
+                    <strong>2. できた！</strong>
+                    <small>タスクが終わったら完了しよう</small>
+                  </li>
+                  <li>
+                    <span className="feed-start-step-icon feed-start-step-heart">
+                      ♥
+                    </span>
+                    <strong>3. フィード解放</strong>
+                    <small>完了すると5分間だけ見られる！</small>
+                  </li>
+                </ol>
+              </section>
               <button
                 className="feed-expired-start-button"
                 type="button"
