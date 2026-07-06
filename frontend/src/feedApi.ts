@@ -143,7 +143,7 @@ export async function fetchFeed(userId?: number, apiBaseUrl = defaultApiBaseUrl)
     throw new Error('APIに接続できませんでした。')
   }
 
-  if (response.status === 403) {
+  if (response.status === 401 || response.status === 403) {
     throw new FeedAccessDeniedError()
   }
 
