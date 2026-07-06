@@ -1711,13 +1711,15 @@ export function HomePage() {
         <AppHeader
           title="フィード"
           rightAction={
-            <time
-              className="feed-countdown"
-              dateTime={`PT${feedRemainingSeconds}S`}
-            >
-              <span className="feed-countdown-icon" aria-hidden="true" />
-              残り {formatFeedRemainingTime(feedRemainingSeconds)}
-            </time>
+            isFeedAccessDenied ? null : (
+              <time
+                className="feed-countdown"
+                dateTime={`PT${feedRemainingSeconds}S`}
+              >
+                <span className="feed-countdown-icon" aria-hidden="true" />
+                残り {formatFeedRemainingTime(feedRemainingSeconds)}
+              </time>
+            )
           }
         />
 
@@ -1728,14 +1730,28 @@ export function HomePage() {
         >
           {isFeedAccessDenied ? (
             <section className="feed-start-gate" aria-labelledby="feed-start-title">
-              <h2 id="feed-start-title">最初の一歩を始めよう</h2>
-              <p>タスクを完了すると、みんなのフィードを5分だけ見られます。</p>
+              <div className="feed-start-gate-card">
+                <h2 id="feed-start-title">
+                  <span className="feed-start-clock" aria-hidden="true" />
+                  フィードは5分だけ見られます
+                </h2>
+                <p>
+                  タスクを完了すると、
+                  <br />
+                  みんなの「やります」「できた」を
+                  <br />
+                  5分間だけチェックできます。
+                </p>
+              </div>
+              <p className="feed-start-gate-lead">
+                最初の一歩を始めてみましょう！
+              </p>
               <button
                 className="feed-expired-start-button"
                 type="button"
-                onClick={startNextTaskFromExpiredFeed}
+                onClick={openHome}
               >
-                始める
+                最初の一歩を始める
               </button>
             </section>
           ) : feedError ? (

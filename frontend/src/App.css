@@ -1758,6 +1758,13 @@ body {
   padding: 18px 0 22px;
 }
 
+.feed-list:has(.feed-start-gate) {
+  width: min(100%, 288px);
+  min-height: calc(100dvh - 126px);
+  align-content: center;
+  padding: 0 16px 78px;
+}
+
 .feed-card {
   border: 1px solid #c7d0db;
   border-radius: 8px;
@@ -1771,7 +1778,6 @@ body {
   background: #f2fff3;
 }
 
-.feed-start-gate,
 .feed-error {
   border: 1px solid #d8e0ea;
   border-radius: 8px;
@@ -1781,14 +1787,66 @@ body {
   box-shadow: 0 2px 6px rgb(15 23 42 / 12%);
 }
 
-.feed-start-gate h2 {
-  margin: 0 0 10px;
-  color: #111827;
-  font-size: 20px;
-  font-weight: 800;
+.feed-start-gate {
+  display: grid;
+  justify-items: center;
+  gap: 28px;
+  text-align: center;
 }
 
-.feed-start-gate p,
+.feed-start-gate-card {
+  width: 100%;
+  border: 1px solid #aeb8c6;
+  border-radius: 8px;
+  padding: 20px 18px 22px;
+  background: #ffffff;
+}
+
+.feed-start-gate h2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0 0 17px;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.feed-start-clock {
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 3px solid #4d95e5;
+  border-radius: 50%;
+}
+
+.feed-start-clock::before,
+.feed-start-clock::after {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  width: 2px;
+  border-radius: 999px;
+  background: #4d95e5;
+  content: '';
+  transform-origin: top center;
+}
+
+.feed-start-clock::before {
+  height: 6px;
+  transform: translate(-50%, -1px);
+}
+
+.feed-start-clock::after {
+  height: 5px;
+  transform: translate(-50%, -1px) rotate(125deg);
+}
+
 .feed-error {
   margin: 0;
   color: #5f6b7a;
@@ -1797,8 +1855,29 @@ body {
   line-height: 1.6;
 }
 
+.feed-start-gate-card p {
+  margin: 0;
+  color: #9aa6b8;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.feed-start-gate-lead {
+  margin: 0;
+  color: #9aa6b8;
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .feed-start-gate .feed-expired-start-button {
-  margin-top: 18px;
+  width: min(100%, 230px);
+  min-height: 44px;
+  margin-top: -10px;
+  border-radius: 8px;
+  font-size: 17px;
+  box-shadow: 0 4px 8px rgb(77 149 229 / 35%);
 }
 
 .feed-card-header {
