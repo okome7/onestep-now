@@ -266,6 +266,7 @@ export function HomePage() {
         return
       }
 
+      setIsFeedAccessDenied(false)
       setFeedError(
         caughtError instanceof Error
           ? caughtError.message
@@ -295,6 +296,10 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
+    setFeedPosts([])
+    setFeedError('')
+    setFeedRemainingSeconds(0)
+    setIsFeedAccessDenied(true)
     setIsFeedTimeoutModalOpen(false)
     void loadFeed()
     window.scrollTo({ top: 0, left: 0 })
