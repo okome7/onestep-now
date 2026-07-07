@@ -112,6 +112,9 @@ export function HomePage() {
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
     0,
   )
+  const [feedAccessExpiresAt, setFeedAccessExpiresAt] = useState<number | null>(
+    null,
+  )
   const [feedNow, setFeedNow] = useState(() => Date.now())
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
   const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
@@ -213,6 +216,7 @@ export function HomePage() {
 
     const expirationTimerId = window.setTimeout(() => {
       setFeedRemainingSeconds(0)
+      setFeedAccessExpiresAt(null)
       setIsFeedTimeoutModalOpen(true)
       setFeedNow(Date.now())
     }, feedRemainingSeconds * 1000)
@@ -221,6 +225,7 @@ export function HomePage() {
         const nextSeconds = Math.max(0, current - 1)
 
         if (nextSeconds === 0) {
+          setFeedAccessExpiresAt(null)
           setIsFeedTimeoutModalOpen(true)
         }
 
@@ -248,8 +253,15 @@ export function HomePage() {
 
     try {
       const result = await fetchFeed(completeProfile.id)
+      const nextRemainingSeconds =
+        result.remainingSeconds ?? feedViewDurationSeconds
       setFeedPosts(result.posts)
-      setFeedRemainingSeconds(result.remainingSeconds ?? feedViewDurationSeconds)
+      setFeedRemainingSeconds(nextRemainingSeconds)
+      setFeedAccessExpiresAt(
+        result.feedAccessExpiresAt
+          ? new Date(result.feedAccessExpiresAt).getTime()
+          : Date.now() + nextRemainingSeconds * 1000,
+      )
       setIsFeedAccessDenied(false)
       setFeedNow(Date.now())
 
@@ -260,6 +272,7 @@ export function HomePage() {
       if (caughtError instanceof FeedAccessDeniedError) {
         setFeedPosts([])
         setFeedRemainingSeconds(0)
+        setFeedAccessExpiresAt(null)
         setIsFeedAccessDenied(true)
         setIsFeedTimeoutModalOpen(false)
         setIsFeedIntroOpen(false)
@@ -296,10 +309,14 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    setFeedPosts([])
+    const hasKnownFeedAccess =
+      feedAccessExpiresAt !== null && feedAccessExpiresAt > Date.now()
+    if (!hasKnownFeedAccess) {
+      setFeedPosts([])
+      setFeedRemainingSeconds(0)
+    }
     setFeedError('')
-    setFeedRemainingSeconds(0)
-    setIsFeedAccessDenied(true)
+    setIsFeedAccessDenied(!hasKnownFeedAccess)
     setIsFeedTimeoutModalOpen(false)
     void loadFeed()
     window.scrollTo({ top: 0, left: 0 })
