@@ -2,6 +2,9 @@ class User < ApplicationRecord
   has_secure_password
 
   has_many :tasks, dependent: :destroy
+  has_many :completion_posts, dependent: :destroy
+  has_many :comments, dependent: :destroy
+  has_many :completion_post_likes, dependent: :destroy
   has_many :password_reset_codes, dependent: :destroy
 
   before_validation :normalize_email

@@ -23,7 +23,20 @@ export const currentPathname = () =>
   window.location.pathname.replace(/\/+$/, '') || '/'
 
 export function hasActiveAuthSession() {
-  return window.localStorage.getItem(authSessionStorageKey) === 'active'
+  if (window.localStorage.getItem(authSessionStorageKey) !== 'active') {
+    return false
+  }
+
+  try {
+    const savedProfile = window.localStorage.getItem(signupCompleteStorageKey)
+    const parsedProfile = savedProfile
+      ? (JSON.parse(savedProfile) as Partial<CompleteProfile>)
+      : null
+
+    return typeof parsedProfile?.id === 'number'
+  } catch {
+    return false
+  }
 }
 
 export function saveAuthSession() {
