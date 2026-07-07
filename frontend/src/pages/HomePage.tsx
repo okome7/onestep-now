@@ -58,6 +58,11 @@ import {
 } from '../feedApi'
 
 const feedIntroStorageKey = 'onestep-feed-intro-seen'
+const activeHomeViewStorageKey = 'onestep-active-home-view'
+
+function getInitialHomeView() {
+  return window.sessionStorage.getItem(activeHomeViewStorageKey)
+}
 
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
@@ -70,8 +75,11 @@ export function HomePage() {
   const [isTaskComplete, setIsTaskComplete] = useState(false)
   const [isTaskSubmitting, setIsTaskSubmitting] = useState(false)
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
-  const [isFeedOpen, setIsFeedOpen] = useState(false)
-  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [initialHomeView] = useState(getInitialHomeView)
+  const [isFeedOpen, setIsFeedOpen] = useState(initialHomeView === 'feed')
+  const [isProfileOpen, setIsProfileOpen] = useState(
+    initialHomeView === 'profile',
+  )
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false)
   const [activeAchievementId, setActiveAchievementId] = useState<string | null>(
     null,
@@ -349,6 +357,18 @@ export function HomePage() {
     }
   }, [completeProfile.id])
 
+  useEffect(() => {
+    if (!isFeedOpen) {
+      return undefined
+    }
+
+    const timerId = window.setTimeout(() => {
+      void loadFeed()
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
+  }, [isFeedOpen, loadFeed])
+
   function closeFeedIntro() {
     window.localStorage.setItem(feedIntroStorageKey, 'true')
     setIsFeedIntroOpen(false)
@@ -356,6 +376,7 @@ export function HomePage() {
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -377,12 +398,15 @@ export function HomePage() {
     setFeedError('')
     setIsFeedAccessDenied(!hasKnownFeedAccess)
     setIsFeedTimeoutModalOpen(false)
-    void loadFeed()
+    if (isFeedOpen) {
+      void loadFeed()
+    }
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openHome(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'home')
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -403,6 +427,7 @@ export function HomePage() {
 
   function startNextTaskFromExpiredFeed(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'home')
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -423,6 +448,7 @@ export function HomePage() {
 
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
     setIsFeedOpen(false)
     setIsProfileOpen(true)
     setIsAchievementsOpen(false)
@@ -440,6 +466,7 @@ export function HomePage() {
 
   function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
     setIsAchievementsOpen(true)
     setActiveAchievementId(null)
     setIsProfileOpen(false)
@@ -513,12 +540,14 @@ export function HomePage() {
 
   function confirmLogout() {
     clearAuthSession()
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
     window.location.href = '/login'
   }
 
   function redirectToLoginForAuthRequired() {
     clearAuthSession()
     window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
     window.sessionStorage.removeItem(signupScreenStorageKey)
     window.sessionStorage.removeItem(signupDraftStorageKey)
     window.location.assign('/login')
@@ -567,6 +596,7 @@ export function HomePage() {
       })
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
+      window.sessionStorage.removeItem(activeHomeViewStorageKey)
       window.sessionStorage.removeItem(signupScreenStorageKey)
       window.sessionStorage.removeItem(signupDraftStorageKey)
       setIsAccountDeleteConfirmOpen(false)
