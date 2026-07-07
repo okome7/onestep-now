@@ -64,7 +64,21 @@ class TasksController < ApplicationController
       status: task.status,
       started_at: task.started_at,
       completed_at: task.completed_at,
-      completion_post_id: task.completion_post&.id
+      completion_post_id: task.completion_post&.id,
+      completion_post: completion_post_payload(task.completion_post)
+    }
+  end
+
+  def completion_post_payload(post)
+    return nil unless post
+
+    {
+      id: post.id,
+      status: post.status,
+      status_label: post.status_label,
+      card_variant: post.card_variant,
+      created_at: post.created_at,
+      completed_at: post.completed_at
     }
   end
 end

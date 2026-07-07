@@ -167,6 +167,65 @@ export function HomePage() {
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
 
+  function upsertOwnTaskPost(
+    task: {
+      title: string
+      completion_post_id?: number
+      completion_post?: {
+        id: number
+        status_label: string
+        card_variant: 'doing' | 'completed'
+        created_at: string
+      } | null
+    },
+  ) {
+    const completionPost = task.completion_post
+    const postId = completionPost?.id ?? task.completion_post_id
+
+    if (!postId) {
+      return
+    }
+
+    const nextPost: FeedPost = {
+      id: String(postId),
+      userName: 'あなた',
+      level: 1,
+      task: task.title,
+      status: completionPost?.card_variant === 'completed' ? 'done' : 'doing',
+      statusLabel:
+        completionPost?.status_label ??
+        (completionPost?.card_variant === 'completed' ? 'できた' : 'やります'),
+      likes: 0,
+      comments: [],
+      createdAt: completionPost?.created_at
+        ? new Date(completionPost.created_at).getTime()
+        : Date.now(),
+      liked: false,
+      isOwnPost: true,
+      canLike: false,
+      canComment: false,
+    }
+
+    setFeedPosts((currentPosts) => {
+      const existingPost = currentPosts.find((post) => post.id === nextPost.id)
+
+      if (!existingPost) {
+        return [nextPost, ...currentPosts]
+      }
+
+      return currentPosts.map((post) =>
+        post.id === nextPost.id
+          ? {
+              ...post,
+              task: nextPost.task,
+              status: nextPost.status,
+              statusLabel: nextPost.statusLabel,
+            }
+          : post,
+      )
+    })
+  }
+
   useEffect(() => {
     if (!isTaskRunning) {
       return undefined
@@ -740,6 +799,7 @@ export function HomePage() {
       setActiveTask(startedTask.title)
       setElapsedSeconds(0)
       setIsTaskComplete(false)
+      upsertOwnTaskPost(startedTask)
       await loadFeed()
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
@@ -795,7 +855,8 @@ export function HomePage() {
     setIsTaskSubmitting(true)
 
     try {
-      await completeTask(activeTaskId, completeProfile.id)
+      const completedTask = await completeTask(activeTaskId, completeProfile.id)
+      upsertOwnTaskPost(completedTask)
       setIsTaskComplete(true)
       await loadFeed()
     } catch (caughtError) {
