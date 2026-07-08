@@ -210,8 +210,8 @@ export function HomePage() {
         : Date.now(),
       liked: false,
       isOwnPost: true,
-      canLike: false,
-      canComment: false,
+      canLike: true,
+      canComment: true,
     }
 
     setFeedPosts((currentPosts) => {
@@ -917,7 +917,7 @@ export function HomePage() {
   async function togglePostLike(postId: string) {
     const targetPost = feedPosts.find((post) => post.id === postId)
 
-    if (!targetPost?.canLike || targetPost.isOwnPost) {
+    if (!targetPost?.canLike) {
       return
     }
 
@@ -969,7 +969,7 @@ export function HomePage() {
   async function addPostComment(postId: string) {
     const targetPost = feedPosts.find((post) => post.id === postId)
 
-    if (!targetPost?.canComment || targetPost.isOwnPost) {
+    if (!targetPost?.canComment) {
       return
     }
 
@@ -2016,7 +2016,7 @@ export function HomePage() {
                     type="button"
                     aria-pressed={post.liked}
                     onClick={() => void togglePostLike(post.id)}
-                    disabled={!post.canLike || post.isOwnPost}
+                    disabled={!post.canLike}
                   >
                     <span className="feed-action-icon">
                       <img
@@ -2032,7 +2032,7 @@ export function HomePage() {
                     type="button"
                     aria-label={`${post.userName}さんのコメントを開く`}
                     onClick={() => openCommentPanel(post.id)}
-                    disabled={!post.canComment || post.isOwnPost}
+                    disabled={!post.canComment}
                   >
                     <span className="feed-action-icon">
                       <img src={commentIcon} alt="" aria-hidden="true" />
