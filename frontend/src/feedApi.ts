@@ -41,6 +41,14 @@ type TaskResponse = {
     id: number
     title: string
     completion_post_id?: number
+    completion_post?: {
+      id: number
+      status: ApiFeedStatus
+      status_label: string
+      card_variant: ApiFeedStatus
+      created_at: string
+      completed_at?: string | null
+    } | null
   }
 }
 

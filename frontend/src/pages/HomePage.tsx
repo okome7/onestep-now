@@ -58,6 +58,11 @@ import {
 } from '../feedApi'
 
 const feedIntroStorageKey = 'onestep-feed-intro-seen'
+const activeHomeViewStorageKey = 'onestep-active-home-view'
+
+function getInitialHomeView() {
+  return window.sessionStorage.getItem(activeHomeViewStorageKey)
+}
 
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
@@ -70,8 +75,11 @@ export function HomePage() {
   const [isTaskComplete, setIsTaskComplete] = useState(false)
   const [isTaskSubmitting, setIsTaskSubmitting] = useState(false)
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
-  const [isFeedOpen, setIsFeedOpen] = useState(false)
-  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [initialHomeView] = useState(getInitialHomeView)
+  const [isFeedOpen, setIsFeedOpen] = useState(initialHomeView === 'feed')
+  const [isProfileOpen, setIsProfileOpen] = useState(
+    initialHomeView === 'profile',
+  )
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false)
   const [activeAchievementId, setActiveAchievementId] = useState<string | null>(
     null,
@@ -166,6 +174,65 @@ export function HomePage() {
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
+
+  function upsertOwnTaskPost(
+    task: {
+      title: string
+      completion_post_id?: number
+      completion_post?: {
+        id: number
+        status_label: string
+        card_variant: 'doing' | 'completed'
+        created_at: string
+      } | null
+    },
+  ) {
+    const completionPost = task.completion_post
+    const postId = completionPost?.id ?? task.completion_post_id
+
+    if (!postId) {
+      return
+    }
+
+    const nextPost: FeedPost = {
+      id: String(postId),
+      userName: 'あなた',
+      level: 1,
+      task: task.title,
+      status: completionPost?.card_variant === 'completed' ? 'done' : 'doing',
+      statusLabel:
+        completionPost?.status_label ??
+        (completionPost?.card_variant === 'completed' ? 'できた' : 'やります'),
+      likes: 0,
+      comments: [],
+      createdAt: completionPost?.created_at
+        ? new Date(completionPost.created_at).getTime()
+        : Date.now(),
+      liked: false,
+      isOwnPost: true,
+      canLike: false,
+      canComment: false,
+    }
+
+    setFeedPosts((currentPosts) => {
+      const existingPost = currentPosts.find((post) => post.id === nextPost.id)
+
+      if (!existingPost) {
+        return [nextPost, ...currentPosts]
+      }
+
+      return currentPosts.map((post) =>
+        post.id === nextPost.id
+          ? {
+              ...post,
+              task: nextPost.task,
+              status: nextPost.status,
+              statusLabel: nextPost.statusLabel,
+            }
+          : post,
+      )
+    })
+  }
 
   useEffect(() => {
     if (!isTaskRunning) {
@@ -290,6 +357,18 @@ export function HomePage() {
     }
   }, [completeProfile.id])
 
+  useEffect(() => {
+    if (!isFeedOpen) {
+      return undefined
+    }
+
+    const timerId = window.setTimeout(() => {
+      void loadFeed()
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
+  }, [isFeedOpen, loadFeed])
+
   function closeFeedIntro() {
     window.localStorage.setItem(feedIntroStorageKey, 'true')
     setIsFeedIntroOpen(false)
@@ -297,6 +376,7 @@ export function HomePage() {
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -318,12 +398,15 @@ export function HomePage() {
     setFeedError('')
     setIsFeedAccessDenied(!hasKnownFeedAccess)
     setIsFeedTimeoutModalOpen(false)
-    void loadFeed()
+    if (isFeedOpen) {
+      void loadFeed()
+    }
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openHome(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'home')
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -344,6 +427,7 @@ export function HomePage() {
 
   function startNextTaskFromExpiredFeed(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'home')
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -364,6 +448,7 @@ export function HomePage() {
 
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
     setIsFeedOpen(false)
     setIsProfileOpen(true)
     setIsAchievementsOpen(false)
@@ -381,6 +466,7 @@ export function HomePage() {
 
   function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
     setIsAchievementsOpen(true)
     setActiveAchievementId(null)
     setIsProfileOpen(false)
@@ -454,12 +540,14 @@ export function HomePage() {
 
   function confirmLogout() {
     clearAuthSession()
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
     window.location.href = '/login'
   }
 
   function redirectToLoginForAuthRequired() {
     clearAuthSession()
     window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
     window.sessionStorage.removeItem(signupScreenStorageKey)
     window.sessionStorage.removeItem(signupDraftStorageKey)
     window.location.assign('/login')
@@ -508,6 +596,7 @@ export function HomePage() {
       })
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
+      window.sessionStorage.removeItem(activeHomeViewStorageKey)
       window.sessionStorage.removeItem(signupScreenStorageKey)
       window.sessionStorage.removeItem(signupDraftStorageKey)
       setIsAccountDeleteConfirmOpen(false)
@@ -740,6 +829,7 @@ export function HomePage() {
       setActiveTask(startedTask.title)
       setElapsedSeconds(0)
       setIsTaskComplete(false)
+      upsertOwnTaskPost(startedTask)
       await loadFeed()
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
@@ -795,7 +885,8 @@ export function HomePage() {
     setIsTaskSubmitting(true)
 
     try {
-      await completeTask(activeTaskId, completeProfile.id)
+      const completedTask = await completeTask(activeTaskId, completeProfile.id)
+      upsertOwnTaskPost(completedTask)
       setIsTaskComplete(true)
       await loadFeed()
     } catch (caughtError) {

@@ -42,6 +42,13 @@ RSpec.describe "Feed posts", type: :request do
         status: "doing",
         content: "参考記事を1つ読む"
       )
+      body = JSON.parse(response.body)
+      expect(body.dig("data", "completion_post")).to include(
+        "id" => task.completion_post.id,
+        "status" => "doing",
+        "status_label" => "やります",
+        "card_variant" => "doing"
+      )
     end
   end
 
@@ -60,6 +67,13 @@ RSpec.describe "Feed posts", type: :request do
       expect(completion_post.reload).to be_completed
       expect(completion_post.completed_at.to_i).to eq(task.completed_at.to_i)
       expect(user.reload.feed_access_expires_at).to be > Time.current
+      body = JSON.parse(response.body)
+      expect(body.dig("data", "completion_post")).to include(
+        "id" => completion_post.id,
+        "status" => "completed",
+        "status_label" => "できた",
+        "card_variant" => "completed"
+      )
     end
   end
 
