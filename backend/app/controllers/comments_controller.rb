@@ -3,8 +3,6 @@ class CommentsController < ApplicationController
   before_action :set_completion_post
 
   def create
-    return render_forbidden if own_post?
-
     comment = @completion_post.comments.create!(user: current_user, body: comment_params[:body])
     render json: { status: "success", data: comment_payload(comment) }, status: :created
   rescue ActiveRecord::RecordInvalid => e
@@ -15,10 +13,6 @@ class CommentsController < ApplicationController
 
   def set_completion_post
     @completion_post = CompletionPost.find(params[:completion_post_id])
-  end
-
-  def own_post?
-    @completion_post.user_id == current_user.id
   end
 
   def comment_params

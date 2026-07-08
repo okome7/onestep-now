@@ -82,6 +82,7 @@ RSpec.describe "Feed posts", type: :request do
       user.update!(feed_access_expires_at: 5.minutes.from_now)
       own_task = user.tasks.create!(title: "自分のタスク")
       own_post = own_task.create_completion_post!(user: user, status: :completed, completed_at: Time.current)
+      own_post.completion_post_likes.create!(user: user)
       other_task = other_user.tasks.create!(title: "他人のタスク")
       other_completion_post = other_task.create_completion_post!(user: other_user, status: :doing)
       other_completion_post.completion_post_likes.create!(user: user)
@@ -103,9 +104,9 @@ RSpec.describe "Feed posts", type: :request do
         "status_label" => "できた",
         "card_variant" => "completed",
         "is_mine" => true,
-        "can_like" => false,
-        "can_comment" => false,
-        "liked_by_me" => false
+        "can_like" => true,
+        "can_comment" => true,
+        "liked_by_me" => true
       )
       expect(other_payload).to include(
         "is_mine" => false,
@@ -147,7 +148,7 @@ RSpec.describe "Feed posts", type: :request do
       )
     end
 
-    it "自分の投稿にはコメントできない" do
+    it "自分の投稿にもコメントできる" do
       task = user.tasks.create!(title: "自分のタスク")
       completion_post = task.create_completion_post!(user: user, status: :doing)
 
@@ -156,7 +157,12 @@ RSpec.describe "Feed posts", type: :request do
         headers: { "X-User-Id" => user.id.to_s },
         as: :json
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:created)
+      expect(completion_post.comments.last).to have_attributes(
+        user_id: user.id,
+        body: "自分へのコメント",
+        post_status_when_commented: "doing"
+      )
     end
   end
 
@@ -173,13 +179,15 @@ RSpec.describe "Feed posts", type: :request do
       expect(response).to have_http_status(:ok)
     end
 
-    it "自分の投稿にはいいねできない" do
+    it "自分の投稿にもいいねできる" do
       task = user.tasks.create!(title: "自分のタスク")
       completion_post = task.create_completion_post!(user: user, status: :doing)
 
-      post "/api/completion_posts/#{completion_post.id}/likes", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      expect {
+        post "/api/completion_posts/#{completion_post.id}/likes", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      }.to change(CompletionPostLike, :count).by(1)
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:created)
     end
   end
 end
