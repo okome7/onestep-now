@@ -93,6 +93,7 @@ class MypageController < ApplicationController
       id: comment.id,
       user_name: comment.user.name,
       user_level: level_for(comment.user.completion_posts.completed.count),
+      avatar_key: comment.user.avatar_key,
       body: comment.body,
       created_at: comment.created_at
     }

@@ -80,6 +80,7 @@ RSpec.describe "Feed posts", type: :request do
       )
       expect(body.dig("data", "completion_post", "comments").first).to include(
         "body" => "応援しています",
+        "avatar_key" => other_user.avatar_key,
         "post_status_when_commented" => "doing"
       )
     end
@@ -126,6 +127,7 @@ RSpec.describe "Feed posts", type: :request do
       )
       expect(other_payload.fetch("comments").first).to include(
         "body" => "応援しています",
+        "avatar_key" => user.avatar_key,
         "post_status_when_commented" => "doing"
       )
     end

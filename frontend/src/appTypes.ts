@@ -16,6 +16,7 @@ export type FeedComment = {
   id: string
   body: string
   userName: string
+  avatarId: string
   level: number
   postStatusWhenCommented: FeedPostStatus
   createdAt: number

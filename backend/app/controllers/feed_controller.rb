@@ -61,6 +61,7 @@ class FeedController < ApplicationController
       id: comment.id,
       user_id: comment.user_id,
       user_name: comment.user.name,
+      avatar_key: comment.user.avatar_key,
       body: comment.body,
       post_status_when_commented: comment.post_status_when_commented,
       created_at: comment.created_at

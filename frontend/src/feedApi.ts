@@ -6,6 +6,7 @@ type ApiComment = {
   id: number
   body: string
   user_name?: string
+  avatar_key?: string
   level?: number
   post_status_when_commented: ApiFeedStatus
   created_at: string
@@ -123,6 +124,7 @@ function mapComment(comment: ApiComment): FeedComment {
     id: String(comment.id),
     body: comment.body,
     userName: comment.user_name ?? 'みき',
+    avatarId: comment.avatar_key ?? 'avatar-1',
     level: comment.level ?? 7,
     postStatusWhenCommented: uiStatus(comment.post_status_when_commented),
     createdAt: toTimestamp(comment.created_at),

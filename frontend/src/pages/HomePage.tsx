@@ -23,6 +23,7 @@ import {
 } from '../appHelpers'
 import type {
   AchievementDetailTab,
+  FeedComment,
   FeedPost,
   MyPageData,
 } from '../appTypes'
@@ -71,7 +72,7 @@ export function HomePage() {
   const [isTaskComplete, setIsTaskComplete] = useState(false)
   const [completedTaskReactions, setCompletedTaskReactions] = useState({
     likes: 0,
-    comments: [] as string[],
+    comments: [] as FeedComment[],
   })
   const [isTaskSubmitting, setIsTaskSubmitting] = useState(false)
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
@@ -182,6 +183,7 @@ export function HomePage() {
           id: number
           body: string
           user_name?: string
+          avatar_key?: string
           post_status_when_commented: 'doing' | 'completed'
           created_at: string
         }>
@@ -211,6 +213,7 @@ export function HomePage() {
           id: String(comment.id),
           body: comment.body,
           userName: comment.user_name ?? 'みき',
+          avatarId: comment.avatar_key ?? 'avatar-1',
           level: 1,
           postStatusWhenCommented:
             comment.post_status_when_commented === 'completed'
@@ -948,8 +951,18 @@ export function HomePage() {
       setCompletedTaskReactions({
         likes: completedTask.completion_post?.likes_count ?? 0,
         comments:
-          completedTask.completion_post?.comments?.map((comment) => comment.body) ??
-          [],
+          completedTask.completion_post?.comments?.map((comment) => ({
+            id: String(comment.id),
+            body: comment.body,
+            userName: comment.user_name ?? 'みき',
+            avatarId: comment.avatar_key ?? 'avatar-1',
+            level: comment.level ?? 1,
+            postStatusWhenCommented:
+              comment.post_status_when_commented === 'completed'
+                ? 'done'
+                : 'doing',
+            createdAt: new Date(comment.created_at).getTime(),
+          })) ?? [],
       })
       setIsTaskComplete(true)
       await loadFeed()
@@ -2263,8 +2276,10 @@ export function HomePage() {
                       key={comment.id}
                     >
                       <div className="feed-comment-author">
-                        <span
+                        <img
                           className="feed-comment-avatar"
+                          src={getAvatarSrc(comment.avatarId)}
+                          alt=""
                           aria-hidden="true"
                         />
                         <span>{comment.userName}</span>
@@ -2390,10 +2405,17 @@ export function HomePage() {
                   aria-label="コメント"
                 >
                   <ul>
-                    {completedTaskReactions.comments.map((comment, index) => (
-                      <li key={`${comment}-${index}`}>
-                        <span className="comment-avatar" aria-hidden="true" />
-                        <span className="complete-comment-text">{comment}</span>
+                    {completedTaskReactions.comments.map((comment) => (
+                      <li key={comment.id}>
+                        <img
+                          className="comment-avatar"
+                          src={getAvatarSrc(comment.avatarId)}
+                          alt=""
+                          aria-hidden="true"
+                        />
+                        <span className="complete-comment-text">
+                          {comment.body}
+                        </span>
                       </li>
                     ))}
                   </ul>
