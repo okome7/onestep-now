@@ -39,7 +39,7 @@ class FeedController < ApplicationController
     {
       id: post.id,
       user_name: post.user.name,
-      level: 1,
+      level: level_for(post.user.completion_posts.completed.count),
       task_title: post.task.title,
       status: post.status,
       status_label: post.status_label,
@@ -62,10 +62,17 @@ class FeedController < ApplicationController
       id: comment.id,
       user_id: comment.user_id,
       user_name: comment.user.name,
+      level: level_for(comment.user.completion_posts.completed.count),
       avatar_key: comment.user.avatar_key,
       body: comment.body,
       post_status_when_commented: comment.post_status_when_commented,
       created_at: comment.created_at
     }
+  end
+
+  def level_for(completed_count)
+    return 0 if completed_count.zero?
+
+    (completed_count / 10).floor + 1
   end
 end

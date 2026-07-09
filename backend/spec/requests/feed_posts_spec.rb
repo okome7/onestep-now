@@ -10,6 +10,22 @@ RSpec.describe "Feed posts", type: :request do
     )
   end
 
+  def create_completed_posts(user:, count:)
+    count.times do |index|
+      task = user.tasks.create!(
+        title: "#{user.name}の完了#{index}",
+        status: :completed,
+        completed_at: Time.current
+      )
+      task.create_completion_post!(
+        user: user,
+        status: :completed,
+        content: task.title,
+        completed_at: task.completed_at
+      )
+    end
+  end
+
   let(:user) { create_user(email: "owner@example.com") }
   let(:other_user) { create_user(email: "other@example.com") }
 
@@ -89,6 +105,8 @@ RSpec.describe "Feed posts", type: :request do
   describe "GET /api/feed" do
     it "自分の投稿も含め、操作可否を返す" do
       user.update!(feed_access_expires_at: 5.minutes.from_now)
+      create_completed_posts(user: user, count: 9)
+      create_completed_posts(user: other_user, count: 20)
       own_task = user.tasks.create!(title: "自分のタスク")
       own_post = own_task.create_completion_post!(user: user, status: :completed, completed_at: Time.current)
       own_post.completion_post_likes.create!(user: user)
@@ -112,6 +130,7 @@ RSpec.describe "Feed posts", type: :request do
         "status" => "completed",
         "status_label" => "できた",
         "card_variant" => "completed",
+        "level" => 2,
         "is_mine" => true,
         "can_like" => true,
         "can_comment" => true,
@@ -124,11 +143,13 @@ RSpec.describe "Feed posts", type: :request do
         "can_comment" => true,
         "liked_by_me" => true,
         "commented_by_me" => true,
+        "level" => 3,
         "likes_count" => 1,
         "comments_count" => 1
       )
       expect(other_payload.fetch("comments").first).to include(
         "body" => "応援しています",
+        "level" => 2,
         "avatar_key" => user.avatar_key,
         "post_status_when_commented" => "doing"
       )
