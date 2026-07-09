@@ -50,6 +50,7 @@ class FeedController < ApplicationController
       likes_count: post.completion_post_likes.size,
       comments_count: post.comments.size,
       liked_by_me: post.completion_post_likes.any? { |like| like.user_id == current_user.id },
+      commented_by_me: post.comments.any? { |comment| comment.user_id == current_user.id },
       comments: post.comments.order(created_at: :asc).map { |comment| comment_payload(comment) },
       created_at: post.created_at,
       completed_at: post.completed_at

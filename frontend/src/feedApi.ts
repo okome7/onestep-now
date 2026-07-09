@@ -23,6 +23,7 @@ type ApiFeedPost = {
   likes_count: number
   comments_count: number
   liked_by_me: boolean
+  commented_by_me?: boolean
   created_at: string
   comments?: ApiComment[]
   user_name?: string
@@ -146,6 +147,7 @@ function mapPost(post: ApiFeedPost): FeedPost {
     comments,
     createdAt: toTimestamp(post.created_at),
     liked: post.liked_by_me,
+    commented: post.commented_by_me ?? false,
     isOwnPost: post.is_mine,
     canLike: post.can_like,
     canComment: post.can_comment,

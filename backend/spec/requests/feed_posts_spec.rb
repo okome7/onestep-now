@@ -115,13 +115,15 @@ RSpec.describe "Feed posts", type: :request do
         "is_mine" => true,
         "can_like" => true,
         "can_comment" => true,
-        "liked_by_me" => true
+        "liked_by_me" => true,
+        "commented_by_me" => false
       )
       expect(other_payload).to include(
         "is_mine" => false,
         "can_like" => true,
         "can_comment" => true,
         "liked_by_me" => true,
+        "commented_by_me" => true,
         "likes_count" => 1,
         "comments_count" => 1
       )

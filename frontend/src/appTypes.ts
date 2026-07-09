@@ -33,6 +33,7 @@ export type FeedPost = {
   comments: FeedComment[]
   createdAt: number
   liked: boolean
+  commented: boolean
   isOwnPost: boolean
   canLike: boolean
   canComment: boolean
