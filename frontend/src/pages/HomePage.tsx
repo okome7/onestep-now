@@ -8,8 +8,6 @@ import {
   signupCompleteStorageKey,
   signupDraftStorageKey,
   signupScreenStorageKey,
-  taskCompleteComments,
-  taskCompleteLikeCount,
 } from '../appConstants'
 import {
   clearAuthSession,
@@ -71,6 +69,10 @@ export function HomePage() {
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [completedTaskReactions, setCompletedTaskReactions] = useState({
+    likes: 0,
+    comments: [] as string[],
+  })
   const [isTaskSubmitting, setIsTaskSubmitting] = useState(false)
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
   const [initialHomeView] = useState(getInitialHomeView)
@@ -137,7 +139,7 @@ export function HomePage() {
   )
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
-  const hasCompleteComments = taskCompleteComments.length > 0
+  const hasCompleteComments = completedTaskReactions.comments.length > 0
   const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
   const visibleFeedPosts = feedPosts
   const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
@@ -173,6 +175,16 @@ export function HomePage() {
         id: number
         status_label: string
         card_variant: 'doing' | 'completed'
+        likes_count?: number
+        comments_count?: number
+        liked_by_me?: boolean
+        comments?: Array<{
+          id: number
+          body: string
+          user_name?: string
+          post_status_when_commented: 'doing' | 'completed'
+          created_at: string
+        }>
         created_at: string
       } | null
     },
@@ -193,12 +205,23 @@ export function HomePage() {
       statusLabel:
         completionPost?.status_label ??
         (completionPost?.card_variant === 'completed' ? 'できた' : 'やります'),
-      likes: 0,
-      comments: [],
+      likes: completionPost?.likes_count ?? 0,
+      comments:
+        completionPost?.comments?.map((comment) => ({
+          id: String(comment.id),
+          body: comment.body,
+          userName: comment.user_name ?? 'みき',
+          level: 1,
+          postStatusWhenCommented:
+            comment.post_status_when_commented === 'completed'
+              ? 'done'
+              : 'doing',
+          createdAt: new Date(comment.created_at).getTime(),
+        })) ?? [],
       createdAt: completionPost?.created_at
         ? new Date(completionPost.created_at).getTime()
         : Date.now(),
-      liked: false,
+      liked: completionPost?.liked_by_me ?? false,
       isOwnPost: true,
       canLike: true,
       canComment: true,
@@ -218,6 +241,9 @@ export function HomePage() {
               task: nextPost.task,
               status: nextPost.status,
               statusLabel: nextPost.statusLabel,
+              likes: completionPost?.likes_count ?? post.likes,
+              comments: completionPost?.comments ? nextPost.comments : post.comments,
+              liked: completionPost?.liked_by_me ?? post.liked,
             }
           : post,
       )
@@ -859,6 +885,7 @@ export function HomePage() {
       setActiveTask(startedTask.title)
       setElapsedSeconds(0)
       setIsTaskComplete(false)
+      setCompletedTaskReactions({ likes: 0, comments: [] })
       upsertOwnTaskPost(startedTask)
       await loadFeed()
     } catch (caughtError) {
@@ -890,6 +917,7 @@ export function HomePage() {
     setActiveTaskId(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+    setCompletedTaskReactions({ likes: 0, comments: [] })
     setIsCancelConfirmOpen(false)
     setIsFeedOpen(false)
     setIsProfileOpen(false)
@@ -917,6 +945,12 @@ export function HomePage() {
     try {
       const completedTask = await completeTask(activeTaskId, completeProfile.id)
       upsertOwnTaskPost(completedTask)
+      setCompletedTaskReactions({
+        likes: completedTask.completion_post?.likes_count ?? 0,
+        comments:
+          completedTask.completion_post?.comments?.map((comment) => comment.body) ??
+          [],
+      })
       setIsTaskComplete(true)
       await loadFeed()
     } catch (caughtError) {
@@ -942,6 +976,7 @@ export function HomePage() {
     setActiveTaskId(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+    setCompletedTaskReactions({ likes: 0, comments: [] })
   }
 
   async function togglePostLike(postId: string) {
@@ -2338,11 +2373,11 @@ export function HomePage() {
             <div className="task-complete-stats" aria-label="リアクション">
               <span>
                 <img src={likeIcon} alt="" aria-hidden="true" />
-                {taskCompleteLikeCount}件
+                {completedTaskReactions.likes}件
               </span>
               <span>
                 <img src={commentIcon} alt="" aria-hidden="true" />
-                {taskCompleteComments.length}件
+                {completedTaskReactions.comments.length}件
               </span>
             </div>
 
@@ -2355,8 +2390,8 @@ export function HomePage() {
                   aria-label="コメント"
                 >
                   <ul>
-                    {taskCompleteComments.map((comment) => (
-                      <li key={comment}>
+                    {completedTaskReactions.comments.map((comment, index) => (
+                      <li key={`${comment}-${index}`}>
                         <span className="comment-avatar" aria-hidden="true" />
                         <span className="complete-comment-text">{comment}</span>
                       </li>

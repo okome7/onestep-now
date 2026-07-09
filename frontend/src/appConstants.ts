@@ -27,20 +27,6 @@ export const avatarImageSize = 256
 export const avatarImageQuality = 0.82
 export const feedViewDurationSeconds = 5 * 60
 
-export const taskCompleteComments = [
-  '頑張れ！',
-  'ファイト🔥',
-  '今日も一歩進めていてすごい！その調子で次の一歩も応援してるよ',
-  '応援してる！',
-  '集中できたのすごい！',
-  'その一歩が未来につながってるよ',
-  'ナイスチャレンジ✨',
-  '最後までやり切ったね！',
-  '次も一緒に進もう！',
-]
-
-export const taskCompleteLikeCount = 12
-
 export const sampleFeedPosts: Array<
   Omit<FeedPost, 'createdAt'> & { ageMinutes: number }
 > = [

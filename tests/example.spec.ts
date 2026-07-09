@@ -111,6 +111,29 @@ async function mockTaskAndFeedApi(page: Page) {
   let activeTask = "";
   let completionPostId = 1;
   let completedAt: string | null = null;
+  const completionComments = [
+    "頑張れ！",
+    "ファイト🔥",
+    "今日も一歩進めていてすごい！その調子で次の一歩も応援してるよ",
+    "応援してる！",
+    "集中できたのすごい！",
+    "その一歩が未来につながってるよ",
+    "ナイスチャレンジ✨",
+    "最後までやり切ったね！",
+    "次も一緒に進もう！",
+  ];
+
+  const completionPostComments = () =>
+    completedAt
+      ? completionComments.map((body, index) => ({
+          id: index + 1,
+          user_id: index + 2,
+          user_name: `応援ユーザー${index + 1}`,
+          body,
+          post_status_when_commented: "doing",
+          created_at: new Date(Date.now() - (completionComments.length - index) * 1000).toISOString(),
+        }))
+      : [];
 
   await page.route(/.*\/(?:api\/)?tasks$/, async (route) => {
     if (route.request().method() !== "POST") {
@@ -165,6 +188,18 @@ async function mockTaskAndFeedApi(page: Page) {
           status: "completed",
           completed_at: completedAt,
           completion_post_id: completionPostId,
+          completion_post: {
+            id: completionPostId,
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            likes_count: 12,
+            comments_count: completionComments.length,
+            liked_by_me: false,
+            comments: completionPostComments(),
+            created_at: new Date().toISOString(),
+            completed_at: completedAt,
+          },
         },
       }),
     });
@@ -190,10 +225,10 @@ async function mockTaskAndFeedApi(page: Page) {
                 is_mine: true,
                 can_like: false,
                 can_comment: false,
-                likes_count: 0,
-                comments_count: 0,
+                likes_count: completedAt ? 12 : 0,
+                comments_count: completedAt ? completionComments.length : 0,
                 liked_by_me: false,
-                comments: [],
+                comments: completionPostComments(),
                 created_at: new Date().toISOString(),
                 completed_at: completedAt,
               },
