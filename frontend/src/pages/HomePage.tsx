@@ -7,7 +7,6 @@ import {
   avatarOptions,
   customPhotoIconId,
   feedViewDurationSeconds,
-  sampleProfileAchievements,
   signupCompleteStorageKey,
   signupDraftStorageKey,
   signupScreenStorageKey,
@@ -29,7 +28,7 @@ import {
 import type {
   AchievementDetailTab,
   FeedPost,
-  ProfileAchievement,
+  MypageData,
 } from '../appTypes'
 import achievementCheckIcon from '../assets/icons/achievement-check.svg'
 import achievementFlameIcon from '../assets/icons/achievement-flame.svg'
@@ -52,6 +51,7 @@ import {
   createComment,
   createTask,
   fetchFeed,
+  fetchMypage,
   likePost,
   startTask,
   unlikePost,
@@ -130,14 +130,9 @@ export function HomePage() {
   const [isFeedTimeoutModalOpen, setIsFeedTimeoutModalOpen] = useState(false)
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
-  const [profileAchievements] = useState<ProfileAchievement[]>(() => {
-    const initialNow = Date.now()
-
-    return sampleProfileAchievements.map(({ ageMinutes, ...achievement }) => ({
-      ...achievement,
-      createdAt: initialNow - ageMinutes * 60 * 1000,
-    }))
-  })
+  const [mypageData, setMypageData] = useState<MypageData | null>(null)
+  const [isMypageLoading, setIsMypageLoading] = useState(false)
+  const [mypageError, setMypageError] = useState('')
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
@@ -155,17 +150,22 @@ export function HomePage() {
     trimmedDisplayNameDraft.length > 0 && trimmedDisplayNameDraft !== profileName
   const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
   const canSaveSettingsIcon = selectedSettingsIconId !== completeProfile.avatarId
-  const ownAchievements = feedPosts
-    .filter((post) => post.isOwnPost && post.status === 'done')
-    .map((post) => ({
-      id: post.id,
-      task: post.task,
-      likes: post.likes,
-      comments: post.comments.length,
-      createdAt: post.createdAt,
-    }))
-  const allProfileAchievements = [...ownAchievements, ...profileAchievements]
-  const recentAchievements = allProfileAchievements.slice(0, 2)
+  const emptyMypageData: MypageData = {
+    level: 0,
+    nextLevel: 1,
+    remainingToNextLevel: 10,
+    progressPercent: 0,
+    achievementsCount: 0,
+    streakDays: 0,
+    likesCount: 0,
+    commentsCount: 0,
+    recentAchievements: [],
+    allAchievements: [],
+  }
+  const displayedMypageData = mypageData ?? emptyMypageData
+  const allProfileAchievements = displayedMypageData.allAchievements
+  const recentAchievements = displayedMypageData.recentAchievements
+  const hasProfileAchievements = displayedMypageData.achievementsCount > 0
   const activeAchievement = activeAchievementId
     ? (allProfileAchievements.find(
         (achievement) => achievement.id === activeAchievementId,
@@ -368,6 +368,38 @@ export function HomePage() {
 
     return () => window.clearTimeout(timerId)
   }, [isFeedOpen, loadFeed])
+
+
+  const loadMypage = useCallback(async () => {
+    setMypageError('')
+    setIsMypageLoading(true)
+
+    try {
+      const result = await fetchMypage(completeProfile.id)
+      setMypageData(result)
+      setFeedNow(Date.now())
+    } catch (caughtError) {
+      setMypageError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'マイページ取得に失敗しました。',
+      )
+    } finally {
+      setIsMypageLoading(false)
+    }
+  }, [completeProfile.id])
+
+  useEffect(() => {
+    if (!isProfileOpen && !isAchievementsOpen) {
+      return undefined
+    }
+
+    const timerId = window.setTimeout(() => {
+      void loadMypage()
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
+  }, [isAchievementsOpen, isProfileOpen, loadMypage])
 
   function closeFeedIntro() {
     window.localStorage.setItem(feedIntroStorageKey, 'true')
@@ -887,6 +919,7 @@ export function HomePage() {
     try {
       const completedTask = await completeTask(activeTaskId, completeProfile.id)
       upsertOwnTaskPost(completedTask)
+      void loadMypage()
       setIsTaskComplete(true)
       await loadFeed()
     } catch (caughtError) {
@@ -1794,90 +1827,117 @@ export function HomePage() {
         />
 
         <section className="profile-content" aria-label="マイページ">
-          <img
-            className="profile-avatar-large"
-            src={profileAvatarSrc}
-            alt=""
-            aria-hidden="true"
-          />
+          {hasProfileAchievements ? (
+            <img
+              className="profile-avatar-large"
+              src={profileAvatarSrc}
+              alt=""
+              aria-hidden="true"
+            />
+          ) : (
+            <span className="profile-avatar-large profile-empty-avatar" aria-hidden="true" />
+          )}
           <p className="profile-name">{profileName}</p>
 
           <section className="profile-level-card" aria-label="レベル">
             <div className="profile-level-row">
               <span className="profile-level-label">
-                Lv.<strong>12</strong>
+                Lv.<strong>{displayedMypageData.level}</strong>
               </span>
-              <span className="profile-level-next">あと2回でLv.13！</span>
+              <span className="profile-level-next">
+                あと{displayedMypageData.remainingToNextLevel}回でLv.
+                {displayedMypageData.nextLevel}！
+              </span>
             </div>
             <div className="profile-level-meter" aria-hidden="true">
-              <span />
+              <span style={{ width: `${displayedMypageData.progressPercent}%` }} />
             </div>
-            <span className="profile-level-percent">80%</span>
+            <span className="profile-level-percent">
+              {displayedMypageData.progressPercent}%
+            </span>
           </section>
 
-          <section
-            className="profile-section"
-            aria-labelledby="profile-stats-title"
-          >
-            <h2 id="profile-stats-title">実績</h2>
-            <div className="profile-stats-grid">
-              <div className="profile-stat-card">
-                <img src={achievementCheckIcon} alt="" aria-hidden="true" />
-                <strong>128回</strong>
-                <small>達成</small>
-              </div>
-              <div className="profile-stat-card">
-                <img src={achievementFlameIcon} alt="" aria-hidden="true" />
-                <strong>7日</strong>
-                <small>連続</small>
-              </div>
-              <div className="profile-stat-card">
-                <img src={likeActiveIcon} alt="" aria-hidden="true" />
-                <strong>234</strong>
-                <small>いいね</small>
-              </div>
-              <div className="profile-stat-card">
-                <img src={commentIcon} alt="" aria-hidden="true" />
-                <strong>32</strong>
-                <small>コメント</small>
-              </div>
-            </div>
-          </section>
-
-          <section
-            className="profile-section"
-            aria-labelledby="profile-recent-title"
-          >
-            <div className="profile-section-heading">
-              <h2 id="profile-recent-title">最近の達成</h2>
-              <a href="/home" onClick={openAchievements}>
-                すべて見る&gt;
-              </a>
-            </div>
-            <div className="profile-achievement-list">
-              {recentAchievements.map((achievement) => (
-                <article
-                  className="profile-achievement-card"
-                  key={achievement.task}
-                >
-                  <strong>{achievement.task}</strong>
-                  <div>
-                    <span>
-                      <img src={likeIcon} alt="" aria-hidden="true" />
-                      {achievement.likes}
-                    </span>
-                    <span>
-                      <img src={commentIcon} alt="" aria-hidden="true" />
-                      {achievement.comments}
-                    </span>
-                    <time dateTime={new Date(achievement.createdAt).toISOString()}>
-                      {formatFeedPostAge(achievement.createdAt, feedNow)}
-                    </time>
+          {isMypageLoading ? (
+            <p className="profile-state-message">読み込み中...</p>
+          ) : mypageError ? (
+            <p className="profile-state-message profile-state-message-error">
+              {mypageError}
+            </p>
+          ) : hasProfileAchievements ? (
+            <>
+              <section
+                className="profile-section"
+                aria-labelledby="profile-stats-title"
+              >
+                <h2 id="profile-stats-title">実績</h2>
+                <div className="profile-stats-grid">
+                  <div className="profile-stat-card">
+                    <img src={achievementCheckIcon} alt="" aria-hidden="true" />
+                    <strong>{displayedMypageData.achievementsCount}回</strong>
+                    <small>達成</small>
                   </div>
-                </article>
-              ))}
-            </div>
-          </section>
+                  <div className="profile-stat-card">
+                    <img src={achievementFlameIcon} alt="" aria-hidden="true" />
+                    <strong>{displayedMypageData.streakDays}日</strong>
+                    <small>連続</small>
+                  </div>
+                  <div className="profile-stat-card">
+                    <img src={likeActiveIcon} alt="" aria-hidden="true" />
+                    <strong>{displayedMypageData.likesCount}</strong>
+                    <small>いいね</small>
+                  </div>
+                  <div className="profile-stat-card">
+                    <img src={commentIcon} alt="" aria-hidden="true" />
+                    <strong>{displayedMypageData.commentsCount}</strong>
+                    <small>コメント</small>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                className="profile-section"
+                aria-labelledby="profile-recent-title"
+              >
+                <div className="profile-section-heading">
+                  <h2 id="profile-recent-title">最近の達成</h2>
+                  <a href="/home" onClick={openAchievements}>
+                    すべて見る&gt;
+                  </a>
+                </div>
+                <div className="profile-achievement-list">
+                  {recentAchievements.map((achievement) => (
+                    <article
+                      className="profile-achievement-card"
+                      key={achievement.id}
+                    >
+                      <strong>{achievement.task}</strong>
+                      <div>
+                        <span>
+                          <img src={likeIcon} alt="" aria-hidden="true" />
+                          {achievement.likes}
+                        </span>
+                        <span>
+                          <img src={commentIcon} alt="" aria-hidden="true" />
+                          {achievement.comments}
+                        </span>
+                        <time dateTime={new Date(achievement.createdAt).toISOString()}>
+                          {formatFeedPostAge(achievement.createdAt, feedNow)}
+                        </time>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : (
+            <section className="profile-empty-state" aria-label="記録なし">
+              <h2>まだ記録はありません</h2>
+              <p>最初の一歩を始めてみましょう！</p>
+              <button type="button" onClick={openHome}>
+                最初の一歩を始める
+              </button>
+            </section>
+          )}
         </section>
 
         <HomeBottomNav

@@ -1,4 +1,10 @@
-import type { FeedComment, FeedPost, FeedPostStatus } from './appTypes'
+import type {
+  FeedComment,
+  FeedPost,
+  FeedPostStatus,
+  MypageData,
+  ProfileAchievement,
+} from './appTypes'
 
 type ApiFeedStatus = 'doing' | 'completed'
 
@@ -26,6 +32,31 @@ type ApiFeedPost = {
   comments?: ApiComment[]
   user_name?: string
   level?: number
+}
+
+
+type ApiMypageAchievement = {
+  id: number
+  task_title: string
+  likes_count: number
+  comments_count: number
+  created_at: string
+}
+
+type MypageSuccessResponse = {
+  status: 'success'
+  data: {
+    level: number
+    next_level: number
+    remaining_to_next_level: number
+    progress_percent: number
+    achievements_count: number
+    streak_days: number
+    likes_count: number
+    comments_count: number
+    recent_achievements: ApiMypageAchievement[]
+    all_achievements: ApiMypageAchievement[]
+  }
 }
 
 type FeedSuccessResponse = {
@@ -114,6 +145,17 @@ function toTimestamp(value: string) {
   return Number.isNaN(timestamp) ? Date.now() : timestamp
 }
 
+
+function mapMypageAchievement(achievement: ApiMypageAchievement): ProfileAchievement {
+  return {
+    id: String(achievement.id),
+    task: achievement.task_title,
+    likes: achievement.likes_count,
+    comments: achievement.comments_count,
+    createdAt: toTimestamp(achievement.created_at),
+  }
+}
+
 function mapComment(comment: ApiComment): FeedComment {
   return {
     id: String(comment.id),
@@ -143,6 +185,44 @@ function mapPost(post: ApiFeedPost): FeedPost {
     isOwnPost: post.is_mine,
     canLike: post.can_like,
     canComment: post.can_comment,
+  }
+}
+
+
+export async function fetchMypage(userId?: number, apiBaseUrl = defaultApiBaseUrl): Promise<MypageData> {
+  let response: Response
+
+  try {
+    response = await fetch(apiUrl(apiBaseUrl, '/mypage'), {
+      headers: userHeaders(userId),
+    })
+  } catch {
+    throw new Error('APIに接続できませんでした。')
+  }
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
+  const result = await readJson<MypageSuccessResponse | ErrorResponse>(response)
+
+  if (!response.ok || result.status === 'error') {
+    throw new Error(errorMessage(result as ErrorResponse, 'マイページ取得に失敗しました。'))
+  }
+
+  const data = (result as MypageSuccessResponse).data
+
+  return {
+    level: data.level,
+    nextLevel: data.next_level,
+    remainingToNextLevel: data.remaining_to_next_level,
+    progressPercent: data.progress_percent,
+    achievementsCount: data.achievements_count,
+    streakDays: data.streak_days,
+    likesCount: data.likes_count,
+    commentsCount: data.comments_count,
+    recentAchievements: data.recent_achievements.map(mapMypageAchievement),
+    allAchievements: data.all_achievements.map(mapMypageAchievement),
   }
 }
 

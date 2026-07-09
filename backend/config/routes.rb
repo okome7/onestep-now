@@ -13,6 +13,7 @@ Rails.application.routes.draw do
 
   scope "/api" do
     get "feed", to: "feed#index"
+    get "mypage", to: "mypage#show"
     post "tasks", to: "tasks#create"
     patch "tasks/:id/start", to: "tasks#start"
     patch "tasks/:id/complete", to: "tasks#complete"

@@ -3430,3 +3430,51 @@ body {
     padding: 10px 14px 9px;
   }
 }
+
+.profile-empty-avatar {
+  display: block;
+}
+
+.profile-state-message {
+  margin: 18px 0;
+  color: #667085;
+  font-weight: 700;
+}
+
+.profile-state-message-error {
+  color: #dc2626;
+}
+
+.profile-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 18px;
+  text-align: center;
+}
+
+.profile-empty-state h2 {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 20px;
+}
+
+.profile-empty-state p {
+  margin: 0 0 18px;
+  color: #9aa4b2;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.profile-empty-state button {
+  min-width: 205px;
+  border: 0;
+  border-radius: 7px;
+  padding: 11px 18px;
+  background: #4d95e5;
+  box-shadow: 0 2px 4px rgb(15 23 42 / 24%);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
