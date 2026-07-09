@@ -16,6 +16,7 @@ type ApiAchievementComment = {
   id: number
   user_name: string
   user_level: number
+  avatar_key?: string
   body: string
   created_at: string
 }

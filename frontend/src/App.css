@@ -495,7 +495,8 @@ body {
   margin-top: 1px;
   border: 2px solid #ffffff;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ffcf5b 0%, #ff9852 100%);
+  object-fit: cover;
+  background: #d8d8d8;
   box-shadow: 0 4px 10px rgb(255 152 82 / 24%);
 }
 
@@ -2387,6 +2388,7 @@ body {
   width: 24px;
   height: 24px;
   border-radius: 50%;
+  object-fit: cover;
   background: #d8d8d8;
 }
 

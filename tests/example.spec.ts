@@ -129,6 +129,7 @@ async function mockTaskAndFeedApi(page: Page) {
           id: index + 1,
           user_id: index + 2,
           user_name: `応援ユーザー${index + 1}`,
+          avatar_key: `avatar-${(index % 8) + 1}`,
           body,
           post_status_when_commented: "doing",
           created_at: new Date(Date.now() - (completionComments.length - index) * 1000).toISOString(),
