@@ -43,6 +43,8 @@ export type ProfileAchievement = {
   likes: number
   comments: number
   createdAt: number
+  likedUsers: AchievementLikeUser[]
+  commentItems: AchievementComment[]
 }
 
 export type AchievementDetailTab = 'likes' | 'comments'
@@ -63,4 +65,17 @@ export type CompleteProfile = {
   name: string
   email?: string
   avatarId: string
+}
+
+export type MyPageData = {
+  level: number
+  nextLevel: number
+  remainingToNextLevel: number
+  progressPercent: number
+  achievementsCount: number
+  streakDays: number
+  likesCount: number
+  commentsCount: number
+  recentAchievements: ProfileAchievement[]
+  allAchievements: ProfileAchievement[]
 }
