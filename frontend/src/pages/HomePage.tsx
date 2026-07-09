@@ -31,6 +31,7 @@ import achievementCheckIcon from '../assets/icons/achievement-check.svg'
 import achievementFlameIcon from '../assets/icons/achievement-flame.svg'
 import cameraIcon from '../assets/icons/camera.svg'
 import commentIcon from '../assets/icons/comment.svg'
+import commentActiveIcon from '../assets/icons/comment-active.svg'
 import feedExpiredClockIcon from '../assets/icons/feed-expired-clock.svg'
 import iconGridIcon from '../assets/icons/icon-grid.svg'
 import likeActiveIcon from '../assets/icons/like-active.svg'
@@ -225,6 +226,7 @@ export function HomePage() {
         ? new Date(completionPost.created_at).getTime()
         : Date.now(),
       liked: completionPost?.liked_by_me ?? false,
+      commented: false,
       isOwnPost: true,
       canLike: true,
       canComment: true,
@@ -247,6 +249,7 @@ export function HomePage() {
               likes: completionPost?.likes_count ?? post.likes,
               comments: completionPost?.comments ? nextPost.comments : post.comments,
               liked: completionPost?.liked_by_me ?? post.liked,
+              commented: post.commented,
             }
           : post,
       )
@@ -1067,7 +1070,11 @@ export function HomePage() {
       setFeedPosts((currentPosts) =>
         currentPosts.map((post) =>
           post.id === postId
-            ? { ...post, comments: [...post.comments, createdComment] }
+            ? {
+                ...post,
+                commented: true,
+                comments: [...post.comments, createdComment],
+              }
             : post,
         ),
       )
@@ -2151,14 +2158,21 @@ export function HomePage() {
                     <span>{post.likes}</span>
                   </button>
                   <button
-                    className="feed-comment-count"
+                    className={`feed-comment-count ${
+                      post.commented ? 'active' : ''
+                    }`}
                     type="button"
+                    aria-pressed={post.commented}
                     aria-label={`${post.userName}さんのコメントを開く`}
                     onClick={() => openCommentPanel(post.id)}
                     disabled={!post.canComment}
                   >
                     <span className="feed-action-icon">
-                      <img src={commentIcon} alt="" aria-hidden="true" />
+                      <img
+                        src={post.commented ? commentActiveIcon : commentIcon}
+                        alt=""
+                        aria-hidden="true"
+                      />
                     </span>
                     <span>{post.comments.length}</span>
                   </button>

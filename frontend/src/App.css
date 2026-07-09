@@ -2233,6 +2233,10 @@ body {
   color: #4d95e5;
 }
 
+.feed-comment-count.active {
+  color: #4d95e5;
+}
+
 .feed-reaction:disabled,
 .feed-comment-count:disabled {
   cursor: default;
