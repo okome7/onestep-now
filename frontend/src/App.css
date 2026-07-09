@@ -327,9 +327,11 @@ body {
 .task-complete-screen {
   position: relative;
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   width: calc(100% + 24px);
   min-height: 100dvh;
-  align-content: center;
+  align-content: stretch;
+  align-items: center;
   justify-items: center;
   margin-right: -12px;
   margin-left: -12px;
