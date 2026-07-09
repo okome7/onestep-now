@@ -3111,6 +3111,9 @@ body {
   object-fit: cover;
   background: #d9d9d9;
 }
+.profile-avatar-empty {
+  display: block;
+}
 .profile-name {
   margin: 8px 0 10px;
   color: #111827;
@@ -3154,7 +3157,6 @@ body {
 }
 .profile-level-meter span {
   display: block;
-  width: 80%;
   height: 100%;
   border-radius: inherit;
   background: #4d95e5;
@@ -3171,6 +3173,46 @@ body {
   width: 100%;
   margin-top: 4px;
   text-align: left;
+}
+.profile-state-message {
+  width: 100%;
+  margin: 18px 0 0;
+  color: #7b8797;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+  text-align: center;
+}
+.profile-empty-state {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+  margin-top: 24px;
+  text-align: center;
+}
+.profile-empty-state h2 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+}
+.profile-empty-state p {
+  margin: 0 0 18px;
+  color: #9aa6b8;
+  font-size: 13px;
+  font-weight: 700;
+}
+.profile-empty-state button {
+  width: min(100%, 250px);
+  min-height: 47px;
+  border: 0;
+  border-radius: 8px;
+  background: #4d95e5;
+  box-shadow: 0 4px 8px rgb(77 149 229 / 35%);
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
 }
 .profile-section h2 {
   margin: 0 0 8px;

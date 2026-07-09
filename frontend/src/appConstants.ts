@@ -6,12 +6,7 @@ import avatarFive from './assets/avatars/avatar-5.svg'
 import avatarSix from './assets/avatars/avatar-6.svg'
 import avatarSeven from './assets/avatars/avatar-7.svg'
 import avatarEight from './assets/avatars/avatar-8.svg'
-import type {
-  AchievementComment,
-  AchievementLikeUser,
-  FeedPost,
-  ProfileAchievement,
-} from './appTypes'
+import type { FeedPost } from './appTypes'
 import type { SignupForm } from './signupApi'
 
 export const initialForm: SignupForm = {
@@ -198,120 +193,6 @@ export const sampleFeedPosts: Array<
     isOwnPost: false,
     canLike: true,
     canComment: true,
-  },
-]
-
-export const sampleProfileAchievements: Array<
-  Omit<ProfileAchievement, 'createdAt'> & { ageMinutes: number }
-> = [
-  {
-    id: 'achievement-1',
-    task: 'スライド1枚作る',
-    likes: 12,
-    comments: 5,
-    ageMinutes: 4,
-  },
-  {
-    id: 'achievement-2',
-    task: '部屋の掃除をする',
-    likes: 13,
-    comments: 3,
-    ageMinutes: 2 * 60,
-  },
-  {
-    id: 'achievement-3',
-    task: '英単語を10個覚える',
-    likes: 20,
-    comments: 4,
-    ageMinutes: 24 * 60,
-  },
-  {
-    id: 'achievement-4',
-    task: 'ランニング3km',
-    likes: 11,
-    comments: 1,
-    ageMinutes: 2 * 24 * 60,
-  },
-  {
-    id: 'achievement-5',
-    task: '読書を30分する',
-    likes: 8,
-    comments: 2,
-    ageMinutes: 3 * 24 * 60,
-  },
-  {
-    id: 'achievement-6',
-    task: 'セキュリティの勉強をする',
-    likes: 18,
-    comments: 3,
-    ageMinutes: 4 * 24 * 60,
-  },
-  {
-    id: 'achievement-7',
-    task: '洗い物をする',
-    likes: 7,
-    comments: 1,
-    ageMinutes: 5 * 24 * 60,
-  },
-  {
-    id: 'achievement-8',
-    task: 'AIを使ってみる',
-    likes: 10,
-    comments: 2,
-    ageMinutes: 6 * 24 * 60,
-  },
-  {
-    id: 'achievement-9',
-    task: 'エラーを解決する',
-    likes: 12,
-    comments: 1,
-    ageMinutes: 93 * 24 * 60,
-  },
-  {
-    id: 'achievement-10',
-    task: '新しいことを1つ調べる',
-    likes: 9,
-    comments: 2,
-    ageMinutes: 94 * 24 * 60,
-  },
-]
-
-export const achievementLikeUsers: AchievementLikeUser[] = [
-  { name: 'みき', level: 7, afterComplete: false },
-  { name: 'あや', level: 5, afterComplete: false },
-  { name: 'けんじ', level: 1, afterComplete: false },
-  { name: 'さくら', level: 22, afterComplete: false },
-  { name: 'はる', level: 18, afterComplete: true },
-]
-
-export const achievementComments: AchievementComment[] = [
-  {
-    name: 'みき',
-    level: 7,
-    afterComplete: false,
-    text: '頑張れ！',
-    age: '3時間前',
-  },
-  {
-    name: 'あや',
-    level: 5,
-    afterComplete: false,
-    text: 'ファイト🔥',
-    age: '2時間前',
-  },
-  {
-    name: 'けんじ',
-    level: 1,
-    afterComplete: false,
-    text: 'がんば！',
-    age: '2時間前',
-  },
-  {
-    name: 'さくら',
-    level: 22,
-    afterComplete: true,
-    text: 'いい感じ！',
-    age: '1時間前',
   },
 ]
 
