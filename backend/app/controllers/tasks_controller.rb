@@ -77,8 +77,23 @@ class TasksController < ApplicationController
       status: post.status,
       status_label: post.status_label,
       card_variant: post.card_variant,
+      likes_count: post.completion_post_likes.size,
+      comments_count: post.comments.size,
+      liked_by_me: post.completion_post_likes.any? { |like| like.user_id == current_user.id },
+      comments: post.comments.order(created_at: :asc).map { |comment| comment_payload(comment) },
       created_at: post.created_at,
       completed_at: post.completed_at
+    }
+  end
+
+  def comment_payload(comment)
+    {
+      id: comment.id,
+      user_id: comment.user_id,
+      user_name: comment.user.name,
+      body: comment.body,
+      post_status_when_commented: comment.post_status_when_commented,
+      created_at: comment.created_at
     }
   end
 end

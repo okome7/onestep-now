@@ -56,6 +56,8 @@ RSpec.describe "Feed posts", type: :request do
     it "開始時の投稿をcompletedに更新し、新規投稿を作成しない" do
       task = user.tasks.create!(title: "参考記事を1つ読む", status: :active, started_at: 1.minute.ago)
       completion_post = task.create_completion_post!(user: user, status: :doing, content: task.title)
+      completion_post.completion_post_likes.create!(user: other_user)
+      completion_post.comments.create!(user: other_user, body: "応援しています")
 
       expect {
         patch "/api/tasks/#{task.id}/complete", headers: { "X-User-Id" => user.id.to_s }, as: :json
@@ -72,7 +74,13 @@ RSpec.describe "Feed posts", type: :request do
         "id" => completion_post.id,
         "status" => "completed",
         "status_label" => "できた",
-        "card_variant" => "completed"
+        "card_variant" => "completed",
+        "likes_count" => 1,
+        "comments_count" => 1
+      )
+      expect(body.dig("data", "completion_post", "comments").first).to include(
+        "body" => "応援しています",
+        "post_status_when_commented" => "doing"
       )
     end
   end

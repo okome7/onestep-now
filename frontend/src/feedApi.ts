@@ -46,6 +46,10 @@ type TaskResponse = {
       status: ApiFeedStatus
       status_label: string
       card_variant: ApiFeedStatus
+      likes_count?: number
+      comments_count?: number
+      liked_by_me?: boolean
+      comments?: ApiComment[]
       created_at: string
       completed_at?: string | null
     } | null
