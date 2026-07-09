@@ -2520,6 +2520,7 @@ body {
 
   .home-bottom-nav {
     height: 56px;
+    padding-inline: 0;
   }
 
   .feed-comment-backdrop {
