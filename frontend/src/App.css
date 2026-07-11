@@ -1961,35 +1961,9 @@ body {
 }
 
 .feed-start-clock {
-  position: relative;
-  display: inline-block;
+  display: block;
   width: 22px;
   height: 22px;
-  border: 3px solid #4d95e5;
-  border-radius: 50%;
-}
-
-.feed-start-clock::before,
-.feed-start-clock::after {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: block;
-  width: 2px;
-  border-radius: 999px;
-  background: #4d95e5;
-  content: '';
-  transform-origin: top center;
-}
-
-.feed-start-clock::before {
-  height: 6px;
-  transform: translate(-50%, -1px);
-}
-
-.feed-start-clock::after {
-  height: 5px;
-  transform: translate(-50%, -1px) rotate(125deg);
 }
 
 .feed-error {
