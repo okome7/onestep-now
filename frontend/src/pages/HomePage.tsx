@@ -145,6 +145,12 @@ export function HomePage() {
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = completedTaskReactions.comments.length > 0
   const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
+  const feedCountdownElapsedSeconds = Math.min(
+    feedViewDurationSeconds,
+    Math.max(0, feedViewDurationSeconds - feedRemainingSeconds),
+  )
+  const feedCountdownHandAngle =
+    (feedCountdownElapsedSeconds / feedViewDurationSeconds) * 360
   const visibleFeedPosts = feedPosts
   const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
   const profileName = completeProfile.name || 'おこめ'
@@ -2183,7 +2189,46 @@ export function HomePage() {
                 className="feed-countdown"
                 dateTime={`PT${feedRemainingSeconds}S`}
               >
-                <span className="feed-countdown-icon" aria-hidden="true" />
+                <svg
+                  className="feed-countdown-icon"
+                  viewBox="0 0 120 120"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="42"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="10"
+                  />
+                  <g
+                    className="feed-countdown-hands"
+                    style={{
+                      transform: `rotate(${feedCountdownHandAngle}deg)`,
+                    }}
+                  >
+                    <line
+                      x1="60"
+                      y1="60"
+                      x2="60"
+                      y2="37"
+                      stroke="currentColor"
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                    />
+                    <line
+                      x1="60"
+                      y1="60"
+                      x2="72"
+                      y2="70"
+                      stroke="currentColor"
+                      strokeWidth="10"
+                      strokeLinecap="round"
+                    />
+                  </g>
+                </svg>
                 残り {formatFeedRemainingTime(feedRemainingSeconds)}
               </time>
             )

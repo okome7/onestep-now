@@ -1724,36 +1724,16 @@ body {
 }
 
 .feed-countdown-icon {
-  position: relative;
-  display: inline-block;
+  display: block;
   width: 19px;
   height: 19px;
-  border: 3px solid currentColor;
-  border-radius: 50%;
   opacity: 0.9;
 }
 
-.feed-countdown-icon::before,
-.feed-countdown-icon::after {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  display: block;
-  width: 2px;
-  border-radius: 999px;
-  background: currentColor;
-  content: '';
-  transform-origin: top center;
-}
-
-.feed-countdown-icon::before {
-  height: 6px;
-  transform: translate(-50%, -1px);
-}
-
-.feed-countdown-icon::after {
-  height: 5px;
-  transform: translate(-50%, -1px) rotate(125deg);
+.feed-countdown-hands {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 1s linear;
 }
 
 .feed-list {
