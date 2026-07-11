@@ -33,6 +33,7 @@ import cameraIcon from '../assets/icons/camera.svg'
 import commentIcon from '../assets/icons/comment.svg'
 import commentActiveIcon from '../assets/icons/comment-active.svg'
 import feedExpiredClockIcon from '../assets/icons/feed-expired-clock.svg'
+import feedStartClockIcon from '../assets/icons/feed-start-clock.svg'
 import feedStartIllustrationIcon from '../assets/icons/feed-start-illustration.svg'
 import iconGridIcon from '../assets/icons/icon-grid.svg'
 import likeActiveIcon from '../assets/icons/like-active.svg'
@@ -2204,7 +2205,12 @@ export function HomePage() {
               </div>
               <div className="feed-start-gate-card">
                 <h2 id="feed-start-title">
-                  <span className="feed-start-clock" aria-hidden="true" />
+                  <img
+                    className="feed-start-clock"
+                    src={feedStartClockIcon}
+                    alt=""
+                    aria-hidden="true"
+                  />
                   フィードは5分だけ見られます
                 </h2>
                 <p>
