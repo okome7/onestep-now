@@ -1714,7 +1714,7 @@ body {
   align-items: center;
   gap: 6px;
   justify-content: center;
-  min-width: 118px;
+  width: 118px;
   border-radius: 3px;
   padding: 7px 9px;
   background: #dbeafe;
@@ -1730,12 +1730,19 @@ body {
   flex: 0 0 20px;
   width: 20px;
   height: 20px;
+  contain: layout paint;
 }
 
 .feed-countdown-hand {
   transform-box: view-box;
   transform-origin: 60px 60px;
   transition: transform 1s linear;
+}
+
+.feed-countdown-label {
+  display: inline-block;
+  width: 74px;
+  text-align: left;
 }
 
 .feed-list {

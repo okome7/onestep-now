@@ -2217,7 +2217,9 @@ export function HomePage() {
                     strokeLinecap="round"
                   />
                 </svg>
-                残り {formatFeedRemainingTime(feedRemainingSeconds)}
+                <span className="feed-countdown-label">
+                  残り {formatFeedRemainingTime(feedRemainingSeconds)}
+                </span>
               </time>
             )
           }
