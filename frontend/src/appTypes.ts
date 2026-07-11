@@ -12,17 +12,31 @@ export type SignupScreen = 'signup' | 'icon' | 'complete'
 
 export type FeedPostStatus = 'doing' | 'done'
 
+export type FeedComment = {
+  id: string
+  body: string
+  userName: string
+  avatarId: string
+  level: number
+  postStatusWhenCommented: FeedPostStatus
+  createdAt: number
+}
+
 export type FeedPost = {
   id: string
   userName: string
   level: number
   task: string
   status: FeedPostStatus
+  statusLabel: string
   likes: number
-  comments: string[]
+  comments: FeedComment[]
   createdAt: number
   liked: boolean
+  commented: boolean
   isOwnPost: boolean
+  canLike: boolean
+  canComment: boolean
 }
 
 export type ProfileAchievement = {
@@ -31,6 +45,8 @@ export type ProfileAchievement = {
   likes: number
   comments: number
   createdAt: number
+  likedUsers: AchievementLikeUser[]
+  commentItems: AchievementComment[]
 }
 
 export type AchievementDetailTab = 'likes' | 'comments'
@@ -51,4 +67,17 @@ export type CompleteProfile = {
   name: string
   email?: string
   avatarId: string
+}
+
+export type MyPageData = {
+  level: number
+  nextLevel: number
+  remainingToNextLevel: number
+  progressPercent: number
+  achievementsCount: number
+  streakDays: number
+  likesCount: number
+  commentsCount: number
+  recentAchievements: ProfileAchievement[]
+  allAchievements: ProfileAchievement[]
 }

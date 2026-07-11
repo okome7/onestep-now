@@ -1,5 +1,6 @@
 class Task < ApplicationRecord
   belongs_to :user
+  has_one :completion_post, dependent: :destroy
 
   enum :status, {
     pending: "pending",

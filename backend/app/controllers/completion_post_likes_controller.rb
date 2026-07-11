@@ -1,0 +1,20 @@
+class CompletionPostLikesController < ApplicationController
+  before_action :require_current_user
+  before_action :set_completion_post
+
+  def create
+    @completion_post.completion_post_likes.find_or_create_by!(user: current_user)
+    render json: { status: "success" }, status: :created
+  end
+
+  def destroy
+    @completion_post.completion_post_likes.where(user: current_user).destroy_all
+    render json: { status: "success" }, status: :ok
+  end
+
+  private
+
+  def set_completion_post
+    @completion_post = CompletionPost.find(params[:completion_post_id])
+  end
+end

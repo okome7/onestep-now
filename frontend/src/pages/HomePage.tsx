@@ -2,18 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { deleteAccount } from '../accountApi'
 import {
-  achievementComments,
-  achievementLikeUsers,
   avatarOptions,
   customPhotoIconId,
   feedViewDurationSeconds,
-  sampleFeedPosts,
-  sampleProfileAchievements,
   signupCompleteStorageKey,
   signupDraftStorageKey,
   signupScreenStorageKey,
-  taskCompleteComments,
-  taskCompleteLikeCount,
 } from '../appConstants'
 import {
   clearAuthSession,
@@ -29,15 +23,18 @@ import {
 } from '../appHelpers'
 import type {
   AchievementDetailTab,
+  FeedComment,
   FeedPost,
-  FeedPostStatus,
-  ProfileAchievement,
+  MyPageData,
 } from '../appTypes'
 import achievementCheckIcon from '../assets/icons/achievement-check.svg'
 import achievementFlameIcon from '../assets/icons/achievement-flame.svg'
 import cameraIcon from '../assets/icons/camera.svg'
 import commentIcon from '../assets/icons/comment.svg'
+import commentActiveIcon from '../assets/icons/comment-active.svg'
 import feedExpiredClockIcon from '../assets/icons/feed-expired-clock.svg'
+import feedStartClockIcon from '../assets/icons/feed-start-clock.svg'
+import feedStartIllustrationIcon from '../assets/icons/feed-start-illustration.svg'
 import iconGridIcon from '../assets/icons/icon-grid.svg'
 import likeActiveIcon from '../assets/icons/like-active.svg'
 import likeIcon from '../assets/icons/like.svg'
@@ -47,6 +44,25 @@ import {
   HomeBottomNav,
   UnsavedChangesModal,
 } from '../sharedComponents'
+import {
+  AuthRequiredError,
+  FeedAccessDeniedError,
+  completeTask,
+  createComment,
+  createTask,
+  fetchFeed,
+  likePost,
+  startTask,
+  unlikePost,
+} from '../feedApi'
+import { fetchMyPage } from '../mypageApi'
+
+const feedIntroStorageKey = 'onestep-feed-intro-seen'
+const activeHomeViewStorageKey = 'onestep-active-home-view'
+
+function getInitialHomeView() {
+  return window.sessionStorage.getItem(activeHomeViewStorageKey)
+}
 
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
@@ -54,11 +70,20 @@ export function HomePage() {
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
+  const [activeTaskId, setActiveTaskId] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [completedTaskReactions, setCompletedTaskReactions] = useState({
+    likes: 0,
+    comments: [] as FeedComment[],
+  })
+  const [isTaskSubmitting, setIsTaskSubmitting] = useState(false)
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false)
-  const [isFeedOpen, setIsFeedOpen] = useState(false)
-  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [initialHomeView] = useState(getInitialHomeView)
+  const [isFeedOpen, setIsFeedOpen] = useState(initialHomeView === 'feed')
+  const [isProfileOpen, setIsProfileOpen] = useState(
+    initialHomeView === 'profile',
+  )
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false)
   const [activeAchievementId, setActiveAchievementId] = useState<string | null>(
     null,
@@ -97,34 +122,36 @@ export function HomePage() {
   const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
     useState(false)
   const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
-    feedViewDurationSeconds,
+    0,
+  )
+  const [feedAccessExpiresAt, setFeedAccessExpiresAt] = useState<number | null>(
+    null,
   )
   const [feedNow, setFeedNow] = useState(() => Date.now())
-  const [feedPosts, setFeedPosts] = useState<FeedPost[]>(() => {
-    const initialNow = Date.now()
-
-    return sampleFeedPosts.map(({ ageMinutes, ...post }) => ({
-      ...post,
-      createdAt: initialNow - ageMinutes * 60 * 1000,
-    }))
-  })
-  const [profileAchievements] = useState<ProfileAchievement[]>(() => {
-    const initialNow = Date.now()
-
-    return sampleProfileAchievements.map(({ ageMinutes, ...achievement }) => ({
-      ...achievement,
-      createdAt: initialNow - ageMinutes * 60 * 1000,
-    }))
-  })
+  const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
+  const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
+  const [isFeedLoading, setIsFeedLoading] = useState(false)
+  const [isFeedTimeoutModalOpen, setIsFeedTimeoutModalOpen] = useState(false)
+  const [feedError, setFeedError] = useState('')
+  const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
+  const [myPageData, setMyPageData] = useState<MyPageData | null>(null)
+  const [isMyPageLoading, setIsMyPageLoading] = useState(false)
+  const [myPageError, setMyPageError] = useState('')
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
   )
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
-  const hasCompleteComments = taskCompleteComments.length > 0
-  const isFeedExpired = feedRemainingSeconds <= 0
-  const visibleFeedPosts = feedPosts.filter((post) => !post.isOwnPost)
+  const hasCompleteComments = completedTaskReactions.comments.length > 0
+  const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
+  const feedCountdownElapsedSeconds = Math.min(
+    feedViewDurationSeconds,
+    Math.max(0, feedViewDurationSeconds - feedRemainingSeconds),
+  )
+  const feedCountdownHandAngle =
+    (feedCountdownElapsedSeconds / feedViewDurationSeconds) * 360
+  const visibleFeedPosts = feedPosts
   const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
   const profileName = completeProfile.name || 'おこめ'
   const trimmedDisplayNameDraft = displayNameDraft.trim()
@@ -133,25 +160,113 @@ export function HomePage() {
     trimmedDisplayNameDraft.length > 0 && trimmedDisplayNameDraft !== profileName
   const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
   const canSaveSettingsIcon = selectedSettingsIconId !== completeProfile.avatarId
-  const ownAchievements = feedPosts
-    .filter((post) => post.isOwnPost && post.status === 'done')
-    .map((post) => ({
-      id: post.id,
-      task: post.task,
-      likes: post.likes,
-      comments: post.comments.length,
-      createdAt: post.createdAt,
-    }))
-  const allProfileAchievements = [...ownAchievements, ...profileAchievements]
-  const recentAchievements = allProfileAchievements.slice(0, 2)
+  const level = myPageData?.level ?? 0
+  const nextLevel = myPageData?.nextLevel ?? 1
+  const remainingToNextLevel = myPageData?.remainingToNextLevel ?? 10
+  const progressPercent = myPageData?.progressPercent ?? 0
+  const achievementsCount = myPageData?.achievementsCount ?? 0
+  const hasProfileAchievements = achievementsCount > 0
+  const allProfileAchievements = myPageData?.allAchievements ?? []
+  const recentAchievements = myPageData?.recentAchievements ?? []
   const activeAchievement = activeAchievementId
     ? (allProfileAchievements.find(
         (achievement) => achievement.id === activeAchievementId,
-      ) ?? null)
+      ) ??
+        recentAchievements.find(
+          (achievement) => achievement.id === activeAchievementId,
+        ) ??
+        null)
     : null
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
+
+  function upsertOwnTaskPost(
+    task: {
+      title: string
+      completion_post_id?: number
+      completion_post?: {
+        id: number
+        status_label: string
+        card_variant: 'doing' | 'completed'
+        likes_count?: number
+        comments_count?: number
+        liked_by_me?: boolean
+        comments?: Array<{
+          id: number
+          body: string
+          user_name?: string
+          avatar_key?: string
+          post_status_when_commented: 'doing' | 'completed'
+          created_at: string
+        }>
+        created_at: string
+      } | null
+    },
+  ) {
+    const completionPost = task.completion_post
+    const postId = completionPost?.id ?? task.completion_post_id
+
+    if (!postId) {
+      return
+    }
+
+    const nextPost: FeedPost = {
+      id: String(postId),
+      userName: 'あなた',
+      level: 1,
+      task: task.title,
+      status: completionPost?.card_variant === 'completed' ? 'done' : 'doing',
+      statusLabel:
+        completionPost?.status_label ??
+        (completionPost?.card_variant === 'completed' ? 'できた' : 'やります'),
+      likes: completionPost?.likes_count ?? 0,
+      comments:
+        completionPost?.comments?.map((comment) => ({
+          id: String(comment.id),
+          body: comment.body,
+          userName: comment.user_name ?? 'みき',
+          avatarId: comment.avatar_key ?? 'avatar-1',
+          level: 1,
+          postStatusWhenCommented:
+            comment.post_status_when_commented === 'completed'
+              ? 'done'
+              : 'doing',
+          createdAt: new Date(comment.created_at).getTime(),
+        })) ?? [],
+      createdAt: completionPost?.created_at
+        ? new Date(completionPost.created_at).getTime()
+        : Date.now(),
+      liked: completionPost?.liked_by_me ?? false,
+      commented: false,
+      isOwnPost: true,
+      canLike: true,
+      canComment: true,
+    }
+
+    setFeedPosts((currentPosts) => {
+      const existingPost = currentPosts.find((post) => post.id === nextPost.id)
+
+      if (!existingPost) {
+        return [nextPost, ...currentPosts]
+      }
+
+      return currentPosts.map((post) =>
+        post.id === nextPost.id
+          ? {
+              ...post,
+              task: nextPost.task,
+              status: nextPost.status,
+              statusLabel: nextPost.statusLabel,
+              likes: completionPost?.likes_count ?? post.likes,
+              comments: completionPost?.comments ? nextPost.comments : post.comments,
+              liked: completionPost?.liked_by_me ?? post.liked,
+              commented: post.commented,
+            }
+          : post,
+      )
+    })
+  }
 
   useEffect(() => {
     if (!isTaskRunning) {
@@ -187,16 +302,53 @@ export function HomePage() {
   }, [isTaskComplete])
 
   useEffect(() => {
-    if (!isFeedOpen || isFeedExpired) {
+    if (!activeAchievement) {
+      return undefined
+    }
+
+    const previousBodyOverflow = document.body.style.overflow
+    const previousDocumentOverflow = document.documentElement.style.overflow
+
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousDocumentOverflow
+    }
+  }, [activeAchievement])
+
+  useEffect(() => {
+    if (
+      !isFeedOpen ||
+      isFeedAccessDenied ||
+      isFeedLoading ||
+      isFeedExpired
+    ) {
+      return undefined
+    }
+
+    if (feedRemainingSeconds <= 0) {
       return undefined
     }
 
     const expirationTimerId = window.setTimeout(() => {
       setFeedRemainingSeconds(0)
+      setFeedAccessExpiresAt(null)
+      setIsFeedTimeoutModalOpen(true)
       setFeedNow(Date.now())
     }, feedRemainingSeconds * 1000)
     const timerId = window.setInterval(() => {
-      setFeedRemainingSeconds((current) => Math.max(0, current - 1))
+      setFeedRemainingSeconds((current) => {
+        const nextSeconds = Math.max(0, current - 1)
+
+        if (nextSeconds === 0) {
+          setFeedAccessExpiresAt(null)
+          setIsFeedTimeoutModalOpen(true)
+        }
+
+        return nextSeconds
+      })
       setFeedNow(Date.now())
     }, 1000)
 
@@ -204,30 +356,114 @@ export function HomePage() {
       window.clearInterval(timerId)
       window.clearTimeout(expirationTimerId)
     }
-  }, [feedRemainingSeconds, isFeedExpired, isFeedOpen])
+  }, [
+    feedRemainingSeconds,
+    isFeedAccessDenied,
+    isFeedExpired,
+    isFeedLoading,
+    isFeedOpen,
+  ])
 
-  function addFeedPost(task: string, status: FeedPostStatus) {
-    const postId = `${status}-${Date.now()}`
+  const loadFeed = useCallback(async () => {
+    setFeedError('')
+    setIsFeedLoading(true)
+    setIsFeedTimeoutModalOpen(false)
 
-    setFeedPosts((currentPosts) => [
-      {
-        id: postId,
-        userName: 'あなた',
-        level: 1,
-        task,
-        status,
-        likes: 0,
-        comments: [],
-        createdAt: Date.now(),
-        liked: false,
-        isOwnPost: true,
-      },
-      ...currentPosts,
-    ])
+    try {
+      const result = await fetchFeed(completeProfile.id)
+      const nextRemainingSeconds =
+        result.remainingSeconds ?? feedViewDurationSeconds
+      setFeedPosts(result.posts)
+      setFeedRemainingSeconds(nextRemainingSeconds)
+      setFeedAccessExpiresAt(
+        result.feedAccessExpiresAt
+          ? new Date(result.feedAccessExpiresAt).getTime()
+          : Date.now() + nextRemainingSeconds * 1000,
+      )
+      setIsFeedAccessDenied(false)
+      setFeedNow(Date.now())
+
+      if (!window.localStorage.getItem(feedIntroStorageKey)) {
+        setIsFeedIntroOpen(true)
+      }
+    } catch (caughtError) {
+      if (caughtError instanceof FeedAccessDeniedError) {
+        setFeedPosts([])
+        setFeedRemainingSeconds(0)
+        setFeedAccessExpiresAt(null)
+        setIsFeedAccessDenied(true)
+        setIsFeedTimeoutModalOpen(false)
+        setIsFeedIntroOpen(false)
+        return
+      }
+
+      setIsFeedAccessDenied(false)
+      setFeedError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'フィード取得に失敗しました。',
+      )
+    } finally {
+      setIsFeedLoading(false)
+    }
+  }, [completeProfile.id])
+
+  const loadMyPage = useCallback(async () => {
+    setMyPageError('')
+    setIsMyPageLoading(true)
+
+    try {
+      const result = await fetchMyPage(completeProfile.id)
+      setMyPageData(result)
+      setFeedNow(Date.now())
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
+      setMyPageError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'マイページ取得に失敗しました。',
+      )
+    } finally {
+      setIsMyPageLoading(false)
+    }
+  }, [completeProfile.id])
+
+  useEffect(() => {
+    if (!isFeedOpen) {
+      return undefined
+    }
+
+    const timerId = window.setTimeout(() => {
+      void loadFeed()
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
+  }, [isFeedOpen, loadFeed])
+
+  useEffect(() => {
+    if (!isProfileOpen && !isAchievementsOpen) {
+      return undefined
+    }
+
+    const timerId = window.setTimeout(() => {
+      void loadMyPage()
+    }, 0)
+
+    return () => window.clearTimeout(timerId)
+  }, [isAchievementsOpen, isProfileOpen, loadMyPage])
+
+  function closeFeedIntro() {
+    window.localStorage.setItem(feedIntroStorageKey, 'true')
+    setIsFeedIntroOpen(false)
   }
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -240,13 +476,24 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    setFeedRemainingSeconds(feedViewDurationSeconds)
-    setFeedNow(Date.now())
+    const hasKnownFeedAccess =
+      feedAccessExpiresAt !== null && feedAccessExpiresAt > Date.now()
+    if (!hasKnownFeedAccess) {
+      setFeedPosts([])
+      setFeedRemainingSeconds(0)
+    }
+    setFeedError('')
+    setIsFeedAccessDenied(!hasKnownFeedAccess)
+    setIsFeedTimeoutModalOpen(false)
+    if (isFeedOpen) {
+      void loadFeed()
+    }
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openHome(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'home')
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -259,11 +506,18 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
+    setIsFeedAccessDenied(false)
+    setIsFeedTimeoutModalOpen(false)
+    setFeedError('')
+    if (isTaskComplete) {
+      handleNextTask()
+    }
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function startNextTaskFromExpiredFeed(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'home')
     setIsFeedOpen(false)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -276,12 +530,15 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
+    setIsFeedAccessDenied(false)
+    setIsFeedTimeoutModalOpen(false)
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
     setIsFeedOpen(false)
     setIsProfileOpen(true)
     setIsAchievementsOpen(false)
@@ -294,11 +551,16 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
+    if (isProfileOpen) {
+      void loadMyPage()
+    }
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
+    window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
+    void loadMyPage()
     setIsAchievementsOpen(true)
     setActiveAchievementId(null)
     setIsProfileOpen(false)
@@ -372,7 +634,17 @@ export function HomePage() {
 
   function confirmLogout() {
     clearAuthSession()
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
     window.location.href = '/login'
+  }
+
+  function redirectToLoginForAuthRequired() {
+    clearAuthSession()
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
+    window.sessionStorage.removeItem(signupDraftStorageKey)
+    window.location.assign('/login')
   }
 
   function openAccountDeleteConfirm() {
@@ -418,6 +690,7 @@ export function HomePage() {
       })
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
+      window.sessionStorage.removeItem(activeHomeViewStorageKey)
       window.sessionStorage.removeItem(signupScreenStorageKey)
       window.sessionStorage.removeItem(signupDraftStorageKey)
       setIsAccountDeleteConfirmOpen(false)
@@ -621,8 +894,12 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function handleTaskStart(event: FormEvent<HTMLFormElement>) {
+  async function handleTaskStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
+    if (isTaskSubmitting) {
+      return
+    }
 
     const nextTask = taskText.trim()
 
@@ -631,11 +908,38 @@ export function HomePage() {
       return
     }
 
+    if (!completeProfile.id) {
+      redirectToLoginForAuthRequired()
+      return
+    }
+
     setTaskError('')
-    setActiveTask(nextTask)
-    setElapsedSeconds(0)
-    setIsTaskComplete(false)
-    addFeedPost(nextTask, 'doing')
+    setIsTaskSubmitting(true)
+
+    try {
+      const task = await createTask(nextTask, completeProfile.id)
+      const startedTask = await startTask(task.id, completeProfile.id)
+      setActiveTaskId(startedTask.id)
+      setActiveTask(startedTask.title)
+      setElapsedSeconds(0)
+      setIsTaskComplete(false)
+      setCompletedTaskReactions({ likes: 0, comments: [] })
+      upsertOwnTaskPost(startedTask)
+      await loadFeed()
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
+      setTaskError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'タスク開始に失敗しました。',
+      )
+    } finally {
+      setIsTaskSubmitting(false)
+    }
   }
 
   function handleTaskCancel() {
@@ -648,8 +952,10 @@ export function HomePage() {
 
   function confirmTaskCancel() {
     setActiveTask('')
+    setActiveTaskId(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+    setCompletedTaskReactions({ likes: 0, comments: [] })
     setIsCancelConfirmOpen(false)
     setIsFeedOpen(false)
     setIsProfileOpen(false)
@@ -662,20 +968,72 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function handleTaskDone() {
-    setIsTaskComplete(true)
-    addFeedPost(activeTask, 'done')
+  async function handleTaskDone() {
+    if (!activeTaskId || isTaskSubmitting) {
+      return
+    }
+
+    if (!completeProfile.id) {
+      redirectToLoginForAuthRequired()
+      return
+    }
+
+    setIsTaskSubmitting(true)
+
+    try {
+      const completedTask = await completeTask(activeTaskId, completeProfile.id)
+      upsertOwnTaskPost(completedTask)
+      setCompletedTaskReactions({
+        likes: completedTask.completion_post?.likes_count ?? 0,
+        comments:
+          completedTask.completion_post?.comments?.map((comment) => ({
+            id: String(comment.id),
+            body: comment.body,
+            userName: comment.user_name ?? 'みき',
+            avatarId: comment.avatar_key ?? 'avatar-1',
+            level: comment.level ?? 1,
+            postStatusWhenCommented:
+              comment.post_status_when_commented === 'completed'
+                ? 'done'
+                : 'doing',
+            createdAt: new Date(comment.created_at).getTime(),
+          })) ?? [],
+      })
+      setIsTaskComplete(true)
+      await loadFeed()
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
+      setTaskError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'タスク完了に失敗しました。',
+      )
+    } finally {
+      setIsTaskSubmitting(false)
+    }
   }
 
   function handleNextTask() {
     setTaskText('')
     setTaskError('')
     setActiveTask('')
+    setActiveTaskId(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
+    setCompletedTaskReactions({ likes: 0, comments: [] })
   }
 
-  function togglePostLike(postId: string) {
+  async function togglePostLike(postId: string) {
+    const targetPost = feedPosts.find((post) => post.id === postId)
+
+    if (!targetPost?.canLike) {
+      return
+    }
+
     setFeedPosts((currentPosts) =>
       currentPosts.map((post) => {
         if (post.id !== postId) {
@@ -689,6 +1047,21 @@ export function HomePage() {
         }
       }),
     )
+
+    try {
+      if (targetPost.liked) {
+        await unlikePost(postId, completeProfile.id)
+      } else {
+        await likePost(postId, completeProfile.id)
+      }
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
+      await loadFeed()
+    }
   }
 
   function handleCommentDraftChange(postId: string, value: string) {
@@ -706,24 +1079,49 @@ export function HomePage() {
     setActiveCommentPostId(null)
   }
 
-  function addPostComment(postId: string) {
+  async function addPostComment(postId: string) {
+    const targetPost = feedPosts.find((post) => post.id === postId)
+
+    if (!targetPost?.canComment) {
+      return
+    }
+
     const nextComment = (commentDrafts[postId] ?? '').trim()
 
     if (!nextComment) {
       return
     }
 
-    setFeedPosts((currentPosts) =>
-      currentPosts.map((post) =>
-        post.id === postId
-          ? { ...post, comments: [...post.comments, nextComment] }
-          : post,
-      ),
-    )
-    setCommentDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [postId]: '',
-    }))
+    try {
+      const createdComment = await createComment(
+        postId,
+        nextComment,
+        completeProfile.id,
+      )
+
+      setFeedPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                commented: true,
+                comments: [...post.comments, createdComment],
+              }
+            : post,
+        ),
+      )
+      setCommentDrafts((currentDrafts) => ({
+        ...currentDrafts,
+        [postId]: '',
+      }))
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
+      await loadFeed()
+    }
   }
 
   if (isSettingsOpen && isNameEditOpen) {
@@ -1343,41 +1741,55 @@ export function HomePage() {
           className="all-achievements-content"
           aria-label="すべての達成"
         >
-          <div className="profile-achievement-list all-achievement-list">
-            {allProfileAchievements.map((achievement) => (
-              <article
-                className={`profile-achievement-card all-achievement-card ${
-                  activeAchievementId === achievement.id ? 'is-active' : ''
-                }`}
-                key={achievement.id}
-              >
-                <strong>{achievement.task}</strong>
-                <div>
-                  <button
-                    className="achievement-reaction-button"
-                    type="button"
-                    onClick={() => openAchievementDetail(achievement.id, 'likes')}
-                  >
-                    <img src={likeIcon} alt="" aria-hidden="true" />
-                    {achievement.likes}
-                  </button>
-                  <button
-                    className="achievement-reaction-button"
-                    type="button"
-                    onClick={() =>
-                      openAchievementDetail(achievement.id, 'comments')
-                    }
-                  >
-                    <img src={commentIcon} alt="" aria-hidden="true" />
-                    {achievement.comments}
-                  </button>
-                  <time dateTime={new Date(achievement.createdAt).toISOString()}>
-                    {formatFeedPostAge(achievement.createdAt, feedNow)}
-                  </time>
-                </div>
-              </article>
-            ))}
-          </div>
+          {myPageError ? (
+            <p className="profile-state-message" role="alert">
+              {myPageError}
+            </p>
+          ) : isMyPageLoading && !myPageData ? (
+            <p className="profile-state-message">読み込み中...</p>
+          ) : allProfileAchievements.length === 0 ? (
+            <p className="profile-state-message">まだ記録はありません</p>
+          ) : (
+            <div className="profile-achievement-list all-achievement-list">
+              {allProfileAchievements.map((achievement) => (
+                <article
+                  className={`profile-achievement-card all-achievement-card ${
+                    activeAchievementId === achievement.id ? 'is-active' : ''
+                  }`}
+                  key={achievement.id}
+                >
+                  <strong>{achievement.task}</strong>
+                  <div>
+                    <button
+                      className="achievement-reaction-button"
+                      type="button"
+                      onClick={() =>
+                        openAchievementDetail(achievement.id, 'likes')
+                      }
+                    >
+                      <img src={likeIcon} alt="" aria-hidden="true" />
+                      {achievement.likes}
+                    </button>
+                    <button
+                      className="achievement-reaction-button"
+                      type="button"
+                      onClick={() =>
+                        openAchievementDetail(achievement.id, 'comments')
+                      }
+                    >
+                      <img src={commentIcon} alt="" aria-hidden="true" />
+                      {achievement.comments}
+                    </button>
+                    <time
+                      dateTime={new Date(achievement.createdAt).toISOString()}
+                    >
+                      {formatFeedPostAge(achievement.createdAt, feedNow)}
+                    </time>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
         {activeAchievement ? (
@@ -1438,7 +1850,7 @@ export function HomePage() {
                   className="feed-comment-panel-list achievement-detail-list"
                   aria-label="いいねした人"
                 >
-                  {achievementLikeUsers.map((user) => (
+                  {activeAchievement.likedUsers.map((user) => (
                     <li
                       className={
                         user.afterComplete ? 'achievement-after-complete' : ''
@@ -1461,7 +1873,7 @@ export function HomePage() {
                   className="feed-comment-panel-list"
                   aria-label="コメント一覧"
                 >
-                  {achievementComments.map((comment) => (
+                  {activeAchievement.commentItems.map((comment) => (
                     <li
                       className={
                         comment.afterComplete
@@ -1482,7 +1894,12 @@ export function HomePage() {
                       </div>
                       <div className="feed-comment-body">
                         <span>{comment.text}</span>
-                        <time>{comment.age}</time>
+                        <time>
+                          {formatFeedPostAge(
+                            new Date(comment.age).getTime(),
+                            feedNow,
+                          )}
+                        </time>
                       </div>
                     </li>
                   ))}
@@ -1513,91 +1930,246 @@ export function HomePage() {
         />
 
         <section className="profile-content" aria-label="マイページ">
-          <img
-            className="profile-avatar-large"
-            src={profileAvatarSrc}
-            alt=""
-            aria-hidden="true"
-          />
+          {hasProfileAchievements ? (
+            <img
+              className="profile-avatar-large"
+              src={profileAvatarSrc}
+              alt=""
+              aria-hidden="true"
+            />
+          ) : (
+            <span className="profile-avatar-large profile-avatar-empty" />
+          )}
           <p className="profile-name">{profileName}</p>
 
           <section className="profile-level-card" aria-label="レベル">
             <div className="profile-level-row">
               <span className="profile-level-label">
-                Lv.<strong>12</strong>
+                Lv.<strong>{level}</strong>
               </span>
-              <span className="profile-level-next">あと2回でLv.13！</span>
+              <span className="profile-level-next">
+                あと{remainingToNextLevel}回でLv.{nextLevel}！
+              </span>
             </div>
             <div className="profile-level-meter" aria-hidden="true">
-              <span />
+              <span style={{ width: `${progressPercent}%` }} />
             </div>
-            <span className="profile-level-percent">80%</span>
+            <span className="profile-level-percent">{progressPercent}%</span>
           </section>
 
-          <section
-            className="profile-section"
-            aria-labelledby="profile-stats-title"
-          >
-            <h2 id="profile-stats-title">実績</h2>
-            <div className="profile-stats-grid">
-              <div className="profile-stat-card">
-                <img src={achievementCheckIcon} alt="" aria-hidden="true" />
-                <strong>128回</strong>
-                <small>達成</small>
-              </div>
-              <div className="profile-stat-card">
-                <img src={achievementFlameIcon} alt="" aria-hidden="true" />
-                <strong>7日</strong>
-                <small>連続</small>
-              </div>
-              <div className="profile-stat-card">
-                <img src={likeActiveIcon} alt="" aria-hidden="true" />
-                <strong>234</strong>
-                <small>いいね</small>
-              </div>
-              <div className="profile-stat-card">
-                <img src={commentIcon} alt="" aria-hidden="true" />
-                <strong>32</strong>
-                <small>コメント</small>
-              </div>
-            </div>
-          </section>
-
-          <section
-            className="profile-section"
-            aria-labelledby="profile-recent-title"
-          >
-            <div className="profile-section-heading">
-              <h2 id="profile-recent-title">最近の達成</h2>
-              <a href="/home" onClick={openAchievements}>
-                すべて見る&gt;
-              </a>
-            </div>
-            <div className="profile-achievement-list">
-              {recentAchievements.map((achievement) => (
-                <article
-                  className="profile-achievement-card"
-                  key={achievement.task}
-                >
-                  <strong>{achievement.task}</strong>
-                  <div>
-                    <span>
-                      <img src={likeIcon} alt="" aria-hidden="true" />
-                      {achievement.likes}
-                    </span>
-                    <span>
-                      <img src={commentIcon} alt="" aria-hidden="true" />
-                      {achievement.comments}
-                    </span>
-                    <time dateTime={new Date(achievement.createdAt).toISOString()}>
-                      {formatFeedPostAge(achievement.createdAt, feedNow)}
-                    </time>
+          {myPageError ? (
+            <p className="profile-state-message" role="alert">
+              {myPageError}
+            </p>
+          ) : isMyPageLoading && !myPageData ? (
+            <p className="profile-state-message">読み込み中...</p>
+          ) : hasProfileAchievements ? (
+            <>
+              <section
+                className="profile-section"
+                aria-labelledby="profile-stats-title"
+              >
+                <h2 id="profile-stats-title">実績</h2>
+                <div className="profile-stats-grid">
+                  <div className="profile-stat-card">
+                    <img src={achievementCheckIcon} alt="" aria-hidden="true" />
+                    <strong>{achievementsCount}回</strong>
+                    <small>達成</small>
                   </div>
-                </article>
-              ))}
-            </div>
-          </section>
+                  <div className="profile-stat-card">
+                    <img src={achievementFlameIcon} alt="" aria-hidden="true" />
+                    <strong>{myPageData?.streakDays ?? 0}日</strong>
+                    <small>連続</small>
+                  </div>
+                  <div className="profile-stat-card">
+                    <img src={likeActiveIcon} alt="" aria-hidden="true" />
+                    <strong>{myPageData?.likesCount ?? 0}</strong>
+                    <small>いいね</small>
+                  </div>
+                  <div className="profile-stat-card">
+                    <img src={commentIcon} alt="" aria-hidden="true" />
+                    <strong>{myPageData?.commentsCount ?? 0}</strong>
+                    <small>コメント</small>
+                  </div>
+                </div>
+              </section>
+
+              <section
+                className="profile-section"
+                aria-labelledby="profile-recent-title"
+              >
+                <div className="profile-section-heading">
+                  <h2 id="profile-recent-title">最近の達成</h2>
+                  <a href="/home" onClick={openAchievements}>
+                    すべて見る&gt;
+                  </a>
+                </div>
+                <div className="profile-achievement-list">
+                  {recentAchievements.map((achievement) => (
+                    <article
+                      className="profile-achievement-card"
+                      key={achievement.id}
+                    >
+                      <strong>{achievement.task}</strong>
+                      <div>
+                        <button
+                          className="achievement-reaction-button"
+                          type="button"
+                          onClick={() =>
+                            openAchievementDetail(achievement.id, 'likes')
+                          }
+                        >
+                          <img src={likeIcon} alt="" aria-hidden="true" />
+                          {achievement.likes}
+                        </button>
+                        <button
+                          className="achievement-reaction-button"
+                          type="button"
+                          onClick={() =>
+                            openAchievementDetail(achievement.id, 'comments')
+                          }
+                        >
+                          <img src={commentIcon} alt="" aria-hidden="true" />
+                          {achievement.comments}
+                        </button>
+                        <time
+                          dateTime={new Date(achievement.createdAt).toISOString()}
+                        >
+                          {formatFeedPostAge(achievement.createdAt, feedNow)}
+                        </time>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : (
+            <section className="profile-empty-state" aria-label="記録なし">
+              <h2>まだ記録はありません</h2>
+              <p>最初の一歩を始めてみましょう！</p>
+              <button type="button" onClick={openHome}>
+                最初の一歩を始める
+              </button>
+            </section>
+          )}
         </section>
+
+        {activeAchievement ? (
+          <>
+            <button
+              className="feed-comment-backdrop achievement-detail-backdrop"
+              type="button"
+              aria-label="詳細を閉じる"
+              onClick={closeAchievementDetail}
+            />
+            <section
+              className="feed-comment-panel feed-comment-panel-done achievement-detail-panel"
+              aria-labelledby="achievement-detail-title"
+            >
+              <div className="feed-comment-panel-header">
+                <h2 id="achievement-detail-title">
+                  {activeAchievementTab === 'likes' ? 'いいね' : 'コメント'}
+                </h2>
+                <button
+                  className="feed-comment-panel-close"
+                  type="button"
+                  aria-label="詳細を閉じる"
+                  onClick={closeAchievementDetail}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="achievement-detail-tabs" role="tablist">
+                <button
+                  className={activeAchievementTab === 'likes' ? 'active' : ''}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAchievementTab === 'likes'}
+                  onClick={() => setActiveAchievementTab('likes')}
+                >
+                  いいね({activeAchievement.likes})
+                </button>
+                <button
+                  className={
+                    activeAchievementTab === 'comments' ? 'active' : ''
+                  }
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAchievementTab === 'comments'}
+                  onClick={() => setActiveAchievementTab('comments')}
+                >
+                  コメント({activeAchievement.comments})
+                </button>
+              </div>
+
+              <div className="feed-comment-panel-task">
+                {activeAchievement.task}
+              </div>
+
+              {activeAchievementTab === 'likes' ? (
+                <ul
+                  className="feed-comment-panel-list achievement-detail-list"
+                  aria-label="いいねした人"
+                >
+                  {activeAchievement.likedUsers.map((user) => (
+                    <li
+                      className={
+                        user.afterComplete ? 'achievement-after-complete' : ''
+                      }
+                      key={user.name}
+                    >
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>{user.name}</span>
+                        <span className="feed-comment-level">Lv.{user.level}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul
+                  className="feed-comment-panel-list"
+                  aria-label="コメント一覧"
+                >
+                  {activeAchievement.commentItems.map((comment) => (
+                    <li
+                      className={
+                        comment.afterComplete
+                          ? 'achievement-after-complete'
+                          : ''
+                      }
+                      key={`${comment.name}-${comment.text}`}
+                    >
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>{comment.name}</span>
+                        <span className="feed-comment-level">
+                          Lv.{comment.level}
+                        </span>
+                      </div>
+                      <div className="feed-comment-body">
+                        <span>{comment.text}</span>
+                        <time>
+                          {formatFeedPostAge(
+                            new Date(comment.age).getTime(),
+                            feedNow,
+                          )}
+                        </time>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        ) : null}
 
         <HomeBottomNav
           activeItem="profile"
@@ -1615,13 +2187,44 @@ export function HomePage() {
         <AppHeader
           title="フィード"
           rightAction={
-            <time
-              className="feed-countdown"
-              dateTime={`PT${feedRemainingSeconds}S`}
-            >
-              <span className="feed-countdown-icon" aria-hidden="true" />
-              残り {formatFeedRemainingTime(feedRemainingSeconds)}
-            </time>
+            isFeedAccessDenied ? null : (
+              <time
+                className="feed-countdown"
+                dateTime={`PT${feedRemainingSeconds}S`}
+              >
+                <svg
+                  className="feed-countdown-icon"
+                  viewBox="0 0 120 120"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="40"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="7"
+                  />
+                  <line
+                    className="feed-countdown-hand"
+                    style={{
+                      transform: `rotate(${feedCountdownHandAngle}deg)`,
+                    }}
+                    x1="60"
+                    y1="60"
+                    x2="60"
+                    y2="34"
+                    stroke="currentColor"
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="feed-countdown-label">
+                  残り {formatFeedRemainingTime(feedRemainingSeconds)}
+                </span>
+              </time>
+            )
           }
         />
 
@@ -1630,61 +2233,170 @@ export function HomePage() {
           aria-label="みんなの投稿"
           aria-hidden={isFeedExpired ? 'true' : undefined}
         >
-          {visibleFeedPosts.map((post) => (
-            <article
-              className={`feed-card feed-card-${post.status}`}
-              key={post.id}
+          {isFeedAccessDenied ? (
+            <section
+              className="feed-start-gate"
+              aria-labelledby="feed-start-title"
             >
-              <div className="feed-card-header">
-                <div className="feed-user">
-                  <span className="feed-avatar" aria-hidden="true" />
-                  <span className="feed-user-name">{post.userName}</span>
-                  <span className="feed-user-level">Lv.{post.level}</span>
+              <div className="feed-start-illustration" aria-hidden="true">
+                <img src={feedStartIllustrationIcon} alt="" />
+              </div>
+              <div className="feed-start-gate-card">
+                <h2 id="feed-start-title">
+                  <img
+                    className="feed-start-clock"
+                    src={feedStartClockIcon}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                  フィードは5分だけ見られます
+                </h2>
+                <p>
+                  タスクを完了すると、
+                  <br />
+                  みんなの「やります」「できた」を
+                  <br />
+                  5分間だけチェックできます。
+                </p>
+              </div>
+              <section
+                className="feed-start-guide"
+                aria-labelledby="feed-start-guide-title"
+              >
+                <h3 id="feed-start-guide-title">フィードってなに？</h3>
+                <p>
+                  みんなの「やります」「できた」を見て、
+                  <br />
+                  応援したり、コメントしたりできる場所です。
+                </p>
+                <ol className="feed-start-steps" aria-label="フィードの流れ">
+                  <li>
+                    <span className="feed-start-step-icon feed-start-step-flag">
+                      ⚑
+                    </span>
+                    <strong>1. やります</strong>
+                    <small>タスクを決めて宣言しよう</small>
+                  </li>
+                  <li>
+                    <span className="feed-start-step-icon feed-start-step-check">
+                      ✓
+                    </span>
+                    <strong>2. できた！</strong>
+                    <small>タスクが終わったら完了しよう</small>
+                  </li>
+                  <li>
+                    <span className="feed-start-step-icon feed-start-step-heart">
+                      ♥
+                    </span>
+                    <strong>3. フィード解放</strong>
+                    <small>完了すると5分間だけ見られる！</small>
+                  </li>
+                </ol>
+              </section>
+              <button
+                className="feed-expired-start-button"
+                type="button"
+                onClick={openHome}
+              >
+                最初の一歩を始める
+              </button>
+            </section>
+          ) : feedError ? (
+            <p className="feed-error" role="alert">
+              {feedError}
+            </p>
+          ) : (
+            visibleFeedPosts.map((post) => (
+              <article
+                className={`feed-card feed-card-${post.status}`}
+                key={post.id}
+              >
+                <div className="feed-card-header">
+                  <div className="feed-user">
+                    <span className="feed-avatar" aria-hidden="true" />
+                    <span className="feed-user-name">{post.userName}</span>
+                    <span className="feed-user-level">Lv.{post.level}</span>
+                  </div>
+                  <span className={`feed-status feed-status-${post.status}`}>
+                    {post.status === 'done' ? '✓ ' : '⚑ '}
+                    {post.statusLabel}
+                  </span>
                 </div>
-                <span className={`feed-status feed-status-${post.status}`}>
-                  {post.status === 'done' ? '✓ できた' : '⚑ やります'}
-                </span>
-              </div>
 
-              <p className="feed-task">{post.task}</p>
+                <p className="feed-task">{post.task}</p>
 
-              <div className="feed-card-footer">
-                <button
-                  className={`feed-reaction ${post.liked ? 'active' : ''}`}
-                  type="button"
-                  aria-pressed={post.liked}
-                  onClick={() => togglePostLike(post.id)}
-                >
-                  <span className="feed-action-icon">
-                    <img
-                      src={post.liked ? likeActiveIcon : likeIcon}
-                      alt=""
-                      aria-hidden="true"
-                    />
-                  </span>
-                  <span>{post.likes}</span>
-                </button>
-                <button
-                  className="feed-comment-count"
-                  type="button"
-                  aria-label={`${post.userName}さんのコメントを開く`}
-                  onClick={() => openCommentPanel(post.id)}
-                >
-                  <span className="feed-action-icon">
-                    <img src={commentIcon} alt="" aria-hidden="true" />
-                  </span>
-                  <span>{post.comments.length}</span>
-                </button>
-                <time
-                  className="feed-post-age"
-                  dateTime={new Date(post.createdAt).toISOString()}
-                >
-                  {formatFeedPostAge(post.createdAt, feedNow)}
-                </time>
-              </div>
-            </article>
-          ))}
+                <div className="feed-card-footer">
+                  <button
+                    className={`feed-reaction ${post.liked ? 'active' : ''}`}
+                    type="button"
+                    aria-pressed={post.liked}
+                    onClick={() => void togglePostLike(post.id)}
+                    disabled={!post.canLike}
+                  >
+                    <span className="feed-action-icon">
+                      <img
+                        src={post.liked ? likeActiveIcon : likeIcon}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <span>{post.likes}</span>
+                  </button>
+                  <button
+                    className={`feed-comment-count ${
+                      post.commented ? 'active' : ''
+                    }`}
+                    type="button"
+                    aria-pressed={post.commented}
+                    aria-label={`${post.userName}さんのコメントを開く`}
+                    onClick={() => openCommentPanel(post.id)}
+                    disabled={!post.canComment}
+                  >
+                    <span className="feed-action-icon">
+                      <img
+                        src={post.commented ? commentActiveIcon : commentIcon}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <span>{post.comments.length}</span>
+                  </button>
+                  <time
+                    className="feed-post-age"
+                    dateTime={new Date(post.createdAt).toISOString()}
+                  >
+                    {formatFeedPostAge(post.createdAt, feedNow)}
+                  </time>
+                </div>
+              </article>
+            ))
+          )}
         </section>
+
+        {isFeedIntroOpen ? (
+          <div className="feed-expired-backdrop" role="presentation">
+            <section
+              className="feed-expired-modal feed-intro-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="feed-intro-title"
+            >
+              <h2 id="feed-intro-title">利用時間は5分限定！</h2>
+              <p>
+                みんなの「やります」「できた」にリアクションして応援しましょう！
+                <br />
+                フィードは5分だけ見られます
+              </p>
+              <button
+                className="feed-expired-start-button"
+                type="button"
+                onClick={closeFeedIntro}
+              >
+                OK
+              </button>
+            </section>
+          </div>
+        ) : null}
 
         {isFeedExpired ? (
           <div className="feed-expired-backdrop" role="presentation">
@@ -1757,29 +2469,29 @@ export function HomePage() {
                   className="feed-comment-panel-list"
                   aria-label="コメント一覧"
                 >
-                  {activeCommentPost.comments.map((comment, index) => (
-                    <li key={`${activeCommentPost.id}-panel-comment-${index}`}>
+                  {activeCommentPost.comments.map((comment) => (
+                    <li
+                      className={`feed-comment-item-${comment.postStatusWhenCommented}`}
+                      key={comment.id}
+                    >
                       <div className="feed-comment-author">
-                        <span
+                        <img
                           className="feed-comment-avatar"
+                          src={getAvatarSrc(comment.avatarId)}
+                          alt=""
                           aria-hidden="true"
                         />
-                        <span>みき</span>
-                        <span className="feed-comment-level">Lv.7</span>
+                        <span>{comment.userName}</span>
+                        <span className="feed-comment-level">
+                          Lv.{comment.level}
+                        </span>
                       </div>
                       <div className="feed-comment-body">
-                        <span>{comment}</span>
+                        <span>{comment.body}</span>
                         <time
-                          dateTime={new Date(
-                            activeCommentPost.createdAt,
-                          ).toISOString()}
+                          dateTime={new Date(comment.createdAt).toISOString()}
                         >
-                          {index === activeCommentPost.comments.length - 1
-                            ? formatFeedPostAge(
-                                activeCommentPost.createdAt,
-                                feedNow,
-                              )
-                            : '2時間前'}
+                          {formatFeedPostAge(comment.createdAt, feedNow)}
                         </time>
                       </div>
                     </li>
@@ -1795,6 +2507,7 @@ export function HomePage() {
                   aria-label={`${activeCommentPost.userName}さんの投稿にコメントする`}
                   placeholder="コメントを入力"
                   value={commentDrafts[activeCommentPost.id] ?? ''}
+                  disabled={!activeCommentPost.canComment}
                   onChange={(event) =>
                     handleCommentDraftChange(
                       activeCommentPost.id,
@@ -1805,8 +2518,11 @@ export function HomePage() {
                 <button
                   type="button"
                   aria-label="コメントを送信"
-                  onClick={() => addPostComment(activeCommentPost.id)}
-                  disabled={!(commentDrafts[activeCommentPost.id] ?? '').trim()}
+                  onClick={() => void addPostComment(activeCommentPost.id)}
+                  disabled={
+                    !activeCommentPost.canComment ||
+                    !(commentDrafts[activeCommentPost.id] ?? '').trim()
+                  }
                 >
                   ➤
                 </button>
@@ -1871,11 +2587,11 @@ export function HomePage() {
             <div className="task-complete-stats" aria-label="リアクション">
               <span>
                 <img src={likeIcon} alt="" aria-hidden="true" />
-                {taskCompleteLikeCount}件
+                {completedTaskReactions.likes}件
               </span>
               <span>
                 <img src={commentIcon} alt="" aria-hidden="true" />
-                {taskCompleteComments.length}件
+                {completedTaskReactions.comments.length}件
               </span>
             </div>
 
@@ -1888,10 +2604,17 @@ export function HomePage() {
                   aria-label="コメント"
                 >
                   <ul>
-                    {taskCompleteComments.map((comment) => (
-                      <li key={comment}>
-                        <span className="comment-avatar" aria-hidden="true" />
-                        <span className="complete-comment-text">{comment}</span>
+                    {completedTaskReactions.comments.map((comment) => (
+                      <li key={comment.id}>
+                        <img
+                          className="comment-avatar"
+                          src={getAvatarSrc(comment.avatarId)}
+                          alt=""
+                          aria-hidden="true"
+                        />
+                        <span className="complete-comment-text">
+                          {comment.body}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -1927,6 +2650,7 @@ export function HomePage() {
               className="focus-done-button"
               type="button"
               onClick={handleTaskDone}
+              disabled={isTaskSubmitting}
             >
               できた！
             </button>
@@ -1997,7 +2721,11 @@ export function HomePage() {
               {taskError}
             </p>
           ) : null}
-          <button className="home-start-button" type="submit">
+          <button
+            className="home-start-button"
+            type="submit"
+            disabled={isTaskSubmitting}
+          >
             始める
           </button>
         </form>

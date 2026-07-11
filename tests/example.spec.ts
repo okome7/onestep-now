@@ -106,6 +106,140 @@ async function mockPasswordReset(page: Page) {
   });
 }
 
+async function mockTaskAndFeedApi(page: Page) {
+  let taskId = 1;
+  let activeTask = "";
+  let completionPostId = 1;
+  let completedAt: string | null = null;
+  const completionComments = [
+    "頑張れ！",
+    "ファイト🔥",
+    "今日も一歩進めていてすごい！その調子で次の一歩も応援してるよ",
+    "応援してる！",
+    "集中できたのすごい！",
+    "その一歩が未来につながってるよ",
+    "ナイスチャレンジ✨",
+    "最後までやり切ったね！",
+    "次も一緒に進もう！",
+  ];
+
+  const completionPostComments = () =>
+    completedAt
+      ? completionComments.map((body, index) => ({
+          id: index + 1,
+          user_id: index + 2,
+          user_name: `応援ユーザー${index + 1}`,
+          avatar_key: `avatar-${(index % 8) + 1}`,
+          body,
+          post_status_when_commented: "doing",
+          created_at: new Date(Date.now() - (completionComments.length - index) * 1000).toISOString(),
+        }))
+      : [];
+
+  await page.route(/.*\/(?:api\/)?tasks$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
+
+    const body = route.request().postDataJSON() as {
+      task?: { title?: string };
+    };
+    activeTask = body.task?.title ?? "";
+
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: taskId,
+          title: activeTask,
+          status: "pending",
+        },
+      }),
+    });
+  });
+
+  await page.route(/.*\/(?:api\/)?tasks\/\d+\/start$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: taskId,
+          title: activeTask,
+          status: "active",
+          completion_post_id: completionPostId,
+        },
+      }),
+    });
+  });
+
+  await page.route(/.*\/(?:api\/)?tasks\/\d+\/complete$/, async (route) => {
+    completedAt = new Date().toISOString();
+
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: taskId,
+          title: activeTask,
+          status: "completed",
+          completed_at: completedAt,
+          completion_post_id: completionPostId,
+          completion_post: {
+            id: completionPostId,
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            likes_count: 12,
+            comments_count: completionComments.length,
+            liked_by_me: false,
+            comments: completionPostComments(),
+            created_at: new Date().toISOString(),
+            completed_at: completedAt,
+          },
+        },
+      }),
+    });
+  });
+
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 5 * 60,
+        feed_access_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        data: activeTask
+          ? [
+              {
+                id: completionPostId,
+                user_name: "おこめ",
+                level: 1,
+                task_title: activeTask,
+                status: completedAt ? "completed" : "doing",
+                status_label: completedAt ? "できた" : "やります",
+                card_variant: completedAt ? "completed" : "doing",
+                is_mine: true,
+                can_like: false,
+                can_comment: false,
+                likes_count: completedAt ? 12 : 0,
+                comments_count: completedAt ? completionComments.length : 0,
+                liked_by_me: false,
+                comments: completionPostComments(),
+                created_at: new Date().toISOString(),
+                completed_at: completedAt,
+              },
+            ]
+          : [],
+      }),
+    });
+  });
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => {
@@ -670,6 +804,7 @@ test("ホーム画面でやることを入力せずに始めるとエラーが�
 });
 
 test("ホーム画面でやることを始めるとタイマーが表示される", async ({ page }) => {
+  await mockTaskAndFeedApi(page);
   await gotoHome(page);
 
   await page
@@ -691,6 +826,7 @@ test("ホーム画面でやることを始めるとタイマーが表示され�
 test("集中画面でやめるを押すと確認モーダルが表示され、確定するとホーム画面に戻る", async ({
   page,
 }) => {
+  await mockTaskAndFeedApi(page);
   await gotoHome(page);
 
   await page
@@ -717,6 +853,7 @@ test("集中画面でやめるを押すと確認モーダルが表示され、�
 });
 
 test("集中画面でできたを押すと完了画面が表示される", async ({ page }) => {
+  await mockTaskAndFeedApi(page);
   await gotoHome(page);
 
   await page
@@ -755,9 +892,47 @@ test("集中画面でできたを押すと完了画面が表示される", async
     .toBe(true);
 });
 
+test("フィード閲覧時間外は案内画面からホームへ戻れる", async ({ page }) => {
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "error",
+        errors: ["フィード閲覧時間外です"],
+      }),
+    });
+  });
+  await gotoHome(page);
+
+  await page.getByRole("link", { name: "投稿" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "フィード", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "フィードは5分だけ見られます" }),
+  ).toBeVisible();
+  await expect(page.getByText("フィードってなに？")).toBeVisible();
+  await expect(page.getByText("1. やります")).toBeVisible();
+  await expect(page.getByText("2. できた！")).toBeVisible();
+  await expect(page.getByText("3. フィード解放")).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "5分経過しました" }),
+  ).toHaveCount(0);
+
+  await page.getByRole("button", { name: "最初の一歩を始める" }).click();
+
+  await expect(page.getByRole("heading", { name: "フィード" })).toHaveCount(0);
+  await expect(
+    page.getByRole("textbox", { name: "今できること" }),
+  ).toBeVisible();
+});
+
 test("フィード閲覧時間が終了するとモーダルからホームへ戻れる", async ({
   page,
 }) => {
+  await mockTaskAndFeedApi(page);
   await page.clock.install();
   await gotoHome(page);
 
