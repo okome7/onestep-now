@@ -163,7 +163,11 @@ export function HomePage() {
   const activeAchievement = activeAchievementId
     ? (allProfileAchievements.find(
         (achievement) => achievement.id === activeAchievementId,
-      ) ?? null)
+      ) ??
+        recentAchievements.find(
+          (achievement) => achievement.id === activeAchievementId,
+        ) ??
+        null)
     : null
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
@@ -2021,6 +2025,123 @@ export function HomePage() {
             </section>
           )}
         </section>
+
+        {activeAchievement ? (
+          <>
+            <button
+              className="feed-comment-backdrop achievement-detail-backdrop"
+              type="button"
+              aria-label="詳細を閉じる"
+              onClick={closeAchievementDetail}
+            />
+            <section
+              className="feed-comment-panel feed-comment-panel-done achievement-detail-panel"
+              aria-labelledby="achievement-detail-title"
+            >
+              <div className="feed-comment-panel-header">
+                <h2 id="achievement-detail-title">
+                  {activeAchievementTab === 'likes' ? 'いいね' : 'コメント'}
+                </h2>
+                <button
+                  className="feed-comment-panel-close"
+                  type="button"
+                  aria-label="詳細を閉じる"
+                  onClick={closeAchievementDetail}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="achievement-detail-tabs" role="tablist">
+                <button
+                  className={activeAchievementTab === 'likes' ? 'active' : ''}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAchievementTab === 'likes'}
+                  onClick={() => setActiveAchievementTab('likes')}
+                >
+                  いいね({activeAchievement.likes})
+                </button>
+                <button
+                  className={
+                    activeAchievementTab === 'comments' ? 'active' : ''
+                  }
+                  type="button"
+                  role="tab"
+                  aria-selected={activeAchievementTab === 'comments'}
+                  onClick={() => setActiveAchievementTab('comments')}
+                >
+                  コメント({activeAchievement.comments})
+                </button>
+              </div>
+
+              <div className="feed-comment-panel-task">
+                {activeAchievement.task}
+              </div>
+
+              {activeAchievementTab === 'likes' ? (
+                <ul
+                  className="feed-comment-panel-list achievement-detail-list"
+                  aria-label="いいねした人"
+                >
+                  {activeAchievement.likedUsers.map((user) => (
+                    <li
+                      className={
+                        user.afterComplete ? 'achievement-after-complete' : ''
+                      }
+                      key={user.name}
+                    >
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>{user.name}</span>
+                        <span className="feed-comment-level">Lv.{user.level}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul
+                  className="feed-comment-panel-list"
+                  aria-label="コメント一覧"
+                >
+                  {activeAchievement.commentItems.map((comment) => (
+                    <li
+                      className={
+                        comment.afterComplete
+                          ? 'achievement-after-complete'
+                          : ''
+                      }
+                      key={`${comment.name}-${comment.text}`}
+                    >
+                      <div className="feed-comment-author">
+                        <span
+                          className="feed-comment-avatar"
+                          aria-hidden="true"
+                        />
+                        <span>{comment.name}</span>
+                        <span className="feed-comment-level">
+                          Lv.{comment.level}
+                        </span>
+                      </div>
+                      <div className="feed-comment-body">
+                        <span>{comment.text}</span>
+                        <time>
+                          {formatFeedPostAge(
+                            new Date(comment.age).getTime(),
+                            feedNow,
+                          )}
+                        </time>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        ) : null}
 
         <HomeBottomNav
           activeItem="profile"
