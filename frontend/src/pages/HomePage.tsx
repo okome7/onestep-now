@@ -2200,17 +2200,7 @@ export function HomePage() {
               aria-labelledby="feed-start-title"
             >
               <div className="feed-start-illustration" aria-hidden="true">
-                <span className="feed-sparkle feed-sparkle-one" />
-                <span className="feed-sparkle feed-sparkle-two" />
-                <span className="feed-sparkle feed-sparkle-three" />
-                <span className="feed-sparkle feed-sparkle-four" />
-                <span className="feed-sparkle feed-sparkle-five" />
-                <span className="feed-paper">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-                <span className="feed-pencil" />
+                <img src={feedStartIllustrationIcon} alt="" />
               </div>
               <div className="feed-start-gate-card">
                 <h2 id="feed-start-title">
