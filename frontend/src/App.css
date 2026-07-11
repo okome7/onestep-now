@@ -1894,7 +1894,7 @@ body {
   display: grid;
   width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1914,13 +1914,18 @@ body {
 
 .feed-start-steps li:not(:last-child)::after {
   position: absolute;
-  right: -8px;
-  top: 38px;
+  right: -16px;
+  top: 50%;
   z-index: 1;
+  display: grid;
+  width: 16px;
+  place-items: center;
   color: #a8c9f2;
   content: '→';
   font-size: 12px;
   font-weight: 800;
+  line-height: 1;
+  transform: translateY(-50%);
 }
 
 .feed-start-step-icon {
