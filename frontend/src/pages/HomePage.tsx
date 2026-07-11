@@ -2202,7 +2202,6 @@ export function HomePage() {
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="7"
-                    vectorEffect="non-scaling-stroke"
                   />
                   <line
                     className="feed-countdown-hand"
@@ -2216,7 +2215,6 @@ export function HomePage() {
                     stroke="currentColor"
                     strokeWidth="7"
                     strokeLinecap="round"
-                    vectorEffect="non-scaling-stroke"
                   />
                 </svg>
                 残り {formatFeedRemainingTime(feedRemainingSeconds)}
