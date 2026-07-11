@@ -10,6 +10,28 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+test('本番APIベースURLから/api付きのフィードURLを組み立てる', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: () =>
+      Promise.resolve({
+        status: 'success',
+        data: [],
+        remaining_seconds: 300,
+      }),
+  })
+
+  vi.stubGlobal('fetch', fetchMock)
+
+  await fetchFeed(1, 'https://onestep-now.onrender.com')
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    'https://onestep-now.onrender.com/api/feed',
+    expect.any(Object),
+  )
+})
+
 test('フィード認証エラーは閲覧不可エラーとして扱う', async () => {
   vi.stubGlobal(
     'fetch',

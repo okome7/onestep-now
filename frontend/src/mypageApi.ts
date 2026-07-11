@@ -58,7 +58,12 @@ const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 function apiUrl(apiBaseUrl: string, path: string) {
   const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-  return `${trimmedApiBaseUrl.replace(/\/$/, '')}${path}`
+  const normalizedApiBaseUrl = trimmedApiBaseUrl.replace(/\/$/, '')
+  const apiBasePath = normalizedApiBaseUrl.endsWith('/api')
+    ? normalizedApiBaseUrl
+    : `${normalizedApiBaseUrl}/api`
+
+  return `${apiBasePath}${path}`
 }
 
 function userHeaders(userId?: number) {
