@@ -1,29 +1,29 @@
 <svg viewBox="0 0 634 460" xmlns="http://www.w3.org/2000/svg">
   <rect width="634" height="460" fill="#F5F8FC"/>
   <circle cx="317" cy="230" r="170" fill="#DCEBFF"/>
-  <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
-    <line x1="145" y1="70" x2="160" y2="85"/>
-    <line x1="160" y1="70" x2="145" y2="85"/>
+  <g transform="translate(145 78)" stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
+    <line x1="-7" y1="-7" x2="7" y2="7"/>
+    <line x1="7" y1="-7" x2="-7" y2="7"/>
   </g>
-  <circle cx="85" cy="235" r="11" fill="none" stroke="#9FC8FA" stroke-width="6"/>
-  <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
-    <line x1="145" y1="365" x2="160" y2="380"/>
-    <line x1="160" y1="365" x2="145" y2="380"/>
+  <circle cx="82" cy="230" r="11" fill="none" stroke="#9FC8FA" stroke-width="6"/>
+  <g transform="translate(145 382)" stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
+    <line x1="-7" y1="-7" x2="7" y2="7"/>
+    <line x1="7" y1="-7" x2="-7" y2="7"/>
   </g>
-  <path d="M520 65C523 75 527 79 537 82C527 85 523 89 520 99C517 89 513 85 503 82C513 79 517 75 520 65Z" fill="none" stroke="#9FC8FA" stroke-width="5" stroke-linejoin="round"/>
-  <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
-    <line x1="560" y1="205" x2="575" y2="220"/>
-    <line x1="575" y1="205" x2="560" y2="220"/>
+  <path d="M489 60C492 70 496 74 506 77C496 80 492 84 489 94C486 84 482 80 472 77C482 74 486 70 489 60Z" fill="none" stroke="#9FC8FA" stroke-width="5" stroke-linejoin="round"/>
+  <g transform="translate(552 230)" stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
+    <line x1="-7" y1="-7" x2="7" y2="7"/>
+    <line x1="7" y1="-7" x2="-7" y2="7"/>
   </g>
-  <path d="M520 335C523 345 527 349 537 352C527 355 523 359 520 369C517 359 513 355 503 352C513 349 517 345 520 335Z" fill="none" stroke="#9FC8FA" stroke-width="5" stroke-linejoin="round"/>
-  <rect x="220" y="115" width="160" height="200" rx="16" fill="#FFF" stroke="#3566A6" stroke-width="10"/>
-  <line x1="265" y1="170" x2="315" y2="170" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
-  <line x1="265" y1="228" x2="338" y2="228" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
-  <line x1="265" y1="286" x2="330" y2="286" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
-  <g transform="rotate(-45 390 200)">
-    <rect x="300" y="175" width="185" height="55" rx="6" fill="#FFF" stroke="#3566A6" stroke-width="9"/>
-    <line x1="445" y1="175" x2="445" y2="230" stroke="#3566A6" stroke-width="9"/>
-    <polygon points="300,175 265,202.5 300,230" fill="#FFF" stroke="#3566A6" stroke-width="9" stroke-linejoin="round"/>
-    <polygon points="265,202.5 283,194 283,211" fill="#3566A6"/>
+  <path d="M489 366C492 376 496 380 506 383C496 386 492 390 489 400C486 390 482 386 472 383C482 380 486 376 489 366Z" fill="none" stroke="#9FC8FA" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="228" y="128" width="162" height="204" rx="16" fill="#FFFFFF" stroke="#3566A6" stroke-width="10"/>
+  <line x1="269" y1="187" x2="319" y2="187" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
+  <line x1="269" y1="246" x2="345" y2="246" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
+  <line x1="269" y1="305" x2="338" y2="305" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
+  <g transform="rotate(-45 405 215)">
+    <rect x="310" y="188" width="190" height="54" rx="6" fill="#FFFFFF" stroke="#3566A6" stroke-width="9"/>
+    <line x1="458" y1="188" x2="458" y2="242" stroke="#3566A6" stroke-width="9"/>
+    <polygon points="310,188 272,215 310,242" fill="#FFFFFF" stroke="#3566A6" stroke-width="9" stroke-linejoin="round"/>
+    <polygon points="272,215 291,206 291,224" fill="#3566A6"/>
   </g>
 </svg>
