@@ -1757,9 +1757,8 @@ body {
 
 .feed-list:has(.feed-start-gate) {
   width: min(100%, 292px);
-  min-height: calc(100dvh - 126px);
   align-content: start;
-  padding: 24px 16px 84px;
+  padding: 24px 16px 34px;
 }
 
 .feed-card {
