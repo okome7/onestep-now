@@ -1980,14 +1980,26 @@ export function HomePage() {
                     >
                       <strong>{achievement.task}</strong>
                       <div>
-                        <span>
+                        <button
+                          className="achievement-reaction-button"
+                          type="button"
+                          onClick={() =>
+                            openAchievementDetail(achievement.id, 'likes')
+                          }
+                        >
                           <img src={likeIcon} alt="" aria-hidden="true" />
                           {achievement.likes}
-                        </span>
-                        <span>
+                        </button>
+                        <button
+                          className="achievement-reaction-button"
+                          type="button"
+                          onClick={() =>
+                            openAchievementDetail(achievement.id, 'comments')
+                          }
+                        >
                           <img src={commentIcon} alt="" aria-hidden="true" />
                           {achievement.comments}
-                        </span>
+                        </button>
                         <time
                           dateTime={new Date(achievement.createdAt).toISOString()}
                         >
