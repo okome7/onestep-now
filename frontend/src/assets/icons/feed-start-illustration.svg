@@ -1,0 +1,29 @@
+<svg width="634" height="460" viewBox="0 0 634 460" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="634" height="460" fill="#F5F8FC"/>
+  <circle cx="288" cy="236" r="172" fill="#DCEBFF"/>
+  <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
+    <line x1="164" y1="67" x2="179" y2="82"/>
+    <line x1="179" y1="67" x2="164" y2="82"/>
+  </g>
+  <circle cx="102" cy="212" r="11" fill="none" stroke="#9FC8FA" stroke-width="6"/>
+  <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
+    <line x1="145" y1="355" x2="160" y2="370"/>
+    <line x1="160" y1="355" x2="145" y2="370"/>
+  </g>
+  <path d="M421 58C424 68 428 72 438 75C428 78 424 82 421 92C418 82 414 78 404 75C414 72 418 68 421 58Z" fill="none" stroke="#9FC8FA" stroke-width="5" stroke-linejoin="round"/>
+  <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
+    <line x1="492" y1="202" x2="507" y2="217"/>
+    <line x1="507" y1="202" x2="492" y2="217"/>
+  </g>
+  <path d="M448 338C451 348 455 352 465 355C455 358 451 362 448 372C445 362 441 358 431 355C441 352 445 348 448 338Z" fill="none" stroke="#9FC8FA" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="199" y="136" width="162" height="203" rx="16" fill="#FFFFFF" stroke="#3566A6" stroke-width="10"/>
+  <line x1="241" y1="194" x2="291" y2="194" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
+  <line x1="241" y1="252" x2="317" y2="252" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
+  <line x1="241" y1="311" x2="310" y2="311" stroke="#4B91E5" stroke-width="7" stroke-linecap="round"/>
+  <g transform="rotate(-47 376 218)">
+    <rect x="288" y="193" width="180" height="55" rx="5" fill="#FFFFFF" stroke="#3566A6" stroke-width="9"/>
+    <line x1="432" y1="193" x2="432" y2="248" stroke="#3566A6" stroke-width="9"/>
+    <polygon points="288,193 250,220.5 288,248" fill="#FFFFFF" stroke="#3566A6" stroke-width="9" stroke-linejoin="round"/>
+    <polygon points="250,220.5 270,211 270,230" fill="#3566A6"/>
+  </g>
+</svg>
