@@ -1915,7 +1915,7 @@ body {
 .feed-start-steps li:not(:last-child)::after {
   position: absolute;
   right: -16px;
-  top: 38px;
+  top: 50%;
   z-index: 1;
   display: grid;
   width: 16px;
@@ -1925,6 +1925,7 @@ body {
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
+  transform: translateY(-50%);
 }
 
 .feed-start-step-icon {
