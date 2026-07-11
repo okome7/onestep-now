@@ -86,7 +86,12 @@ export class AuthRequiredError extends Error {
 
 function apiUrl(apiBaseUrl: string, path: string) {
   const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-  return `${trimmedApiBaseUrl.replace(/\/$/, '')}${path}`
+  const normalizedApiBaseUrl = trimmedApiBaseUrl.replace(/\/$/, '')
+  const apiBasePath = normalizedApiBaseUrl.endsWith('/api')
+    ? normalizedApiBaseUrl
+    : `${normalizedApiBaseUrl}/api`
+
+  return `${apiBasePath}${path}`
 }
 
 function userHeaders(userId?: number) {
