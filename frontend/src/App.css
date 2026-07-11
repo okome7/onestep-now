@@ -3381,6 +3381,11 @@ body {
   background: #ffffff;
 }
 
+.profile-page:not(.achievements-page) .achievement-detail-backdrop,
+.profile-page:not(.achievements-page) .achievement-detail-panel {
+  bottom: 64px;
+}
+
 .achievement-detail-panel .feed-comment-panel-task {
   background: #f2fff3;
 }
@@ -3431,6 +3436,11 @@ body {
 
   .all-achievement-list {
     padding-bottom: 0;
+  }
+
+  .profile-page:not(.achievements-page) .achievement-detail-backdrop,
+  .profile-page:not(.achievements-page) .achievement-detail-panel {
+    bottom: 56px;
   }
 }
 
