@@ -1930,16 +1930,12 @@ export function HomePage() {
         />
 
         <section className="profile-content" aria-label="マイページ">
-          {hasProfileAchievements ? (
-            <img
-              className="profile-avatar-large"
-              src={profileAvatarSrc}
-              alt=""
-              aria-hidden="true"
-            />
-          ) : (
-            <span className="profile-avatar-large profile-avatar-empty" />
-          )}
+          <img
+            className="profile-avatar-large"
+            src={profileAvatarSrc}
+            alt=""
+            aria-hidden="true"
+          />
           <p className="profile-name">{profileName}</p>
 
           <section className="profile-level-card" aria-label="レベル">

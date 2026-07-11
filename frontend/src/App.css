@@ -2972,9 +2972,6 @@ body {
   object-fit: cover;
   background: #d9d9d9;
 }
-.profile-avatar-empty {
-  display: block;
-}
 .profile-name {
   margin: 8px 0 10px;
   color: #111827;
