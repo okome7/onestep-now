@@ -2202,32 +2202,22 @@ export function HomePage() {
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="10"
+                    vectorEffect="non-scaling-stroke"
                   />
-                  <g
-                    className="feed-countdown-hands"
+                  <line
+                    className="feed-countdown-hand"
                     style={{
                       transform: `rotate(${feedCountdownHandAngle}deg)`,
                     }}
-                  >
-                    <line
-                      x1="60"
-                      y1="60"
-                      x2="60"
-                      y2="37"
-                      stroke="currentColor"
-                      strokeWidth="10"
-                      strokeLinecap="round"
-                    />
-                    <line
-                      x1="60"
-                      y1="60"
-                      x2="72"
-                      y2="70"
-                      stroke="currentColor"
-                      strokeWidth="10"
-                      strokeLinecap="round"
-                    />
-                  </g>
+                    x1="60"
+                    y1="60"
+                    x2="60"
+                    y2="37"
+                    stroke="currentColor"
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
                 </svg>
                 残り {formatFeedRemainingTime(feedRemainingSeconds)}
               </time>

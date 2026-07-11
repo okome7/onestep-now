@@ -1725,14 +1725,16 @@ body {
 
 .feed-countdown-icon {
   display: block;
+  flex: 0 0 19px;
   width: 19px;
   height: 19px;
   opacity: 0.9;
+  overflow: visible;
 }
 
-.feed-countdown-hands {
-  transform-box: fill-box;
-  transform-origin: center;
+.feed-countdown-hand {
+  transform-box: view-box;
+  transform-origin: 60px 60px;
   transition: transform 1s linear;
 }
 
