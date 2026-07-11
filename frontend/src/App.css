@@ -1710,9 +1710,10 @@ body {
 }
 
 .feed-countdown {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: 20px max-content;
   align-items: center;
-  gap: 6px;
+  column-gap: 6px;
   justify-content: center;
   width: 118px;
   border-radius: 3px;
@@ -1740,9 +1741,8 @@ body {
 }
 
 .feed-countdown-label {
-  display: inline-block;
-  width: 74px;
-  text-align: left;
+  display: block;
+  text-align: center;
 }
 
 .feed-list {
