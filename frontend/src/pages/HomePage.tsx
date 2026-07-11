@@ -2198,10 +2198,10 @@ export function HomePage() {
                   <circle
                     cx="60"
                     cy="60"
-                    r="42"
+                    r="40"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="10"
+                    strokeWidth="7"
                     vectorEffect="non-scaling-stroke"
                   />
                   <line
@@ -2212,9 +2212,9 @@ export function HomePage() {
                     x1="60"
                     y1="60"
                     x2="60"
-                    y2="37"
+                    y2="34"
                     stroke="currentColor"
-                    strokeWidth="10"
+                    strokeWidth="7"
                     strokeLinecap="round"
                     vectorEffect="non-scaling-stroke"
                   />

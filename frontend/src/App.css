@@ -1713,6 +1713,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  justify-content: center;
+  min-width: 118px;
   border-radius: 3px;
   padding: 7px 9px;
   background: #dbeafe;
@@ -1725,11 +1727,9 @@ body {
 
 .feed-countdown-icon {
   display: block;
-  flex: 0 0 19px;
-  width: 19px;
-  height: 19px;
-  opacity: 0.9;
-  overflow: visible;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
 }
 
 .feed-countdown-hand {
