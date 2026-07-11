@@ -1711,7 +1711,7 @@ body {
 
 .feed-countdown {
   display: inline-grid;
-  grid-template-columns: 20px max-content;
+  grid-template-columns: 20px 74px;
   align-items: center;
   column-gap: 6px;
   justify-content: center;
@@ -1722,6 +1722,7 @@ body {
   color: #4d95e5;
   font-size: 13px;
   font-weight: 800;
+  font-feature-settings: 'tnum';
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1742,6 +1743,7 @@ body {
 
 .feed-countdown-label {
   display: block;
+  width: 74px;
   text-align: center;
 }
 
