@@ -1744,7 +1744,7 @@ body {
 .feed-countdown-label {
   display: block;
   width: 74px;
-  text-align: left;
+  text-align: center;
 }
 
 .feed-list {
@@ -3247,7 +3247,9 @@ body {
   background: #ffffff;
 }
 
-.achievement-detail-panel .feed-comment-panel-list li.achievement-after-complete {
+.achievement-detail-panel
+  .feed-comment-panel-list
+  li.achievement-after-complete {
   background: #f2fff3;
 }
 
