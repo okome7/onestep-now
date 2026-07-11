@@ -1713,7 +1713,7 @@ body {
   display: inline-grid;
   grid-template-columns: 20px 74px;
   align-items: center;
-  column-gap: 6px;
+  column-gap: 3px;
   justify-content: center;
   width: 118px;
   border-radius: 3px;
@@ -1744,7 +1744,7 @@ body {
 .feed-countdown-label {
   display: block;
   width: 74px;
-  text-align: center;
+  text-align: left;
 }
 
 .feed-list {
