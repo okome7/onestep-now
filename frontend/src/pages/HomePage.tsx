@@ -145,6 +145,12 @@ export function HomePage() {
   const isTaskRunning = isTaskActive && !isTaskComplete
   const hasCompleteComments = completedTaskReactions.comments.length > 0
   const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
+  const feedCountdownElapsedSeconds = Math.min(
+    feedViewDurationSeconds,
+    Math.max(0, feedViewDurationSeconds - feedRemainingSeconds),
+  )
+  const feedCountdownHandAngle =
+    (feedCountdownElapsedSeconds / feedViewDurationSeconds) * 360
   const visibleFeedPosts = feedPosts
   const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
   const profileName = completeProfile.name || 'おこめ'
@@ -2186,8 +2192,37 @@ export function HomePage() {
                 className="feed-countdown"
                 dateTime={`PT${feedRemainingSeconds}S`}
               >
-                <span className="feed-countdown-icon" aria-hidden="true" />
-                残り {formatFeedRemainingTime(feedRemainingSeconds)}
+                <svg
+                  className="feed-countdown-icon"
+                  viewBox="0 0 120 120"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="40"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="7"
+                  />
+                  <line
+                    className="feed-countdown-hand"
+                    style={{
+                      transform: `rotate(${feedCountdownHandAngle}deg)`,
+                    }}
+                    x1="60"
+                    y1="60"
+                    x2="60"
+                    y2="34"
+                    stroke="currentColor"
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="feed-countdown-label">
+                  残り {formatFeedRemainingTime(feedRemainingSeconds)}
+                </span>
               </time>
             )
           }

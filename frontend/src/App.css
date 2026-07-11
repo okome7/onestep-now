@@ -1710,50 +1710,41 @@ body {
 }
 
 .feed-countdown {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: 20px 74px;
   align-items: center;
-  gap: 6px;
+  column-gap: 3px;
+  justify-content: center;
+  width: 118px;
   border-radius: 3px;
   padding: 7px 9px;
   background: #dbeafe;
   color: #4d95e5;
   font-size: 13px;
   font-weight: 800;
+  font-feature-settings: 'tnum';
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .feed-countdown-icon {
-  position: relative;
-  display: inline-block;
-  width: 19px;
-  height: 19px;
-  border: 3px solid currentColor;
-  border-radius: 50%;
-  opacity: 0.9;
-}
-
-.feed-countdown-icon::before,
-.feed-countdown-icon::after {
-  position: absolute;
-  left: 50%;
-  top: 50%;
   display: block;
-  width: 2px;
-  border-radius: 999px;
-  background: currentColor;
-  content: '';
-  transform-origin: top center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  contain: layout paint;
 }
 
-.feed-countdown-icon::before {
-  height: 6px;
-  transform: translate(-50%, -1px);
+.feed-countdown-hand {
+  transform-box: view-box;
+  transform-origin: 60px 60px;
+  transition: transform 1s linear;
 }
 
-.feed-countdown-icon::after {
-  height: 5px;
-  transform: translate(-50%, -1px) rotate(125deg);
+.feed-countdown-label {
+  display: block;
+  width: 74px;
+  text-align: center;
 }
 
 .feed-list {
@@ -3256,7 +3247,9 @@ body {
   background: #ffffff;
 }
 
-.achievement-detail-panel .feed-comment-panel-list li.achievement-after-complete {
+.achievement-detail-panel
+  .feed-comment-panel-list
+  li.achievement-after-complete {
   background: #f2fff3;
 }
 
