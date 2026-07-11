@@ -2,13 +2,13 @@
   <rect width="634" height="460" fill="#F5F8FC"/>
   <circle cx="288" cy="236" r="172" fill="#DCEBFF"/>
   <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
-    <line x1="164" y1="67" x2="179" y2="82"/>
-    <line x1="179" y1="67" x2="164" y2="82"/>
+    <line x1="125" y1="55" x2="140" y2="70"/>
+    <line x1="140" y1="55" x2="125" y2="70"/>
   </g>
-  <circle cx="102" cy="212" r="11" fill="none" stroke="#9FC8FA" stroke-width="6"/>
+  <circle cx="60" cy="230" r="11" fill="none" stroke="#9FC8FA" stroke-width="6"/>
   <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
-    <line x1="145" y1="355" x2="160" y2="370"/>
-    <line x1="160" y1="355" x2="145" y2="370"/>
+    <line x1="100" y1="385" x2="115" y2="400"/>
+    <line x1="115" y1="385" x2="100" y2="400"/>
   </g>
   <path d="M421 58C424 68 428 72 438 75C428 78 424 82 421 92C418 82 414 78 404 75C414 72 418 68 421 58Z" fill="none" stroke="#9FC8FA" stroke-width="5" stroke-linejoin="round"/>
   <g stroke="#9FC8FA" stroke-width="5" stroke-linecap="round">
