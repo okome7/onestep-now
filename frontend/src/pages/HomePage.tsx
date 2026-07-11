@@ -503,6 +503,9 @@ export function HomePage() {
     setIsFeedAccessDenied(false)
     setIsFeedTimeoutModalOpen(false)
     setFeedError('')
+    if (isTaskComplete) {
+      handleNextTask()
+    }
     window.scrollTo({ top: 0, left: 0 })
   }
 
