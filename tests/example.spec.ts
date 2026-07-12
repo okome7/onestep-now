@@ -206,6 +206,21 @@ async function mockTaskAndFeedApi(page: Page) {
     });
   });
 
+  await page.route(/.*\/(?:api\/)?tasks\/\d+$/, async (route) => {
+    if (route.request().method() !== "DELETE") {
+      await route.fallback();
+      return;
+    }
+
+    activeTask = "";
+    completedAt = null;
+
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success" }),
+    });
+  });
+
   await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -847,6 +862,9 @@ test("集中画面でやめるを押すと確認モーダルが表示され、�
   await expect(
     page.getByRole("textbox", { name: "今できること" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "今できること" }),
+  ).toHaveValue("");
   await expect(
     page.getByRole("heading", { name: "スライド1枚作る" }),
   ).toHaveCount(0);

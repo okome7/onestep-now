@@ -66,6 +66,25 @@ RSpec.describe "Feed posts", type: :request do
         "card_variant" => "doing"
       )
     end
+
+    it "古い開始中タスクが残っていても新しいタスクを開始できる" do
+      old_task = user.tasks.create!(title: "中止しそこねたタスク", status: :active, started_at: 1.minute.ago)
+      old_task.create_completion_post!(user: user, status: :doing, content: old_task.title)
+      old_post_id = old_task.completion_post.id
+      next_task = user.tasks.create!(title: "もう一回始める")
+
+      patch "/api/tasks/#{next_task.id}/start", headers: { "X-User-Id" => user.id.to_s }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(Task.exists?(old_task.id)).to be(false)
+      expect(CompletionPost.exists?(old_post_id)).to be(false)
+      expect(next_task.reload).to be_active
+      expect(next_task.completion_post).to have_attributes(
+        user_id: user.id,
+        status: "doing",
+        content: "もう一回始める"
+      )
+    end
   end
 
   describe "PATCH /api/tasks/:id/complete" do
@@ -99,6 +118,32 @@ RSpec.describe "Feed posts", type: :request do
         "avatar_key" => other_user.avatar_key,
         "post_status_when_commented" => "doing"
       )
+    end
+  end
+
+  describe "DELETE /api/tasks/:id" do
+    it "開始中のタスクと投稿を削除する" do
+      task = user.tasks.create!(title: "やめるタスク", status: :active, started_at: Time.current)
+      task.create_completion_post!(user: user, status: :doing, content: task.title)
+
+      expect {
+        delete "/api/tasks/#{task.id}", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      }.to change(Task, :count).by(-1)
+        .and change(CompletionPost, :count).by(-1)
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "完了済みタスクは削除しない" do
+      task = user.tasks.create!(title: "完了済み", status: :completed, completed_at: Time.current)
+      task.create_completion_post!(user: user, status: :completed, content: task.title, completed_at: task.completed_at)
+
+      expect {
+        delete "/api/tasks/#{task.id}", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      }.not_to change(Task, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(task.reload).to be_completed
     end
   end
 

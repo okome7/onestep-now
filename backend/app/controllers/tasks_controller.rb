@@ -1,6 +1,6 @@
 class TasksController < ApplicationController
   before_action :require_current_user
-  before_action :set_task, only: [ :start, :complete ]
+  before_action :set_task, only: [ :start, :complete, :destroy ]
 
   def create
     task = current_user.tasks.create!(task_params.merge(status: :pending))
@@ -13,6 +13,7 @@ class TasksController < ApplicationController
     return render_forbidden unless owns_task?
 
     ActiveRecord::Base.transaction do
+      current_user.tasks.active.where.not(id: @task.id).destroy_all
       @task.update!(status: :active, started_at: Time.current)
       @task.create_completion_post!(
         user: current_user,
@@ -41,6 +42,17 @@ class TasksController < ApplicationController
     render json: { status: "success", data: task_payload(@task.reload) }, status: :ok
   rescue ActiveRecord::RecordInvalid => e
     render json: { status: "error", errors: e.record.errors.full_messages }, status: :unprocessable_entity
+  end
+
+  def destroy
+    return render_forbidden unless owns_task?
+
+    if @task.completed?
+      return render json: { status: "error", errors: [ "完了済みタスクは削除できません。" ] }, status: :unprocessable_entity
+    end
+
+    @task.destroy!
+    render json: { status: "success" }, status: :ok
   end
 
   private

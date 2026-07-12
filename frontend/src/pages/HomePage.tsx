@@ -47,6 +47,7 @@ import {
 import {
   AuthRequiredError,
   FeedAccessDeniedError,
+  cancelTask,
   completeTask,
   createComment,
   createTask,
@@ -948,7 +949,35 @@ export function HomePage() {
     setIsCancelConfirmOpen(false)
   }
 
-  function confirmTaskCancel() {
+  async function confirmTaskCancel() {
+    if (isTaskSubmitting) {
+      return
+    }
+
+    if (activeTaskId) {
+      setIsTaskSubmitting(true)
+
+      try {
+        await cancelTask(activeTaskId, completeProfile.id)
+      } catch (caughtError) {
+        if (caughtError instanceof AuthRequiredError) {
+          redirectToLoginForAuthRequired()
+          return
+        }
+
+        setTaskError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : 'タスクの中止に失敗しました。',
+        )
+        return
+      } finally {
+        setIsTaskSubmitting(false)
+      }
+    }
+
+    setTaskText('')
+    setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
     setElapsedSeconds(0)
@@ -2679,6 +2708,7 @@ export function HomePage() {
                   <button
                     className="task-cancel-modal-primary"
                     type="button"
+                    disabled={isTaskSubmitting}
                     onClick={confirmTaskCancel}
                   >
                     やめる
