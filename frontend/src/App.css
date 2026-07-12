@@ -1713,9 +1713,9 @@ body {
   display: inline-grid;
   grid-template-columns: 20px 82px;
   align-items: center;
-  column-gap: 5px;
+  column-gap: 9px;
   justify-content: center;
-  width: 130px;
+  width: 134px;
   border-radius: 3px;
   padding: 7px 9px;
   background: #dbeafe;
