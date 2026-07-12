@@ -1711,11 +1711,11 @@ body {
 
 .feed-countdown {
   display: inline-grid;
-  grid-template-columns: 20px 74px;
+  grid-template-columns: 20px 82px;
   align-items: center;
-  column-gap: 3px;
+  column-gap: 5px;
   justify-content: center;
-  width: 118px;
+  width: 130px;
   border-radius: 3px;
   padding: 7px 9px;
   background: #dbeafe;
@@ -1742,19 +1742,22 @@ body {
 }
 
 .feed-countdown-label {
-  display: inline-grid;
-  grid-template-columns: max-content 40px;
-  justify-content: center;
+  display: inline-flex;
   align-items: baseline;
-  column-gap: 4px;
-  width: 74px;
+  width: 82px;
+  min-width: 82px;
+  gap: 4px;
+}
+
+.feed-countdown-prefix {
+  flex: 0 0 auto;
 }
 
 .feed-countdown-time {
   display: inline-block;
-  width: 40px;
+  flex: 0 0 42px;
+  width: 42px;
   text-align: left;
-  font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
 }
