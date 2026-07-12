@@ -1711,13 +1711,13 @@ body {
 
 .feed-countdown {
   display: inline-grid;
-  grid-template-columns: 20px 74px;
+  grid-template-columns: 18px 62px;
   align-items: center;
-  column-gap: 3px;
+  column-gap: 4px;
   justify-content: center;
-  width: 118px;
+  width: 100px;
   border-radius: 3px;
-  padding: 7px 9px;
+  padding: 7px 6px;
   background: #dbeafe;
   color: #4d95e5;
   font-size: 13px;
@@ -1729,10 +1729,11 @@ body {
 
 .feed-countdown-icon {
   display: block;
-  flex: 0 0 20px;
-  width: 20px;
-  height: 20px;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
   contain: layout paint;
+  transform: translateY(1px);
 }
 
 .feed-countdown-hand {
@@ -1742,9 +1743,24 @@ body {
 }
 
 .feed-countdown-label {
-  display: block;
-  width: 74px;
-  text-align: center;
+  display: inline-flex;
+  align-items: baseline;
+  width: 62px;
+  min-width: 62px;
+  gap: 2px;
+}
+
+.feed-countdown-prefix {
+  flex: 0 0 auto;
+}
+
+.feed-countdown-time {
+  display: inline-block;
+  flex: 0 0 34px;
+  width: 34px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
 .feed-list {
