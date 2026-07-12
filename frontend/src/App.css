@@ -1742,9 +1742,21 @@ body {
 }
 
 .feed-countdown-label {
-  display: block;
+  display: inline-grid;
+  grid-template-columns: max-content 40px;
+  justify-content: center;
+  align-items: baseline;
+  column-gap: 4px;
   width: 74px;
-  text-align: center;
+}
+
+.feed-countdown-time {
+  display: inline-block;
+  width: 40px;
+  text-align: left;
+  font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
 .feed-list {

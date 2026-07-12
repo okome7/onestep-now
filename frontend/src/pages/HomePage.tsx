@@ -2214,6 +2214,7 @@ export function HomePage() {
               <time
                 className="feed-countdown"
                 dateTime={`PT${feedRemainingSeconds}S`}
+                aria-label={`残り ${formatFeedRemainingTime(feedRemainingSeconds)}`}
               >
                 <svg
                   className="feed-countdown-icon"
@@ -2243,8 +2244,11 @@ export function HomePage() {
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="feed-countdown-label">
-                  残り {formatFeedRemainingTime(feedRemainingSeconds)}
+                <span className="feed-countdown-label" aria-hidden="true">
+                  <span>残り</span>
+                  <span className="feed-countdown-time">
+                    {formatFeedRemainingTime(feedRemainingSeconds)}
+                  </span>
                 </span>
               </time>
             )
