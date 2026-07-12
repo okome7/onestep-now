@@ -258,6 +258,23 @@ export async function completeTask(taskId: number, userId?: number) {
   return (result as TaskResponse).data
 }
 
+export async function cancelTask(taskId: number, userId?: number) {
+  const response = await fetch(apiUrl(defaultApiBaseUrl, `/tasks/${taskId}`), {
+    method: 'DELETE',
+    headers: userHeaders(userId),
+  })
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
+  const result = await readJson<{ status: 'success' } | ErrorResponse>(response)
+
+  if (!response.ok || result.status === 'error') {
+    throw new Error(errorMessage(result as ErrorResponse, 'タスクの中止に失敗しました。'))
+  }
+}
+
 export async function likePost(postId: string, userId?: number) {
   const response = await fetch(
     apiUrl(defaultApiBaseUrl, `/completion_posts/${postId}/likes`),

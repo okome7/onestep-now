@@ -102,6 +102,32 @@ RSpec.describe "Feed posts", type: :request do
     end
   end
 
+  describe "DELETE /api/tasks/:id" do
+    it "開始中のタスクと投稿を削除する" do
+      task = user.tasks.create!(title: "やめるタスク", status: :active, started_at: Time.current)
+      task.create_completion_post!(user: user, status: :doing, content: task.title)
+
+      expect {
+        delete "/api/tasks/#{task.id}", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      }.to change(Task, :count).by(-1)
+        .and change(CompletionPost, :count).by(-1)
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "完了済みタスクは削除しない" do
+      task = user.tasks.create!(title: "完了済み", status: :completed, completed_at: Time.current)
+      task.create_completion_post!(user: user, status: :completed, content: task.title, completed_at: task.completed_at)
+
+      expect {
+        delete "/api/tasks/#{task.id}", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      }.not_to change(Task, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(task.reload).to be_completed
+    end
+  end
+
   describe "GET /api/feed" do
     it "自分の投稿も含め、操作可否を返す" do
       user.update!(feed_access_expires_at: 5.minutes.from_now)
