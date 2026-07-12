@@ -1711,13 +1711,13 @@ body {
 
 .feed-countdown {
   display: inline-grid;
-  grid-template-columns: 20px 82px;
+  grid-template-columns: 18px 62px;
   align-items: center;
-  column-gap: 9px;
+  column-gap: 4px;
   justify-content: center;
-  width: 128px;
+  width: 100px;
   border-radius: 3px;
-  padding: 7px 9px;
+  padding: 7px 6px;
   background: #dbeafe;
   color: #4d95e5;
   font-size: 13px;
@@ -1729,9 +1729,9 @@ body {
 
 .feed-countdown-icon {
   display: block;
-  flex: 0 0 20px;
-  width: 20px;
-  height: 20px;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
   contain: layout paint;
 }
 
@@ -1744,9 +1744,9 @@ body {
 .feed-countdown-label {
   display: inline-flex;
   align-items: baseline;
-  width: 82px;
-  min-width: 82px;
-  gap: 4px;
+  width: 62px;
+  min-width: 62px;
+  gap: 2px;
 }
 
 .feed-countdown-prefix {
@@ -1755,8 +1755,8 @@ body {
 
 .feed-countdown-time {
   display: inline-block;
-  flex: 0 0 42px;
-  width: 42px;
+  flex: 0 0 34px;
+  width: 34px;
   text-align: left;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
