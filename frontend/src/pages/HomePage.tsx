@@ -976,6 +976,8 @@ export function HomePage() {
       }
     }
 
+    setTaskText('')
+    setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
     setElapsedSeconds(0)
