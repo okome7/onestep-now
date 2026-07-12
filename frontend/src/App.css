@@ -1768,7 +1768,7 @@ body {
   gap: 10px;
   width: min(100%, 280px);
   margin: 0 auto;
-  padding: 18px 0 22px;
+  padding: 18px 0 calc(96px + env(safe-area-inset-bottom));
 }
 
 .feed-list:has(.feed-start-gate) {
