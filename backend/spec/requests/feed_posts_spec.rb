@@ -66,6 +66,25 @@ RSpec.describe "Feed posts", type: :request do
         "card_variant" => "doing"
       )
     end
+
+    it "古い開始中タスクが残っていても新しいタスクを開始できる" do
+      old_task = user.tasks.create!(title: "中止しそこねたタスク", status: :active, started_at: 1.minute.ago)
+      old_task.create_completion_post!(user: user, status: :doing, content: old_task.title)
+      old_post_id = old_task.completion_post.id
+      next_task = user.tasks.create!(title: "もう一回始める")
+
+      patch "/api/tasks/#{next_task.id}/start", headers: { "X-User-Id" => user.id.to_s }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(Task.exists?(old_task.id)).to be(false)
+      expect(CompletionPost.exists?(old_post_id)).to be(false)
+      expect(next_task.reload).to be_active
+      expect(next_task.completion_post).to have_attributes(
+        user_id: user.id,
+        status: "doing",
+        content: "もう一回始める"
+      )
+    end
   end
 
   describe "PATCH /api/tasks/:id/complete" do

@@ -13,6 +13,7 @@ class TasksController < ApplicationController
     return render_forbidden unless owns_task?
 
     ActiveRecord::Base.transaction do
+      current_user.tasks.active.where.not(id: @task.id).destroy_all
       @task.update!(status: :active, started_at: Time.current)
       @task.create_completion_post!(
         user: current_user,
