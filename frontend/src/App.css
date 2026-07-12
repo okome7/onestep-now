@@ -1733,6 +1733,7 @@ body {
   width: 18px;
   height: 18px;
   contain: layout paint;
+  transform: translateY(1px);
 }
 
 .feed-countdown-hand {
