@@ -894,9 +894,7 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  async function handleTaskStart(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
+  async function handleTaskStart() {
     if (isTaskSubmitting) {
       return
     }
@@ -2694,7 +2692,7 @@ export function HomePage() {
         <form
           className="home-start"
           aria-labelledby="home-start-title"
-          onSubmit={handleTaskStart}
+          onSubmit={(event) => event.preventDefault()}
         >
           <h2 id="home-start-title">今できることから</h2>
           <input
@@ -2719,8 +2717,9 @@ export function HomePage() {
           ) : null}
           <button
             className="home-start-button"
-            type="submit"
+            type="button"
             disabled={isTaskSubmitting}
+            onClick={handleTaskStart}
           >
             始める
           </button>
