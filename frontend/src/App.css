@@ -2394,6 +2394,10 @@ body {
     bottom: 56px;
   }
 
+  .feed-page {
+    display: block;
+  }
+
   .achievement-detail-backdrop,
   .achievement-detail-panel {
     bottom: 0;
@@ -2401,6 +2405,7 @@ body {
 
   .feed-list {
     width: min(100% - 84px, 280px);
+    padding-bottom: 22px;
   }
 }
 
