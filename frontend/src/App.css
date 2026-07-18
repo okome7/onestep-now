@@ -3302,7 +3302,7 @@ body {
   }
 
   .all-achievement-list {
-    padding-bottom: 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
 
   .profile-page:not(.achievements-page) .achievement-detail-backdrop,
@@ -3312,6 +3312,10 @@ body {
 }
 
 @media (min-width: 640px) {
+  .achievements-page {
+    padding-bottom: 0;
+  }
+
   .profile-content {
     padding-top: 28px;
     padding-bottom: 34px;
@@ -3361,6 +3365,7 @@ body {
   .all-achievements-content {
     width: min(100%, 360px);
     padding-top: 20px;
+    padding-bottom: 10px;
   }
 
   .all-achievement-card {
