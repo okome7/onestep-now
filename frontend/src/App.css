@@ -2396,7 +2396,6 @@ body {
 
   .feed-page {
     display: block;
-    padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
 
   .achievement-detail-backdrop,
