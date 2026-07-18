@@ -3312,6 +3312,10 @@ body {
 }
 
 @media (min-width: 640px) {
+  .achievements-page {
+    padding-bottom: 0;
+  }
+
   .profile-content {
     padding-top: 28px;
     padding-bottom: 34px;
