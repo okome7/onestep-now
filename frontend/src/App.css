@@ -2394,6 +2394,11 @@ body {
     bottom: 56px;
   }
 
+  .feed-page {
+    display: block;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
   .achievement-detail-backdrop,
   .achievement-detail-panel {
     bottom: 0;
@@ -2401,11 +2406,7 @@ body {
 
   .feed-list {
     width: min(100% - 84px, 280px);
-    padding-bottom: calc(96px + env(safe-area-inset-bottom));
-  }
-
-  .feed-page .feed-list:not(:has(.feed-start-gate)) {
-    padding-bottom: calc(156px + env(safe-area-inset-bottom));
+    padding-bottom: 22px;
   }
 }
 
