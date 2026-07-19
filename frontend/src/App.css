@@ -1711,13 +1711,13 @@ body {
 
 .feed-countdown {
   display: inline-grid;
-  grid-template-columns: 20px 74px;
+  grid-template-columns: 18px 62px;
   align-items: center;
-  column-gap: 3px;
+  column-gap: 4px;
   justify-content: center;
-  width: 118px;
+  width: 100px;
   border-radius: 3px;
-  padding: 7px 9px;
+  padding: 7px 6px;
   background: #dbeafe;
   color: #4d95e5;
   font-size: 13px;
@@ -1729,10 +1729,11 @@ body {
 
 .feed-countdown-icon {
   display: block;
-  flex: 0 0 20px;
-  width: 20px;
-  height: 20px;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
   contain: layout paint;
+  transform: translateY(1px);
 }
 
 .feed-countdown-hand {
@@ -1742,9 +1743,24 @@ body {
 }
 
 .feed-countdown-label {
-  display: block;
-  width: 74px;
-  text-align: center;
+  display: inline-flex;
+  align-items: baseline;
+  width: 62px;
+  min-width: 62px;
+  gap: 2px;
+}
+
+.feed-countdown-prefix {
+  flex: 0 0 auto;
+}
+
+.feed-countdown-time {
+  display: inline-block;
+  flex: 0 0 34px;
+  width: 34px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
 .feed-list {
@@ -1757,9 +1773,8 @@ body {
 
 .feed-list:has(.feed-start-gate) {
   width: min(100%, 292px);
-  min-height: calc(100dvh - 126px);
   align-content: start;
-  padding: 24px 16px 84px;
+  padding: 24px 16px 34px;
 }
 
 .feed-card {
@@ -1895,7 +1910,7 @@ body {
   display: grid;
   width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 16px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1915,13 +1930,18 @@ body {
 
 .feed-start-steps li:not(:last-child)::after {
   position: absolute;
-  right: -8px;
-  top: 38px;
+  right: -16px;
+  top: 50%;
   z-index: 1;
+  display: grid;
+  width: 16px;
+  place-items: center;
   color: #a8c9f2;
   content: '→';
   font-size: 12px;
   font-weight: 800;
+  line-height: 1;
+  transform: translateY(-50%);
 }
 
 .feed-start-step-icon {
@@ -2374,6 +2394,10 @@ body {
     bottom: 56px;
   }
 
+  .feed-page {
+    display: block;
+  }
+
   .achievement-detail-backdrop,
   .achievement-detail-panel {
     bottom: 0;
@@ -2381,6 +2405,7 @@ body {
 
   .feed-list {
     width: min(100% - 84px, 280px);
+    padding-bottom: 22px;
   }
 }
 
@@ -2972,9 +2997,6 @@ body {
   object-fit: cover;
   background: #d9d9d9;
 }
-.profile-avatar-empty {
-  display: block;
-}
 .profile-name {
   margin: 8px 0 10px;
   color: #111827;
@@ -3280,7 +3302,7 @@ body {
   }
 
   .all-achievement-list {
-    padding-bottom: 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
 
   .profile-page:not(.achievements-page) .achievement-detail-backdrop,
@@ -3290,6 +3312,10 @@ body {
 }
 
 @media (min-width: 640px) {
+  .achievements-page {
+    padding-bottom: 0;
+  }
+
   .profile-content {
     padding-top: 28px;
     padding-bottom: 34px;
@@ -3339,6 +3365,7 @@ body {
   .all-achievements-content {
     width: min(100%, 360px);
     padding-top: 20px;
+    padding-bottom: 10px;
   }
 
   .all-achievement-card {
