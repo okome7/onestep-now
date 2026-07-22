@@ -56,13 +56,15 @@ test('フィード閲覧時間外は閲覧不可エラーとして扱う', async
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
+      ok: true,
+      status: 200,
       headers: new Headers({ 'Content-Type': 'application/json' }),
       json: () =>
         Promise.resolve({
-          status: 'error',
-          message: 'フィード閲覧時間外です',
+          status: 'success',
+          access_allowed: false,
+          remaining_seconds: 0,
+          data: [],
         }),
     }),
   )
