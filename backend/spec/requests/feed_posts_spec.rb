@@ -200,12 +200,18 @@ RSpec.describe "Feed posts", type: :request do
       )
     end
 
-    it "閲覧時間外は403を返す" do
+    it "閲覧時間外はアクセス不可を通常レスポンスで返す" do
       user.update!(feed_access_expires_at: 1.second.ago)
 
       get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
 
-      expect(response).to have_http_status(:forbidden)
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to include(
+        "status" => "success",
+        "access_allowed" => false,
+        "remaining_seconds" => 0,
+        "data" => []
+      )
     end
   end
 

@@ -33,6 +33,7 @@ type ApiFeedPost = {
 type FeedSuccessResponse = {
   status: 'success'
   data: ApiFeedPost[]
+  access_allowed?: boolean
   remaining_seconds?: number
   feed_access_expires_at?: string
 }
@@ -181,6 +182,11 @@ export async function fetchFeed(userId?: number, apiBaseUrl = defaultApiBaseUrl)
   }
 
   const success = result as FeedSuccessResponse
+
+  if (success.access_allowed === false) {
+    throw new FeedAccessDeniedError()
+  }
+
   const remainingSeconds =
     success.remaining_seconds ??
     (success.feed_access_expires_at

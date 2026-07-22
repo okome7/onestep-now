@@ -913,11 +913,13 @@ test("集中画面でできたを押すと完了画面が表示される", async
 test("フィード閲覧時間外は案内画面からホームへ戻れる", async ({ page }) => {
   await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
     await route.fulfill({
-      status: 403,
+      status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        status: "error",
-        errors: ["フィード閲覧時間外です"],
+        status: "success",
+        access_allowed: false,
+        remaining_seconds: 0,
+        data: [],
       }),
     });
   });
