@@ -1765,6 +1765,7 @@ body {
 
 .feed-list {
   display: grid;
+  align-content: start;
   gap: 10px;
   width: min(100%, 280px);
   margin: 0 auto;
@@ -1773,7 +1774,6 @@ body {
 
 .feed-list:has(.feed-start-gate) {
   width: min(100%, 292px);
-  align-content: start;
   padding: 24px 16px 34px;
 }
 
