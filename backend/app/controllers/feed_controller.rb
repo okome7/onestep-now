@@ -2,7 +2,7 @@ class FeedController < ApplicationController
   before_action :require_current_user
 
   def index
-    return render_feed_forbidden unless feed_accessible?
+    return render_feed_unavailable unless feed_accessible?
 
     posts = CompletionPost.includes(:task, :user, :completion_post_likes, comments: :user).order(created_at: :desc)
 
@@ -26,11 +26,14 @@ class FeedController < ApplicationController
     [ (current_user.feed_access_expires_at - Time.current).ceil, 0 ].max
   end
 
-  def render_feed_forbidden
+  def render_feed_unavailable
     render json: {
-      status: "error",
-      errors: [ "フィード閲覧時間外です" ]
-    }, status: :forbidden
+      status: "success",
+      access_allowed: false,
+      remaining_seconds: 0,
+      feed_access_expires_at: current_user.feed_access_expires_at,
+      data: []
+    }, status: :ok
   end
 
   def feed_post_payload(post)
