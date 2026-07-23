@@ -3329,7 +3329,12 @@ body {
   width: 16px;
   height: 16px;
   fill: none;
-  transform: translateY(1px);
+}
+
+@media (max-width: 639px) {
+  .profile-achievement-menu svg {
+    transform: translateY(1px);
+  }
 }
 
 .post-delete-modal-backdrop {
