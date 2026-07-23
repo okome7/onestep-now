@@ -41,6 +41,7 @@ import {
   ProfileEmptyState,
   ProfileLevelCard,
   ProfileStatsGrid,
+  PostDeleteModal,
   TaskCompleteScreen,
 } from '../components/home'
 import {
@@ -60,7 +61,7 @@ import {
   startTask,
   unlikePost,
 } from '../feedApi'
-import { fetchMyPage } from '../mypageApi'
+import { deleteCompletionPost, fetchMyPage } from '../mypageApi'
 
 const feedIntroStorageKey = 'onestep-feed-intro-seen'
 const activeHomeViewStorageKey = 'onestep-active-home-view'
@@ -95,6 +96,14 @@ export function HomePage() {
   )
   const [activeAchievementTab, setActiveAchievementTab] =
     useState<AchievementDetailTab>('likes')
+  const [openAchievementMenuId, setOpenAchievementMenuId] = useState<
+    string | null
+  >(null)
+  const [postPendingDeletionId, setPostPendingDeletionId] = useState<
+    string | null
+  >(null)
+  const [isDeletingPost, setIsDeletingPost] = useState(false)
+  const [postDeleteError, setPostDeleteError] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
   const [isAccountDeleteConfirmOpen, setIsAccountDeleteConfirmOpen] =
@@ -614,6 +623,62 @@ export function HomePage() {
 
   function closeAchievementDetail() {
     setActiveAchievementId(null)
+  }
+
+  const toggleAchievementMenu = useCallback((achievementId: string) => {
+    setOpenAchievementMenuId((currentId) =>
+      currentId === achievementId ? null : achievementId,
+    )
+  }, [])
+
+  function requestPostDeletion(achievementId: string) {
+    setOpenAchievementMenuId(null)
+    setPostPendingDeletionId(achievementId)
+    setPostDeleteError('')
+  }
+
+  function cancelPostDeletion() {
+    if (isDeletingPost) {
+      return
+    }
+
+    setPostPendingDeletionId(null)
+    setPostDeleteError('')
+  }
+
+  async function confirmPostDeletion() {
+    if (!postPendingDeletionId || isDeletingPost) {
+      return
+    }
+
+    const deletedPostId = postPendingDeletionId
+    setIsDeletingPost(true)
+    setPostDeleteError('')
+
+    try {
+      await deleteCompletionPost(deletedPostId, completeProfile.id)
+      setFeedPosts((currentPosts) =>
+        currentPosts.filter((post) => post.id !== deletedPostId),
+      )
+      setActiveAchievementId((currentId) =>
+        currentId === deletedPostId ? null : currentId,
+      )
+      setPostPendingDeletionId(null)
+      await loadMyPage()
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
+      setPostDeleteError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : '投稿の削除に失敗しました。',
+      )
+    } finally {
+      setIsDeletingPost(false)
+    }
   }
 
   function openSettings() {
@@ -1803,6 +1868,9 @@ export function HomePage() {
               activeAchievementId={activeAchievementId}
               variant="all"
               onOpenDetail={openAchievementDetail}
+              openMenuId={openAchievementMenuId}
+              onToggleMenu={toggleAchievementMenu}
+              onRequestDelete={requestPostDeletion}
             />
           )}
         </section>
@@ -1814,6 +1882,15 @@ export function HomePage() {
             now={feedNow}
             onClose={closeAchievementDetail}
             onTabChange={setActiveAchievementTab}
+          />
+        ) : null}
+
+        {postPendingDeletionId ? (
+          <PostDeleteModal
+            isDeleting={isDeletingPost}
+            error={postDeleteError}
+            onCancel={cancelPostDeletion}
+            onConfirm={() => void confirmPostDeletion()}
           />
         ) : null}
       </main>
@@ -1888,6 +1965,9 @@ export function HomePage() {
                   achievements={recentAchievements}
                   now={feedNow}
                   onOpenDetail={openAchievementDetail}
+                  openMenuId={openAchievementMenuId}
+                  onToggleMenu={toggleAchievementMenu}
+                  onRequestDelete={requestPostDeletion}
                 />
               </section>
             </>
@@ -1903,6 +1983,15 @@ export function HomePage() {
             now={feedNow}
             onClose={closeAchievementDetail}
             onTabChange={setActiveAchievementTab}
+          />
+        ) : null}
+
+        {postPendingDeletionId ? (
+          <PostDeleteModal
+            isDeleting={isDeletingPost}
+            error={postDeleteError}
+            onCancel={cancelPostDeletion}
+            onConfirm={() => void confirmPostDeletion()}
           />
         ) : null}
 

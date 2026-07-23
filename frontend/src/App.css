@@ -3159,6 +3159,7 @@ body {
   gap: 14px;
 }
 .profile-achievement-card {
+  position: relative;
   border: 1px solid #a9c5ad;
   border-radius: 6px;
   padding: 9px 12px 8px;
@@ -3179,7 +3180,7 @@ body {
   color: #111827;
   font-size: 15px;
 }
-.profile-achievement-card div {
+.profile-achievement-meta {
   display: flex;
   align-items: center;
   gap: 13px;
@@ -3232,8 +3233,185 @@ body {
   font-size: 14px;
 }
 
-.all-achievement-card div {
+.all-achievement-card .profile-achievement-meta {
   font-size: 14px;
+}
+
+.profile-achievement-card:has(.profile-achievement-menu) {
+  z-index: 9;
+}
+
+.profile-achievement-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-achievement-header strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.profile-achievement-menu-container {
+  position: static;
+  flex: 0 0 auto;
+}
+
+.profile-achievement-menu-button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 0 7px;
+  background: transparent;
+  color: #475467;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  transform: translateY(-4px);
+  cursor: pointer;
+}
+
+.profile-achievement-menu-button:hover,
+.profile-achievement-menu-button[aria-expanded='true'] {
+  background: #eaf3ed;
+}
+
+.profile-achievement-menu-button:focus-visible {
+  outline: 3px solid rgb(77 149 229 / 28%);
+  outline-offset: 1px;
+}
+
+.profile-achievement-menu {
+  position: absolute;
+  top: 36px;
+  right: 4px;
+  z-index: 10;
+  width: max-content;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  border: 1px solid #e4e7ec;
+  border-radius: 7px;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgb(15 23 42 / 14%);
+}
+
+.profile-achievement-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  padding: 9px 10px;
+  background: #ffffff;
+  color: #ff5a5f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.profile-achievement-menu button:hover,
+.profile-achievement-menu button:focus-visible {
+  background: #fff1f0;
+  outline: none;
+}
+
+.profile-achievement-menu svg {
+  display: block;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  fill: none;
+}
+
+@media (max-width: 639px) {
+  .profile-achievement-menu svg {
+    transform: translateY(1px);
+  }
+}
+
+.post-delete-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 42%);
+}
+
+.post-delete-modal {
+  width: min(100%, 420px);
+  border-radius: 18px;
+  padding: 28px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgb(15 23 42 / 24%);
+  text-align: center;
+}
+
+.post-delete-modal h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+}
+
+.post-delete-modal > p {
+  margin: 14px 0 0;
+  color: #667085;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.post-delete-modal .post-delete-error {
+  color: #d92d20;
+  font-size: 13px;
+}
+
+.post-delete-modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.post-delete-modal-actions button {
+  min-height: 46px;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #344054;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.post-delete-modal-actions .post-delete-confirm-button {
+  border-color: #d92d20;
+  background: #d92d20;
+  color: #ffffff;
+}
+
+.post-delete-modal-actions button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+@media (max-width: 420px) {
+  .post-delete-modal {
+    padding: 24px 20px;
+  }
+
+  .post-delete-modal-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .achievement-detail-backdrop {

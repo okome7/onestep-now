@@ -41,6 +41,7 @@ export type FeedPost = {
 
 export type ProfileAchievement = {
   id: string
+  canDelete: boolean
   task: string
   likes: number
   comments: number
