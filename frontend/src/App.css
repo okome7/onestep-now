@@ -3304,13 +3304,13 @@ body {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   border: 0;
-  padding: 8px 9px;
+  padding: 9px 10px;
   background: #ffffff;
   color: #ff5a5f;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
@@ -3325,8 +3325,8 @@ body {
 
 .profile-achievement-menu svg {
   flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   fill: none;
 }
 
