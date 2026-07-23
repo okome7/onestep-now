@@ -23,6 +23,7 @@ type ApiAchievementComment = {
 
 type ApiAchievement = {
   id: number
+  can_delete?: boolean
   task_title: string
   likes_count: number
   comments_count: number
@@ -114,6 +115,7 @@ function mapComment(comment: ApiAchievementComment): AchievementComment {
 function mapAchievement(achievement: ApiAchievement): ProfileAchievement {
   return {
     id: String(achievement.id),
+    canDelete: achievement.can_delete ?? false,
     task: achievement.task_title,
     likes: achievement.likes_count,
     comments: achievement.comments_count,
@@ -160,5 +162,35 @@ export async function fetchMyPage(
     commentsCount: data.comments_count,
     recentAchievements: data.recent_achievements.map(mapAchievement),
     allAchievements: data.all_achievements.map(mapAchievement),
+  }
+}
+
+export async function deleteCompletionPost(
+  postId: string,
+  userId?: number,
+  apiBaseUrl = defaultApiBaseUrl,
+) {
+  let response: Response
+
+  try {
+    response = await fetch(apiUrl(apiBaseUrl, `/completion_posts/${postId}`), {
+      method: 'DELETE',
+      headers: userHeaders(userId),
+    })
+  } catch {
+    throw new Error('APIに接続できませんでした。')
+  }
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
+  if (response.status === 403) {
+    throw new Error('この投稿を削除する権限がありません。')
+  }
+
+  if (!response.ok) {
+    const result = await readJson<ErrorResponse>(response)
+    throw new Error(errorMessage(result, '投稿の削除に失敗しました。'))
   }
 }

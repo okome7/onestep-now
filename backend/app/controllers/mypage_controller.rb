@@ -67,6 +67,7 @@ class MypageController < ApplicationController
   def achievement_payload(post)
     {
       id: post.id,
+      can_delete: post.user_id == current_user.id,
       task_title: post.task.title,
       likes_count: post.completion_post_likes.size,
       comments_count: post.comments.size,
