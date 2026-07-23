@@ -3324,10 +3324,12 @@ body {
 }
 
 .profile-achievement-menu svg {
+  display: block;
   flex: 0 0 auto;
   width: 16px;
   height: 16px;
   fill: none;
+  transform: translateY(1px);
 }
 
 .post-delete-modal-backdrop {
