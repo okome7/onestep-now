@@ -49,7 +49,7 @@ class RegistrationsController < ApplicationController
 
     return User.find_by(id: id, email: email) if id.present? && email.present?
     return User.find_by(id: id) if id.present?
-    return User.find_by(email: email) if email.present?
+    return User.find_by_email(email) if email.present?
     return legacy_profile_candidates.first if legacy_profile_candidates.one?
 
     nil

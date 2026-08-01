@@ -3,11 +3,48 @@ import {
   AuthRequiredError,
   FeedAccessDeniedError,
   createTask,
+  fetchComments,
   fetchFeed,
 } from './feedApi'
 
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+test('コメントを20件ずつ取得する', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: () =>
+      Promise.resolve({
+        status: 'success',
+        pagination: { page: 2, per_page: 20, has_more: false },
+        data: [
+          {
+            id: 10,
+            body: '応援しています',
+            user_name: 'ゆい',
+            avatar_key: 'avatar-2',
+            level: 3,
+            post_status_when_commented: 'completed',
+            created_at: '2026-08-01T00:00:00Z',
+          },
+        ],
+      }),
+  })
+  vi.stubGlobal('fetch', fetchMock)
+
+  const result = await fetchComments('9', 1, 2)
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/completion_posts/9/comments?page=2',
+    expect.any(Object),
+  )
+  expect(result).toMatchObject({
+    page: 2,
+    hasMore: false,
+    comments: [{ body: '応援しています', level: 3 }],
+  })
 })
 
 test('本番APIベースURLから/api付きのフィードURLを組み立てる', async () => {

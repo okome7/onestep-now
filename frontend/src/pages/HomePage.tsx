@@ -56,6 +56,7 @@ import {
   completeTask,
   createComment,
   createTask,
+  fetchComments,
   fetchFeed,
   likePost,
   startTask,
@@ -158,6 +159,10 @@ export function HomePage() {
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
   )
+  const [commentPage, setCommentPage] = useState(1)
+  const [hasMoreComments, setHasMoreComments] = useState(false)
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false)
+  const [commentsLoadError, setCommentsLoadError] = useState('')
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
@@ -237,6 +242,7 @@ export function HomePage() {
         completionPost?.status_label ??
         (completionPost?.card_variant === 'completed' ? 'できた' : 'やります'),
       likes: completionPost?.likes_count ?? 0,
+      commentsCount: completionPost?.comments_count ?? 0,
       comments:
         completionPost?.comments?.map((comment) => ({
           id: String(comment.id),
@@ -275,6 +281,8 @@ export function HomePage() {
               status: nextPost.status,
               statusLabel: nextPost.statusLabel,
               likes: completionPost?.likes_count ?? post.likes,
+              commentsCount:
+                completionPost?.comments_count ?? post.commentsCount,
               comments: completionPost?.comments
                 ? nextPost.comments
                 : post.comments,
@@ -1266,12 +1274,72 @@ export function HomePage() {
     }))
   }
 
+  async function loadPostComments(postId: string, page: number) {
+    if (isCommentsLoading) {
+      return
+    }
+
+    setIsCommentsLoading(true)
+    setCommentsLoadError('')
+
+    try {
+      const result = await fetchComments(postId, completeProfile.id, page)
+      setFeedPosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post.id !== postId) {
+            return post
+          }
+
+          const existingIds = new Set(
+            post.comments.map((comment) => comment.id),
+          )
+          const nextComments = result.comments.filter(
+            (comment) => !existingIds.has(comment.id),
+          )
+
+          return {
+            ...post,
+            comments:
+              page === 1
+                ? result.comments
+                : [...nextComments, ...post.comments],
+          }
+        }),
+      )
+      setCommentPage(result.page)
+      setHasMoreComments(result.hasMore)
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
+      setCommentsLoadError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'コメントの取得に失敗しました。',
+      )
+    } finally {
+      setIsCommentsLoading(false)
+    }
+  }
+
   function openCommentPanel(postId: string) {
     setActiveCommentPostId(postId)
+    setCommentPage(1)
+    setHasMoreComments(false)
+    setCommentsLoadError('')
+    setFeedPosts((currentPosts) =>
+      currentPosts.map((post) =>
+        post.id === postId ? { ...post, comments: [] } : post,
+      ),
+    )
+    void loadPostComments(postId, 1)
   }
 
   function closeCommentPanel() {
     setActiveCommentPostId(null)
+    setCommentsLoadError('')
   }
 
   async function addPostComment(postId: string) {
@@ -1300,6 +1368,7 @@ export function HomePage() {
             ? {
                 ...post,
                 commented: true,
+                commentsCount: post.commentsCount + 1,
                 comments: [...post.comments, createdComment],
               }
             : post,
@@ -2156,6 +2225,12 @@ export function HomePage() {
             onClose={closeCommentPanel}
             onDraftChange={handleCommentDraftChange}
             onSubmit={(postId) => void addPostComment(postId)}
+            isLoading={isCommentsLoading}
+            hasMore={hasMoreComments}
+            error={commentsLoadError}
+            onLoadMore={() =>
+              void loadPostComments(activeCommentPost.id, commentPage + 1)
+            }
           />
         ) : null}
       </main>

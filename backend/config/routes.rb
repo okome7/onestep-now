@@ -22,5 +22,6 @@ Rails.application.routes.draw do
     post "completion_posts/:completion_post_id/likes", to: "completion_post_likes#create"
     delete "completion_posts/:completion_post_id/likes", to: "completion_post_likes#destroy"
     post "completion_posts/:completion_post_id/comments", to: "comments#create"
+    get "completion_posts/:completion_post_id/comments", to: "comments#index"
   end
 end

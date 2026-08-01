@@ -202,7 +202,14 @@ RSpec.describe "Feed posts", type: :request do
         "likes_count" => 1,
         "comments_count" => 1
       )
-      expect(other_payload.fetch("comments").first).to include(
+      expect(other_payload.fetch("comments")).to eq([])
+
+      get "/api/completion_posts/#{other_completion_post.id}/comments",
+        headers: { "X-User-Id" => user.id.to_s },
+        as: :json
+
+      comment_payload = JSON.parse(response.body).fetch("data").first
+      expect(comment_payload).to include(
         "body" => "応援しています",
         "level" => 2,
         "avatar_key" => user.avatar_key,
@@ -273,7 +280,48 @@ RSpec.describe "Feed posts", type: :request do
         get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
       end
 
+      expect(initial_count).to be <= 7
       expect(increased_count).to eq(initial_count)
+    end
+  end
+
+  describe "GET /api/completion_posts/:id/comments" do
+    it "最新側から20件ずつ取得し、各ページ内は古い順で返す" do
+      task = other_user.tasks.create!(title: "コメントが多い投稿")
+      completion_post = task.create_completion_post!(user: other_user, status: :completed)
+      base_time = Time.current.change(usec: 0)
+
+      25.times do |index|
+        completion_post.comments.create!(
+          user: user,
+          body: "コメント#{index}",
+          created_at: base_time + index.seconds,
+          updated_at: base_time + index.seconds
+        )
+      end
+
+      get "/api/completion_posts/#{completion_post.id}/comments",
+        headers: { "X-User-Id" => user.id.to_s },
+        as: :json
+
+      first_page = JSON.parse(response.body)
+      expect(first_page.fetch("data").pluck("body")).to eq((5..24).map { |index| "コメント#{index}" })
+      expect(first_page.fetch("pagination")).to include(
+        "page" => 1,
+        "per_page" => 20,
+        "has_more" => true
+      )
+
+      get "/api/completion_posts/#{completion_post.id}/comments?page=2",
+        headers: { "X-User-Id" => user.id.to_s }
+
+      second_page = JSON.parse(response.body)
+      expect(second_page.fetch("data").pluck("body")).to eq((0..4).map { |index| "コメント#{index}" })
+      expect(second_page.fetch("pagination")).to include(
+        "page" => 2,
+        "per_page" => 20,
+        "has_more" => false
+      )
     end
   end
 

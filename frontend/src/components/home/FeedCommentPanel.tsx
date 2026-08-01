@@ -8,6 +8,10 @@ type FeedCommentPanelProps = {
   onClose: () => void
   onDraftChange: (postId: string, value: string) => void
   onSubmit: (postId: string) => void
+  isLoading: boolean
+  hasMore: boolean
+  error: string
+  onLoadMore: () => void
 }
 
 export function FeedCommentPanel({
@@ -17,6 +21,10 @@ export function FeedCommentPanel({
   onClose,
   onDraftChange,
   onSubmit,
+  isLoading,
+  hasMore,
+  error,
+  onLoadMore,
 }: FeedCommentPanelProps) {
   return (
     <>
@@ -44,8 +52,17 @@ export function FeedCommentPanel({
 
         <div className="feed-comment-panel-task">{post.task}</div>
 
-        {post.comments.length > 0 ? (
+        {isLoading && post.comments.length === 0 ? (
+          <p className="feed-comment-empty">読み込み中…</p>
+        ) : post.comments.length > 0 ? (
           <ul className="feed-comment-panel-list" aria-label="コメント一覧">
+            {hasMore ? (
+              <li className="feed-comment-load-more">
+                <button type="button" onClick={onLoadMore} disabled={isLoading}>
+                  {isLoading ? '読み込み中…' : '過去のコメントを読み込む'}
+                </button>
+              </li>
+            ) : null}
             {post.comments.map((comment) => (
               <li
                 className={`feed-comment-item-${comment.postStatusWhenCommented}`}
@@ -73,6 +90,12 @@ export function FeedCommentPanel({
         ) : (
           <p className="feed-comment-empty">まだコメントはありません</p>
         )}
+
+        {error ? (
+          <p className="feed-comment-load-error" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         <div className="feed-comment-panel-form">
           <input
