@@ -73,6 +73,7 @@ function getInitialHomeView() {
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
+  const feedLoadMoreRef = useRef<HTMLDivElement>(null)
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
@@ -135,9 +136,7 @@ export function HomePage() {
     useState(false)
   const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
     useState(false)
-  const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
-    0,
-  )
+  const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(0)
   const [feedAccessExpiresAt, setFeedAccessExpiresAt] = useState<number | null>(
     null,
   )
@@ -145,6 +144,10 @@ export function HomePage() {
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
   const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
   const [isFeedLoading, setIsFeedLoading] = useState(false)
+  const [isFeedLoadingMore, setIsFeedLoadingMore] = useState(false)
+  const [feedPage, setFeedPage] = useState(1)
+  const [hasMoreFeedPosts, setHasMoreFeedPosts] = useState(false)
+  const [feedLoadMoreError, setFeedLoadMoreError] = useState('')
   const [isFeedTimeoutModalOpen, setIsFeedTimeoutModalOpen] = useState(false)
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
@@ -170,9 +173,11 @@ export function HomePage() {
   const trimmedDisplayNameDraft = displayNameDraft.trim()
   const hasDisplayNameDraftChanged = displayNameDraft !== profileName
   const canSaveDisplayName =
-    trimmedDisplayNameDraft.length > 0 && trimmedDisplayNameDraft !== profileName
+    trimmedDisplayNameDraft.length > 0 &&
+    trimmedDisplayNameDraft !== profileName
   const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
-  const canSaveSettingsIcon = selectedSettingsIconId !== completeProfile.avatarId
+  const canSaveSettingsIcon =
+    selectedSettingsIconId !== completeProfile.avatarId
   const level = myPageData?.level ?? 0
   const nextLevel = myPageData?.nextLevel ?? 1
   const remainingToNextLevel = myPageData?.remainingToNextLevel ?? 10
@@ -185,38 +190,36 @@ export function HomePage() {
     ? (allProfileAchievements.find(
         (achievement) => achievement.id === activeAchievementId,
       ) ??
-        recentAchievements.find(
-          (achievement) => achievement.id === activeAchievementId,
-        ) ??
-        null)
+      recentAchievements.find(
+        (achievement) => achievement.id === activeAchievementId,
+      ) ??
+      null)
     : null
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
 
-  function upsertOwnTaskPost(
-    task: {
-      title: string
-      completion_post_id?: number
-      completion_post?: {
+  function upsertOwnTaskPost(task: {
+    title: string
+    completion_post_id?: number
+    completion_post?: {
+      id: number
+      status_label: string
+      card_variant: 'doing' | 'completed'
+      likes_count?: number
+      comments_count?: number
+      liked_by_me?: boolean
+      comments?: Array<{
         id: number
-        status_label: string
-        card_variant: 'doing' | 'completed'
-        likes_count?: number
-        comments_count?: number
-        liked_by_me?: boolean
-        comments?: Array<{
-          id: number
-          body: string
-          user_name?: string
-          avatar_key?: string
-          post_status_when_commented: 'doing' | 'completed'
-          created_at: string
-        }>
+        body: string
+        user_name?: string
+        avatar_key?: string
+        post_status_when_commented: 'doing' | 'completed'
         created_at: string
-      } | null
-    },
-  ) {
+      }>
+      created_at: string
+    } | null
+  }) {
     const completionPost = task.completion_post
     const postId = completionPost?.id ?? task.completion_post_id
 
@@ -272,7 +275,9 @@ export function HomePage() {
               status: nextPost.status,
               statusLabel: nextPost.statusLabel,
               likes: completionPost?.likes_count ?? post.likes,
-              comments: completionPost?.comments ? nextPost.comments : post.comments,
+              comments: completionPost?.comments
+                ? nextPost.comments
+                : post.comments,
               liked: completionPost?.liked_by_me ?? post.liked,
               commented: post.commented,
             }
@@ -349,12 +354,7 @@ export function HomePage() {
   }, [isFeedExpired])
 
   useEffect(() => {
-    if (
-      !isFeedOpen ||
-      isFeedAccessDenied ||
-      isFeedLoading ||
-      isFeedExpired
-    ) {
+    if (!isFeedOpen || isFeedAccessDenied || isFeedLoading || isFeedExpired) {
       return undefined
     }
 
@@ -396,6 +396,7 @@ export function HomePage() {
 
   const loadFeed = useCallback(async () => {
     setFeedError('')
+    setFeedLoadMoreError('')
     setIsFeedLoading(true)
     setIsFeedTimeoutModalOpen(false)
 
@@ -404,6 +405,8 @@ export function HomePage() {
       const nextRemainingSeconds =
         result.remainingSeconds ?? feedViewDurationSeconds
       setFeedPosts(result.posts)
+      setFeedPage(result.page)
+      setHasMoreFeedPosts(result.hasMore)
       setFeedRemainingSeconds(nextRemainingSeconds)
       setFeedAccessExpiresAt(
         result.feedAccessExpiresAt
@@ -419,6 +422,8 @@ export function HomePage() {
     } catch (caughtError) {
       if (caughtError instanceof FeedAccessDeniedError) {
         setFeedPosts([])
+        setFeedPage(1)
+        setHasMoreFeedPosts(false)
         setFeedRemainingSeconds(0)
         setFeedAccessExpiresAt(null)
         setIsFeedAccessDenied(true)
@@ -437,6 +442,79 @@ export function HomePage() {
       setIsFeedLoading(false)
     }
   }, [completeProfile.id])
+
+  const loadMoreFeed = useCallback(async () => {
+    if (isFeedLoadingMore || !hasMoreFeedPosts) {
+      return
+    }
+
+    setIsFeedLoadingMore(true)
+    setFeedLoadMoreError('')
+
+    try {
+      const result = await fetchFeed(
+        completeProfile.id,
+        undefined,
+        feedPage + 1,
+      )
+      setFeedPosts((currentPosts) => {
+        const existingIds = new Set(currentPosts.map((post) => post.id))
+        return [
+          ...currentPosts,
+          ...result.posts.filter((post) => !existingIds.has(post.id)),
+        ]
+      })
+      setFeedPage(result.page)
+      setHasMoreFeedPosts(result.hasMore)
+    } catch (caughtError) {
+      if (caughtError instanceof FeedAccessDeniedError) {
+        setFeedRemainingSeconds(0)
+        setFeedAccessExpiresAt(null)
+        setIsFeedTimeoutModalOpen(true)
+        return
+      }
+
+      setFeedLoadMoreError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : '次の投稿の取得に失敗しました。',
+      )
+    } finally {
+      setIsFeedLoadingMore(false)
+    }
+  }, [completeProfile.id, feedPage, hasMoreFeedPosts, isFeedLoadingMore])
+
+  useEffect(() => {
+    const target = feedLoadMoreRef.current
+
+    if (
+      !isFeedOpen ||
+      isFeedExpired ||
+      !hasMoreFeedPosts ||
+      feedLoadMoreError ||
+      !target
+    ) {
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void loadMoreFeed()
+        }
+      },
+      { rootMargin: '200px 0px' },
+    )
+    observer.observe(target)
+
+    return () => observer.disconnect()
+  }, [
+    feedLoadMoreError,
+    hasMoreFeedPosts,
+    isFeedExpired,
+    isFeedOpen,
+    loadMoreFeed,
+  ])
 
   const loadMyPage = useCallback(async () => {
     setMyPageError('')
@@ -755,8 +833,8 @@ export function HomePage() {
 
     const hasAccountIdentifier = Boolean(
       completeProfile.id ||
-        completeProfile.email ||
-        (completeProfile.name && completeProfile.avatarId),
+      completeProfile.email ||
+      (completeProfile.name && completeProfile.avatarId),
     )
 
     if (!hasAccountIdentifier) {
@@ -847,26 +925,29 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  const saveSettingsIcon = useCallback((event?: FormEvent<HTMLFormElement>) => {
-    event?.preventDefault()
+  const saveSettingsIcon = useCallback(
+    (event?: FormEvent<HTMLFormElement>) => {
+      event?.preventDefault()
 
-    if (!canSaveSettingsIcon) {
-      return
-    }
+      if (!canSaveSettingsIcon) {
+        return
+      }
 
-    const nextProfile = {
-      ...completeProfile,
-      avatarId: selectedSettingsIconId,
-    }
+      const nextProfile = {
+        ...completeProfile,
+        avatarId: selectedSettingsIconId,
+      }
 
-    setCompleteProfile(nextProfile)
-    saveCompleteProfile(nextProfile)
-    setIsIconEditOpen(false)
-    setIsSettingsOpen(true)
-    setIsSettingsAvatarGridOpen(false)
-    setIsIconDiscardConfirmOpen(false)
-    window.scrollTo({ top: 0, left: 0 })
-  }, [canSaveSettingsIcon, completeProfile, selectedSettingsIconId])
+      setCompleteProfile(nextProfile)
+      saveCompleteProfile(nextProfile)
+      setIsIconEditOpen(false)
+      setIsSettingsOpen(true)
+      setIsSettingsAvatarGridOpen(false)
+      setIsIconDiscardConfirmOpen(false)
+      window.scrollTo({ top: 0, left: 0 })
+    },
+    [canSaveSettingsIcon, completeProfile, selectedSettingsIconId],
+  )
 
   useEffect(() => {
     if (!isSettingsOpen || !isIconEditOpen) {
@@ -910,7 +991,9 @@ export function HomePage() {
     }
   }
 
-  async function handleSettingsPhotoChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleSettingsPhotoChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
     const selectedFile = event.target.files?.[0]
 
     if (!selectedFile) {
@@ -1334,9 +1417,7 @@ export function HomePage() {
               className="icon-edit-action"
               type="button"
               aria-expanded={isSettingsAvatarGridOpen}
-              onClick={() =>
-                setIsSettingsAvatarGridOpen((current) => !current)
-              }
+              onClick={() => setIsSettingsAvatarGridOpen((current) => !current)}
             >
               <img
                 className="icon-edit-action-icon icon-edit-action-icon-grid"
@@ -1344,9 +1425,7 @@ export function HomePage() {
                 alt=""
                 aria-hidden="true"
               />
-              <span className="icon-edit-action-text-grid">
-                アイコンを選択
-              </span>
+              <span className="icon-edit-action-text-grid">アイコンを選択</span>
             </button>
 
             {isSettingsCameraAvailable ? (
@@ -1406,7 +1485,8 @@ export function HomePage() {
                 >
                   {avatarOptions.map((avatar) => {
                     const isCustomPhoto = avatar.id === customPhotoIconId
-                    const hasCustomPhoto = isCustomPhoto && settingsCustomPhotoUrl
+                    const hasCustomPhoto =
+                      isCustomPhoto && settingsCustomPhotoUrl
                     const isCameraSlot = isCustomPhoto && !hasCustomPhoto
                     const avatarId = hasCustomPhoto
                       ? settingsCustomPhotoUrl
@@ -1807,9 +1887,7 @@ export function HomePage() {
               aria-labelledby="account-deleted-modal-title"
               aria-describedby="account-deleted-modal-description"
             >
-              <h2 id="account-deleted-modal-title">
-                アカウントを削除しました
-              </h2>
+              <h2 id="account-deleted-modal-title">アカウントを削除しました</h2>
               <p id="account-deleted-modal-description">
                 ご利用ありがとうございました。
               </p>
@@ -1849,10 +1927,7 @@ export function HomePage() {
           }
         />
 
-        <section
-          className="all-achievements-content"
-          aria-label="すべての達成"
-        >
+        <section className="all-achievements-content" aria-label="すべての達成">
           {myPageError ? (
             <p className="profile-state-message" role="alert">
               {myPageError}
@@ -2032,15 +2107,32 @@ export function HomePage() {
               {feedError}
             </p>
           ) : (
-            visibleFeedPosts.map((post) => (
-              <FeedPostCard
-                key={post.id}
-                post={post}
-                now={feedNow}
-                onLike={(postId) => void togglePostLike(postId)}
-                onOpenComments={openCommentPanel}
-              />
-            ))
+            <>
+              {visibleFeedPosts.map((post) => (
+                <FeedPostCard
+                  key={post.id}
+                  post={post}
+                  now={feedNow}
+                  onLike={(postId) => void togglePostLike(postId)}
+                  onOpenComments={openCommentPanel}
+                />
+              ))}
+              {hasMoreFeedPosts ? (
+                <div
+                  ref={feedLoadMoreRef}
+                  className="feed-load-more"
+                  aria-label="次の投稿を読み込み中"
+                >
+                  {feedLoadMoreError ? (
+                    <button type="button" onClick={() => void loadMoreFeed()}>
+                      再読み込み
+                    </button>
+                  ) : isFeedLoadingMore ? (
+                    '読み込み中…'
+                  ) : null}
+                </div>
+              ) : null}
+            </>
           )}
         </section>
 
@@ -2119,4 +2211,3 @@ export function HomePage() {
     </main>
   )
 }
-
