@@ -26,6 +26,16 @@ RSpec.describe "Feed posts", type: :request do
     end
   end
 
+  def sql_query_count
+    count = 0
+    subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+      count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name])
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") { yield }
+    count
+  end
+
   let(:user) { create_user(email: "owner@example.com") }
   let(:other_user) { create_user(email: "other@example.com") }
 
@@ -212,6 +222,58 @@ RSpec.describe "Feed posts", type: :request do
         "remaining_seconds" => 0,
         "data" => []
       )
+    end
+
+    it "20件ずつ全投稿をページ取得できる" do
+      user.update!(feed_access_expires_at: 5.minutes.from_now)
+      create_completed_posts(user: other_user, count: 25)
+
+      get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      first_page = JSON.parse(response.body)
+      expect(first_page.fetch("data").size).to eq(20)
+      expect(first_page.fetch("pagination")).to include(
+        "page" => 1,
+        "per_page" => 20,
+        "has_more" => true
+      )
+
+      get "/api/feed?page=2", headers: { "X-User-Id" => user.id.to_s }
+
+      second_page = JSON.parse(response.body)
+      expect(second_page.fetch("data").size).to eq(5)
+      expect(second_page.fetch("pagination")).to include(
+        "page" => 2,
+        "per_page" => 20,
+        "has_more" => false
+      )
+      expect(first_page.fetch("data").pluck("id") & second_page.fetch("data").pluck("id")).to be_empty
+    end
+
+    it "投稿やコメントが増えてもSQL数が増えない" do
+      user.update!(feed_access_expires_at: 5.minutes.from_now)
+      first_task = other_user.tasks.create!(title: "最初の投稿")
+      first_post = first_task.create_completion_post!(user: other_user, status: :completed)
+      first_post.completion_post_likes.create!(user: user)
+      first_post.comments.create!(user: user, body: "最初のコメント")
+
+      initial_count = sql_query_count do
+        get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      end
+
+      5.times do |index|
+        task = other_user.tasks.create!(title: "追加投稿#{index}")
+        post = task.create_completion_post!(user: other_user, status: :completed)
+        post.completion_post_likes.create!(user: user)
+        post.comments.create!(user: user, body: "追加コメント#{index}")
+      end
+
+      increased_count = sql_query_count do
+        get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      end
+
+      expect(increased_count).to eq(initial_count)
     end
   end
 

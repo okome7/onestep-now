@@ -1,14 +1,23 @@
 class MypageController < ApplicationController
+  POSTS_LIMIT = 20
+
   before_action :require_current_user
 
   def show
-    posts = current_user.completion_posts.completed
-      .includes(:task, :completion_post_likes, comments: :user)
-      .order(Arel.sql("COALESCE(completion_posts.completed_at, completion_posts.created_at) DESC"))
+    completed_posts = current_user.completion_posts.completed
+    completed_count = completed_posts.count
+    likes_count = CompletionPostLike.where(completion_post_id: completed_posts.select(:id)).count
+    comments_count = Comment.where(completion_post_id: completed_posts.select(:id)).count
+    achieved_dates = completed_posts.pluck(:completed_at, :created_at).map do |completed_at, created_at|
+      (completed_at || created_at).in_time_zone.to_date
+    end
 
-    completed_count = posts.size
-    likes_count = posts.sum { |post| post.completion_post_likes.size }
-    comments_count = posts.sum { |post| post.comments.size }
+    posts = completed_posts
+      .preload(:task, :user, completion_post_likes: :user, comments: :user)
+      .order(Arel.sql("COALESCE(completion_posts.completed_at, completion_posts.created_at) DESC"))
+      .limit(POSTS_LIMIT)
+      .to_a
+    @completed_post_counts = completed_post_counts_for(posts)
 
     render json: {
       status: "success",
@@ -18,7 +27,7 @@ class MypageController < ApplicationController
         remaining_to_next_level: remaining_to_next_level_for(completed_count),
         progress_percent: progress_percent_for(completed_count),
         achievements_count: completed_count,
-        streak_days: streak_days(posts),
+        streak_days: streak_days(achieved_dates),
         likes_count: likes_count,
         comments_count: comments_count,
         recent_achievements: posts.first(2).map { |post| achievement_payload(post) },
@@ -49,8 +58,8 @@ class MypageController < ApplicationController
     (completed_count % 10) * 10
   end
 
-  def streak_days(posts)
-    achieved_dates = posts.map { |post| achieved_at(post).in_time_zone.to_date }.uniq
+  def streak_days(achieved_dates)
+    achieved_dates = achieved_dates.uniq
     return 0 if achieved_dates.empty?
 
     streak = 0
@@ -73,7 +82,7 @@ class MypageController < ApplicationController
       comments_count: post.comments.size,
       created_at: achieved_at(post),
       liked_users: post.completion_post_likes.map { |like| user_payload(like.user) },
-      comments: post.comments.order(created_at: :asc).map { |comment| comment_payload(comment) }
+      comments: ordered_comments(post).map { |comment| comment_payload(comment) }
     }
   end
 
@@ -85,7 +94,7 @@ class MypageController < ApplicationController
     {
       id: user.id,
       name: user.name,
-      level: level_for(user.completion_posts.completed.count)
+      level: level_for(@completed_post_counts.fetch(user.id, 0))
     }
   end
 
@@ -93,10 +102,22 @@ class MypageController < ApplicationController
     {
       id: comment.id,
       user_name: comment.user.name,
-      user_level: level_for(comment.user.completion_posts.completed.count),
+      user_level: level_for(@completed_post_counts.fetch(comment.user_id, 0)),
       avatar_key: comment.user.avatar_key,
       body: comment.body,
       created_at: comment.created_at
     }
+  end
+
+  def ordered_comments(post)
+    post.comments.sort_by { |comment| [ comment.created_at, comment.id ] }
+  end
+
+  def completed_post_counts_for(posts)
+    user_ids = posts.flat_map do |post|
+      [ post.user_id, *post.comments.map(&:user_id), *post.completion_post_likes.map(&:user_id) ]
+    end.uniq
+
+    CompletionPost.completed.where(user_id: user_ids).group(:user_id).count
   end
 end

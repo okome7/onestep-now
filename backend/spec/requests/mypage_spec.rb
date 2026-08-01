@@ -23,6 +23,16 @@ RSpec.describe "Mypage", type: :request do
     )
   end
 
+  def sql_query_count
+    count = 0
+    subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+      count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name])
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") { yield }
+    count
+  end
+
   let(:user) { create_user(email: "owner@example.com") }
   let(:other_user) { create_user(email: "other@example.com") }
   let(:fan) { create_user(email: "fan@example.com") }
@@ -106,6 +116,47 @@ RSpec.describe "Mypage", type: :request do
         "recent_achievements" => [],
         "all_achievements" => []
       )
+    end
+
+    it "一覧は最新20件に制限し、集計値は全件を対象にする" do
+      travel_to Time.zone.local(2026, 7, 9, 12, 0, 0) do
+        25.times do |index|
+          create_completed_post(user: user, title: "達成#{index}", completed_at: index.minutes.ago)
+        end
+
+        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+
+        data = JSON.parse(response.body).fetch("data")
+        expect(data.fetch("achievements_count")).to eq(25)
+        expect(data.fetch("all_achievements").size).to eq(20)
+        expect(data.fetch("all_achievements").first.fetch("task_title")).to eq("達成0")
+      end
+    end
+
+    it "投稿やリアクションが増えてもSQL数が増えない" do
+      first_post = create_completed_post(user: user, title: "最初の達成", completed_at: Time.current)
+      first_post.completion_post_likes.create!(user: fan)
+      first_post.comments.create!(user: fan, body: "最初のコメント")
+
+      initial_count = sql_query_count do
+        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      end
+
+      5.times do |index|
+        post = create_completed_post(
+          user: user,
+          title: "追加達成#{index}",
+          completed_at: (index + 1).minutes.ago
+        )
+        post.completion_post_likes.create!(user: fan)
+        post.comments.create!(user: fan, body: "追加コメント#{index}")
+      end
+
+      increased_count = sql_query_count do
+        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      end
+
+      expect(increased_count).to eq(initial_count)
     end
   end
 
