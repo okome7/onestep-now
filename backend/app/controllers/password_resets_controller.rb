@@ -14,7 +14,7 @@ class PasswordResetsController < ApplicationController
       return
     end
 
-    user = User.find_by(email: email)
+    user = User.find_by_email(email)
     _record, code = PasswordResetCode.issue_for(email: email, user: user)
     deliver_reset_code(email:, code:, user:)
 

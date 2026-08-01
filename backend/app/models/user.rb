@@ -23,6 +23,10 @@ class User < ApplicationRecord
     },
     allow_blank: true
 
+  def self.find_by_email(email)
+    find_by("LOWER(email) = ?", email.to_s.strip.downcase)
+  end
+
   private
 
   def normalize_email

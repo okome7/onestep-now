@@ -69,6 +69,16 @@ type CommentResponse = {
   data: ApiComment
 }
 
+type CommentsResponse = {
+  status: 'success'
+  pagination: {
+    page: number
+    per_page: number
+    has_more: boolean
+  }
+  data: ApiComment[]
+}
+
 type ErrorResponse = {
   status: 'error'
   errors?: string[]
@@ -156,6 +166,7 @@ function mapPost(post: ApiFeedPost): FeedPost {
       post.status_label ??
       (post.card_variant === 'completed' ? 'できた' : 'やります'),
     likes: post.likes_count,
+    commentsCount: post.comments_count,
     comments,
     createdAt: toTimestamp(post.created_at),
     liked: post.liked_by_me,
@@ -163,6 +174,40 @@ function mapPost(post: ApiFeedPost): FeedPost {
     isOwnPost: post.is_mine,
     canLike: post.can_like,
     canComment: post.can_comment,
+  }
+}
+
+export async function fetchComments(postId: string, userId?: number, page = 1) {
+  const query = page > 1 ? `?page=${page}` : ''
+  let response: Response
+
+  try {
+    response = await fetch(
+      apiUrl(defaultApiBaseUrl, `/completion_posts/${postId}/comments${query}`),
+      { headers: userHeaders(userId) },
+    )
+  } catch {
+    throw new Error('コメントの取得に失敗しました。')
+  }
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
+  const result = await readJson<CommentsResponse | ErrorResponse>(response)
+
+  if (!response.ok || result.status === 'error') {
+    throw new Error(
+      errorMessage(result as ErrorResponse, 'コメントの取得に失敗しました。'),
+    )
+  }
+
+  const success = result as CommentsResponse
+
+  return {
+    comments: success.data.map(mapComment),
+    page: success.pagination.page,
+    hasMore: success.pagination.has_more,
   }
 }
 

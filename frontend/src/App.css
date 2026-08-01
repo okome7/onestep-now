@@ -2250,6 +2250,36 @@ body {
   border-bottom: 1px solid #e5eaf2;
 }
 
+.feed-comment-panel-list li.feed-comment-load-more {
+  padding: 8px 0;
+  text-align: center;
+}
+
+.feed-comment-load-more button {
+  border: 0;
+  padding: 5px 10px;
+  background: transparent;
+  color: #4d95e5;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.feed-comment-load-more button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.feed-comment-load-error {
+  margin: 0;
+  padding: 6px 12px;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
 .feed-comment-panel-done .feed-comment-panel-list li {
   background: #f2fff3;
 }

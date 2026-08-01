@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_070000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "comments", force: :cascade do |t|
+    t.text "body", null: false
+    t.bigint "completion_post_id", null: false
+    t.datetime "created_at", null: false
+    t.string "post_status_when_commented", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["completion_post_id"], name: "index_comments_on_completion_post_id"
+    t.index ["user_id"], name: "index_comments_on_user_id"
+    t.check_constraint "post_status_when_commented::text = ANY (ARRAY['doing'::character varying::text, 'completed'::character varying::text])", name: "check_comments_post_status_when_commented"
+  end
 
   create_table "completion_post_likes", force: :cascade do |t|
     t.bigint "completion_post_id", null: false
@@ -32,21 +44,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000000) do
     t.bigint "task_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index "user_id, COALESCE(completed_at, created_at) DESC", name: "index_completed_posts_on_user_and_achieved_at", where: "((status)::text = 'completed'::text)"
+    t.index ["created_at", "id"], name: "index_completion_posts_on_created_at_and_id_desc", order: :desc
     t.index ["task_id"], name: "index_completion_posts_on_task_id", unique: true
+    t.index ["user_id", "status"], name: "index_completion_posts_on_user_id_and_status"
     t.index ["user_id"], name: "index_completion_posts_on_user_id"
-    t.check_constraint "status::text = ANY (ARRAY['doing'::character varying, 'completed'::character varying]::text[])", name: "check_completion_posts_status"
-  end
-
-  create_table "comments", force: :cascade do |t|
-    t.text "body", null: false
-    t.bigint "completion_post_id", null: false
-    t.datetime "created_at", null: false
-    t.string "post_status_when_commented", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.index ["completion_post_id"], name: "index_comments_on_completion_post_id"
-    t.index ["user_id"], name: "index_comments_on_user_id"
-    t.check_constraint "post_status_when_commented::text = ANY (ARRAY['doing'::character varying, 'completed'::character varying]::text[])", name: "check_comments_post_status_when_commented"
+    t.check_constraint "status::text = ANY (ARRAY['doing'::character varying::text, 'completed'::character varying::text])", name: "check_completion_posts_status"
   end
 
   create_table "password_reset_codes", force: :cascade do |t|

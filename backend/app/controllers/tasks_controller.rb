@@ -22,7 +22,7 @@ class TasksController < ApplicationController
       ) unless @task.completion_post
     end
 
-    render json: { status: "success", data: task_payload(@task) }, status: :ok
+    render json: { status: "success", data: task_payload(task_with_associations(@task)) }, status: :ok
   rescue ActiveRecord::RecordInvalid => e
     render json: { status: "error", errors: e.record.errors.full_messages }, status: :unprocessable_entity
   end
@@ -39,7 +39,7 @@ class TasksController < ApplicationController
       current_user.update!(feed_access_expires_at: 5.minutes.from_now)
     end
 
-    render json: { status: "success", data: task_payload(@task.reload) }, status: :ok
+    render json: { status: "success", data: task_payload(task_with_associations(@task)) }, status: :ok
   rescue ActiveRecord::RecordInvalid => e
     render json: { status: "error", errors: e.record.errors.full_messages }, status: :unprocessable_entity
   end
@@ -69,6 +69,12 @@ class TasksController < ApplicationController
     params.require(:task).permit(:title)
   end
 
+  def task_with_associations(task)
+    Task
+      .preload(completion_post: [ :completion_post_likes, { comments: :user } ])
+      .find(task.id)
+  end
+
   def task_payload(task)
     {
       id: task.id,
@@ -92,7 +98,7 @@ class TasksController < ApplicationController
       likes_count: post.completion_post_likes.size,
       comments_count: post.comments.size,
       liked_by_me: post.completion_post_likes.any? { |like| like.user_id == current_user.id },
-      comments: post.comments.order(created_at: :asc).map { |comment| comment_payload(comment) },
+      comments: post.comments.sort_by { |comment| [ comment.created_at, comment.id ] }.map { |comment| comment_payload(comment) },
       created_at: post.created_at,
       completed_at: post.completed_at
     }
