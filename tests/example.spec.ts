@@ -949,6 +949,76 @@ test("フィード閲覧時間外は案内画面からホームへ戻れる", as
   ).toBeVisible();
 });
 
+test("マイページから自分の投稿を削除して実績を再取得する", async ({ page }) => {
+  let deleted = false;
+  let deleteRequests = 0;
+
+  await page.route(/.*\/(?:api\/)?mypage$/, async (route) => {
+    const achievements = deleted
+      ? []
+      : [
+          {
+            id: 42,
+            can_delete: true,
+            task_title: "削除対象の投稿",
+            likes_count: 2,
+            comments_count: 1,
+            created_at: new Date().toISOString(),
+            liked_users: [],
+            comments: [],
+          },
+        ];
+
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          level: deleted ? 0 : 1,
+          next_level: deleted ? 1 : 2,
+          remaining_to_next_level: deleted ? 10 : 9,
+          progress_percent: deleted ? 0 : 10,
+          achievements_count: achievements.length,
+          streak_days: achievements.length,
+          likes_count: deleted ? 0 : 2,
+          comments_count: deleted ? 0 : 1,
+          recent_achievements: achievements,
+          all_achievements: achievements,
+        },
+      }),
+    });
+  });
+
+  await page.route(/.*\/(?:api\/)?completion_posts\/42$/, async (route) => {
+    if (route.request().method() !== "DELETE") {
+      await route.fallback();
+      return;
+    }
+
+    deleteRequests += 1;
+    deleted = true;
+    await route.fulfill({ status: 204 });
+  });
+
+  await gotoHome(page);
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  await expect(page.getByText("削除対象の投稿")).toBeVisible();
+
+  await page.getByRole("button", { name: "削除対象の投稿のメニュー" }).click();
+  await page.getByRole("menuitem", { name: "投稿を削除" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "投稿を削除しますか？" });
+  await expect(dialog).toContainText(
+    "削除した投稿は元に戻せません。この投稿に関する達成回数・いいね・コメントも実績から削除されます。",
+  );
+  await dialog.getByRole("button", { name: "削除する" }).click();
+
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText("削除対象の投稿")).toHaveCount(0);
+  await expect(page.getByText("まだ記録はありません")).toBeVisible();
+  expect(deleteRequests).toBe(1);
+});
+
 test("フィード閲覧時間が終了するとモーダルからホームへ戻れる", async ({
   page,
 }) => {
