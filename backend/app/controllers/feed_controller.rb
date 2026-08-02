@@ -54,27 +54,13 @@ class FeedController < ApplicationController
   end
 
   def feed_post_payload(post)
-    is_mine = post.user_id == current_user.id
-
-    {
-      id: post.id,
-      user_name: post.user.name,
-      level: level_for(@completed_post_counts.fetch(post.user_id, 0)),
-      task_title: post.task.title,
-      status: post.status,
-      status_label: post.status_label,
-      card_variant: post.card_variant,
-      is_mine: is_mine,
-      can_like: true,
-      can_comment: true,
-      likes_count: post.completion_post_likes.size,
-      comments_count: @comment_counts.fetch(post.id, 0),
-      liked_by_me: post.completion_post_likes.any? { |like| like.user_id == current_user.id },
-      commented_by_me: @commented_post_ids.include?(post.id),
-      comments: [],
-      created_at: post.created_at,
-      completed_at: post.completed_at
-    }
+    FeedPostPayload.new(
+      post,
+      viewer: current_user,
+      completed_count: @completed_post_counts.fetch(post.user_id, 0),
+      comment_count: @comment_counts.fetch(post.id, 0),
+      commented_by_viewer: @commented_post_ids.include?(post.id)
+    ).as_json
   end
 
   def completed_post_counts_for(posts)
@@ -95,11 +81,5 @@ class FeedController < ApplicationController
 
     @comment_counts = summaries.to_h { |post_id, count, _commented| [ post_id, count ] }
     @commented_post_ids = summaries.filter_map { |post_id, _count, commented| post_id if commented }
-  end
-
-  def level_for(completed_count)
-    return 0 if completed_count.zero?
-
-    (completed_count / 10).floor + 1
   end
 end

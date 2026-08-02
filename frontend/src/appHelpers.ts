@@ -342,6 +342,7 @@ export function getInitialCompleteProfile(): CompleteProfile {
       name: parsedProfile.name ?? '',
       email: parsedProfile.email ?? '',
       avatarId: parsedProfile.avatarId ?? avatarOptions[0].id,
+      cableToken: parsedProfile.cableToken,
     }
   } catch {
     return { name: '', avatarId: avatarOptions[0].id }

@@ -10,6 +10,7 @@ type LoginSuccessResponse = {
     name: string
     email: string
     avatar_key?: string
+    cable_token?: string
   }
 }
 

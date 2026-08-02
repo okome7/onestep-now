@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  mount ActionCable.server => "/cable"
+
   root to: ->(_) { [ 200, { "Content-Type" => "application/json" }, [ { status: "Running" }.to_json ] ] }
 
   get "up" => "rails/health#show", as: :rails_health_check

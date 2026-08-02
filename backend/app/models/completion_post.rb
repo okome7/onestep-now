@@ -12,6 +12,10 @@ class CompletionPost < ApplicationRecord
   validates :status, presence: true
   validates :task_id, uniqueness: true
 
+  after_create_commit -> { ::FeedUpdatesBroadcaster.post_created(self) }
+  after_update_commit -> { ::FeedUpdatesBroadcaster.post_updated(self) }, if: :saved_change_to_status?
+  after_destroy_commit -> { ::FeedUpdatesBroadcaster.post_deleted(id) }
+
   def status_label
     completed? ? "できた" : "やります"
   end

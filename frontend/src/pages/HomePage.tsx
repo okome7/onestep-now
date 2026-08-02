@@ -68,6 +68,7 @@ import {
   startTask,
   unlikePost,
 } from '../feedApi'
+import { applyFeedCableEvent, subscribeToFeedUpdates } from '../feedCable'
 import {
   deleteCompletionPost,
   fetchMyPage,
@@ -86,6 +87,7 @@ export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
+  const deletedFeedPostIdsRef = useRef(new Set<string>())
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
@@ -432,6 +434,7 @@ export function HomePage() {
       const result = await fetchFeed(completeProfile.id)
       const nextRemainingSeconds =
         result.remainingSeconds ?? feedViewDurationSeconds
+      deletedFeedPostIdsRef.current.clear()
       setFeedPosts(result.posts)
       setFeedPage(result.page)
       setHasMoreFeedPosts(result.hasMore)
@@ -687,6 +690,45 @@ export function HomePage() {
   }, [isFeedOpen, loadFeed])
 
   useEffect(() => {
+    if (
+      !isFeedOpen ||
+      isFeedAccessDenied ||
+      isFeedExpired ||
+      !completeProfile.cableToken
+    ) {
+      return undefined
+    }
+
+    return subscribeToFeedUpdates({
+      token: completeProfile.cableToken,
+      onEvent: (event) => {
+        if (event.type === 'post_deleted') {
+          deletedFeedPostIdsRef.current.add(String(event.post_id))
+        }
+
+        setFeedPosts((currentPosts) =>
+          applyFeedCableEvent(
+            currentPosts,
+            event,
+            completeProfile.id,
+            deletedFeedPostIdsRef.current,
+          ),
+        )
+      },
+      onReconnect: () => {
+        void loadFeed()
+      },
+    })
+  }, [
+    completeProfile.cableToken,
+    completeProfile.id,
+    isFeedAccessDenied,
+    isFeedExpired,
+    isFeedOpen,
+    loadFeed,
+  ])
+
+  useEffect(() => {
     const timerId = window.setTimeout(() => {
       clearMyPageCache()
       if (completeProfile.id) {
@@ -875,6 +917,7 @@ export function HomePage() {
 
     try {
       await deleteCompletionPost(deletedPostId, completeProfile.id)
+      deletedFeedPostIdsRef.current.add(deletedPostId)
       setFeedPosts((currentPosts) =>
         currentPosts.filter((post) => post.id !== deletedPostId),
       )
