@@ -40,7 +40,11 @@ export function FeedStartGate({ onStart }: FeedStartGateProps) {
           <li>
             <span className="feed-start-step-icon feed-start-step-flag">⚑</span>
             <strong>1. やります</strong>
-            <small>タスクを決めて宣言しよう</small>
+            <small>
+              タスクを決めて
+              <br />
+              宣言しよう
+            </small>
           </li>
           <li>
             <span className="feed-start-step-icon feed-start-step-check">✓</span>
