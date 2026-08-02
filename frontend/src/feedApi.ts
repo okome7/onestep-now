@@ -12,8 +12,9 @@ type ApiComment = {
   created_at: string
 }
 
-type ApiFeedPost = {
+export type ApiFeedPost = {
   id: number
+  user_id?: number
   task_title: string
   status_label?: string
   card_variant: ApiFeedStatus
@@ -153,12 +154,18 @@ function mapComment(comment: ApiComment): FeedComment {
   }
 }
 
-function mapPost(post: ApiFeedPost): FeedPost {
+export function mapFeedPost(
+  post: ApiFeedPost,
+  currentUserId?: number,
+): FeedPost {
   const comments = post.comments?.map(mapComment) ?? []
 
   return {
     id: String(post.id),
-    userName: post.is_mine ? 'あなた' : (post.user_name ?? 'みき'),
+    userName:
+      post.is_mine || post.user_id === currentUserId
+        ? 'あなた'
+        : (post.user_name ?? 'みき'),
     level: post.level ?? 1,
     task: post.task_title,
     status: uiStatus(post.card_variant),
@@ -171,7 +178,7 @@ function mapPost(post: ApiFeedPost): FeedPost {
     createdAt: toTimestamp(post.created_at),
     liked: post.liked_by_me,
     commented: post.commented_by_me ?? false,
-    isOwnPost: post.is_mine,
+    isOwnPost: post.is_mine || post.user_id === currentUserId,
     canLike: post.can_like,
     canComment: post.can_comment,
   }
@@ -257,7 +264,7 @@ export async function fetchFeed(
       : undefined)
 
   return {
-    posts: success.data.map(mapPost),
+    posts: success.data.map((post) => mapFeedPost(post, userId)),
     remainingSeconds,
     feedAccessExpiresAt: success.feed_access_expires_at,
     page: success.pagination?.page ?? page,

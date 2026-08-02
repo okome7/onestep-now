@@ -69,6 +69,7 @@ export type CompleteProfile = {
   name: string
   email?: string
   avatarId: string
+  cableToken?: string
 }
 
 export type MyPageData = {

@@ -61,6 +61,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         name: user.name,
         email: user.email,
         avatarId: user.avatar_key ?? avatarOptions[0].id,
+        cableToken: user.cable_token,
       })
       shouldResetSubmitting = false
       onLoginSuccess()
@@ -184,4 +185,3 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     </main>
   )
 }
-

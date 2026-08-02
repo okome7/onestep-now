@@ -21,6 +21,14 @@ export default defineConfig({
         rewrite: (path) =>
           backendScopedApiPaths.test(path) ? path : path.replace(/^\/api/, ''),
       },
+      '/cable': {
+        target:
+          process.env.API_BASE_URL ||
+          process.env.VITE_API_BASE_URL ||
+          'http://localhost:3001',
+        changeOrigin: false,
+        ws: true,
+      },
     },
   },
 })

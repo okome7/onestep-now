@@ -9,7 +9,8 @@ class SessionsController < ApplicationController
           id: user.id,
           name: user.name,
           email: user.email,
-          avatar_key: user.avatar_key
+          avatar_key: user.avatar_key,
+          cable_token: CableUserToken.issue(user)
         }
       }, status: :ok
     else

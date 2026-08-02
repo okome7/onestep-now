@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@rails/actioncable": "^8.1.301",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

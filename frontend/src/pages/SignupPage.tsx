@@ -181,6 +181,7 @@ export function SignupPage() {
         name: nextCompletedName,
         email: createdUser.email,
         avatarId: nextCompletedAvatarId,
+        cableToken: createdUser.cable_token,
       })
       setScreen('complete')
     } catch (caughtError) {
@@ -595,4 +596,3 @@ export function SignupPage() {
     </main>
   )
 }
-

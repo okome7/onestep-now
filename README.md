@@ -234,3 +234,52 @@ RESEND_API_KEY=your-resend-api-key
 - 所有者だけが投稿を削除でき、削除結果がフィード・実績・レベルへ反映される点
 - 画面遷移やモーダル、レスポンシブ表示を含む細かいUI改善の積み重ね
 
+## WebSocket環境変数
+
+フィードの投稿作成・完了更新・削除は、Rails Action Cableを利用してリアルタイムに反映しています。
+本番環境では、以下の環境変数を設定してください。
+
+### バックエンド（Rails）
+
+`FRONTEND_ORIGINS`
+
+Action Cableへの接続を許可するフロントエンドのOriginを指定します。
+複数指定する場合は、カンマ区切りで設定してください。
+
+例：
+
+```env
+FRONTEND_ORIGINS=https://onestep-now-frontend.vercel.app
+```
+
+### フロントエンド（React）
+
+`VITE_CABLE_URL`
+
+Action Cableへ接続するWebSocket URLを指定します。
+
+例：
+
+```env
+VITE_CABLE_URL=wss://onestep-now.onrender.com/cable
+```
+
+### 開発環境
+
+`FRONTEND_ORIGINS`を設定しない場合は、以下のOriginが自動で許可されます。
+
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+
+`VITE_CABLE_URL`を設定しない場合は、現在アクセスしているホストの`/cable`へ接続します。
+
+### 本番環境
+
+- `FRONTEND_ORIGINS`には、実際に公開しているフロントエンドのOriginのみを指定してください。
+- セキュリティ上、ワイルドカード（`*`）は使用しないでください。
+- OneStep Nowでは、以下のように設定します。
+
+```env
+FRONTEND_ORIGINS=https://onestep-now-frontend.vercel.app
+VITE_CABLE_URL=wss://onestep-now.onrender.com/cable
+```

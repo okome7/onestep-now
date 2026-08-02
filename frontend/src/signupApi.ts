@@ -11,6 +11,7 @@ export type SignupUser = {
   name: string
   email: string
   avatar_key?: string
+  cable_token?: string
 }
 
 type SignupSuccessResponse = {
