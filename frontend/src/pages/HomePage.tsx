@@ -75,6 +75,7 @@ export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
+  const preloadedMyPageUserIdRef = useRef<number | null>(null)
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
@@ -561,16 +562,17 @@ export function HomePage() {
   }, [isFeedOpen, loadFeed])
 
   useEffect(() => {
-    if (!isProfileOpen && !isAchievementsOpen) {
+    if (
+      !completeProfile.id ||
+      preloadedMyPageUserIdRef.current === completeProfile.id
+    ) {
       return undefined
     }
 
-    const timerId = window.setTimeout(() => {
-      void loadMyPage()
-    }, 0)
-
-    return () => window.clearTimeout(timerId)
-  }, [isAchievementsOpen, isProfileOpen, loadMyPage])
+    preloadedMyPageUserIdRef.current = completeProfile.id
+    void loadMyPage()
+    return undefined
+  }, [completeProfile.id, loadMyPage])
 
   function closeFeedIntro() {
     window.localStorage.setItem(feedIntroStorageKey, 'true')
@@ -667,7 +669,7 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    if (isProfileOpen) {
+    if (isProfileOpen || (!myPageData && !isMyPageLoading)) {
       void loadMyPage()
     }
     window.scrollTo({ top: 0, left: 0 })
@@ -676,7 +678,9 @@ export function HomePage() {
   function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
-    void loadMyPage()
+    if (!myPageData && !isMyPageLoading) {
+      void loadMyPage()
+    }
     setIsAchievementsOpen(true)
     setActiveAchievementId(null)
     setIsProfileOpen(false)
