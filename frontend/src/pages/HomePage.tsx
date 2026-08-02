@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { deleteAccount } from '../accountApi'
 import {
@@ -62,7 +68,12 @@ import {
   startTask,
   unlikePost,
 } from '../feedApi'
-import { deleteCompletionPost, fetchMyPage } from '../mypageApi'
+import {
+  deleteCompletionPost,
+  fetchMyPage,
+  isAbortError,
+  isCurrentMyPageResponse,
+} from '../mypageApi'
 
 const feedIntroStorageKey = 'onestep-feed-intro-seen'
 const activeHomeViewStorageKey = 'onestep-active-home-view'
@@ -75,7 +86,6 @@ export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
-  const preloadedMyPageUserIdRef = useRef<number | null>(null)
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
@@ -123,6 +133,12 @@ export function HomePage() {
   const [completeProfile, setCompleteProfile] = useState(() =>
     getInitialCompleteProfile(),
   )
+  const currentMyPageUserIdRef = useRef<number | undefined>(completeProfile.id)
+  const loadedMyPageUserIdRef = useRef<number | null>(null)
+  const myPageAbortControllerRef = useRef<AbortController | null>(null)
+  const myPageRequestUserIdRef = useRef<number | null>(null)
+  const myPageRequestIdRef = useRef(0)
+  const myPageRequestPromiseRef = useRef<Promise<void> | null>(null)
   const [displayNameDraft, setDisplayNameDraft] = useState(
     completeProfile.name || 'おこめ',
   )
@@ -154,6 +170,7 @@ export function HomePage() {
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [myPageData, setMyPageData] = useState<MyPageData | null>(null)
+  const [myPageDataUserId, setMyPageDataUserId] = useState<number | null>(null)
   const [isMyPageLoading, setIsMyPageLoading] = useState(false)
   const [myPageError, setMyPageError] = useState('')
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
@@ -184,14 +201,16 @@ export function HomePage() {
   const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
   const canSaveSettingsIcon =
     selectedSettingsIconId !== completeProfile.avatarId
-  const level = myPageData?.level ?? 0
-  const nextLevel = myPageData?.nextLevel ?? 1
-  const remainingToNextLevel = myPageData?.remainingToNextLevel ?? 10
-  const progressPercent = myPageData?.progressPercent ?? 0
-  const achievementsCount = myPageData?.achievementsCount ?? 0
+  const visibleMyPageData =
+    myPageDataUserId === completeProfile.id ? myPageData : null
+  const level = visibleMyPageData?.level ?? 0
+  const nextLevel = visibleMyPageData?.nextLevel ?? 1
+  const remainingToNextLevel = visibleMyPageData?.remainingToNextLevel ?? 10
+  const progressPercent = visibleMyPageData?.progressPercent ?? 0
+  const achievementsCount = visibleMyPageData?.achievementsCount ?? 0
   const hasProfileAchievements = achievementsCount > 0
-  const allProfileAchievements = myPageData?.allAchievements ?? []
-  const recentAchievements = myPageData?.recentAchievements ?? []
+  const allProfileAchievements = visibleMyPageData?.allAchievements ?? []
+  const recentAchievements = visibleMyPageData?.recentAchievements ?? []
   const activeAchievement = activeAchievementId
     ? (allProfileAchievements.find(
         (achievement) => achievement.id === activeAchievementId,
@@ -525,28 +544,134 @@ export function HomePage() {
     loadMoreFeed,
   ])
 
-  const loadMyPage = useCallback(async () => {
-    setMyPageError('')
-    setIsMyPageLoading(true)
+  const abortMyPageRequest = useCallback(() => {
+    myPageAbortControllerRef.current?.abort()
+    myPageRequestIdRef.current += 1
+    myPageAbortControllerRef.current = null
+    myPageRequestUserIdRef.current = null
+    myPageRequestPromiseRef.current = null
+  }, [])
 
-    try {
-      const result = await fetchMyPage(completeProfile.id)
-      setMyPageData(result)
-      setFeedNow(Date.now())
-    } catch (caughtError) {
-      if (caughtError instanceof AuthRequiredError) {
-        redirectToLoginForAuthRequired()
-        return
+  const clearMyPageCache = useCallback(() => {
+    abortMyPageRequest()
+    loadedMyPageUserIdRef.current = null
+    setMyPageData(null)
+    setMyPageDataUserId(null)
+    setMyPageError('')
+    setIsMyPageLoading(false)
+    setActiveAchievementId(null)
+    setOpenAchievementMenuId(null)
+    setPostPendingDeletionId(null)
+  }, [abortMyPageRequest])
+
+  const redirectToLoginForAuthRequired = useCallback(() => {
+    clearMyPageCache()
+    clearAuthSession()
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
+    window.sessionStorage.removeItem(signupDraftStorageKey)
+    window.location.assign('/login')
+  }, [clearMyPageCache])
+
+  const loadMyPage = useCallback(
+    (force = false): Promise<void> => {
+      const requestUserId = currentMyPageUserIdRef.current
+
+      if (!requestUserId) {
+        return Promise.resolve()
       }
 
-      setMyPageError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : 'マイページ取得に失敗しました。',
-      )
-    } finally {
-      setIsMyPageLoading(false)
-    }
+      if (!force && loadedMyPageUserIdRef.current === requestUserId) {
+        return Promise.resolve()
+      }
+
+      if (
+        !force &&
+        myPageRequestUserIdRef.current === requestUserId &&
+        myPageRequestPromiseRef.current
+      ) {
+        return myPageRequestPromiseRef.current
+      }
+
+      abortMyPageRequest()
+      const controller = new AbortController()
+      const requestId = myPageRequestIdRef.current + 1
+      myPageRequestIdRef.current = requestId
+      myPageAbortControllerRef.current = controller
+      myPageRequestUserIdRef.current = requestUserId
+      setMyPageError('')
+      setIsMyPageLoading(true)
+
+      const requestPromise = (async () => {
+        try {
+          const result = await fetchMyPage(
+            requestUserId,
+            undefined,
+            controller.signal,
+          )
+
+          if (
+            !isCurrentMyPageResponse(
+              requestUserId,
+              currentMyPageUserIdRef.current,
+              requestId,
+              myPageRequestIdRef.current,
+              controller.signal,
+            )
+          ) {
+            return
+          }
+
+          loadedMyPageUserIdRef.current = requestUserId
+          setMyPageData(result)
+          setMyPageDataUserId(requestUserId)
+          setFeedNow(Date.now())
+        } catch (caughtError) {
+          if (isAbortError(caughtError)) {
+            return
+          }
+
+          if (
+            !isCurrentMyPageResponse(
+              requestUserId,
+              currentMyPageUserIdRef.current,
+              requestId,
+              myPageRequestIdRef.current,
+              controller.signal,
+            )
+          ) {
+            return
+          }
+
+          if (caughtError instanceof AuthRequiredError) {
+            redirectToLoginForAuthRequired()
+            return
+          }
+
+          setMyPageError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : 'マイページ取得に失敗しました。',
+          )
+        } finally {
+          if (requestId === myPageRequestIdRef.current) {
+            myPageAbortControllerRef.current = null
+            myPageRequestUserIdRef.current = null
+            myPageRequestPromiseRef.current = null
+            setIsMyPageLoading(false)
+          }
+        }
+      })()
+
+      myPageRequestPromiseRef.current = requestPromise
+      return requestPromise
+    },
+    [abortMyPageRequest, redirectToLoginForAuthRequired],
+  )
+
+  useLayoutEffect(() => {
+    currentMyPageUserIdRef.current = completeProfile.id
   }, [completeProfile.id])
 
   useEffect(() => {
@@ -562,17 +687,18 @@ export function HomePage() {
   }, [isFeedOpen, loadFeed])
 
   useEffect(() => {
-    if (
-      !completeProfile.id ||
-      preloadedMyPageUserIdRef.current === completeProfile.id
-    ) {
-      return undefined
-    }
+    const timerId = window.setTimeout(() => {
+      clearMyPageCache()
+      if (completeProfile.id) {
+        void loadMyPage()
+      }
+    }, 0)
 
-    preloadedMyPageUserIdRef.current = completeProfile.id
-    void loadMyPage()
-    return undefined
-  }, [completeProfile.id, loadMyPage])
+    return () => {
+      window.clearTimeout(timerId)
+      abortMyPageRequest()
+    }
+  }, [abortMyPageRequest, clearMyPageCache, completeProfile.id, loadMyPage])
 
   function closeFeedIntro() {
     window.localStorage.setItem(feedIntroStorageKey, 'true')
@@ -669,7 +795,9 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    if (isProfileOpen || (!myPageData && !isMyPageLoading)) {
+    if (isProfileOpen) {
+      void loadMyPage(true)
+    } else if (!visibleMyPageData && !isMyPageLoading) {
       void loadMyPage()
     }
     window.scrollTo({ top: 0, left: 0 })
@@ -678,7 +806,7 @@ export function HomePage() {
   function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
-    if (!myPageData && !isMyPageLoading) {
+    if (!visibleMyPageData && !isMyPageLoading) {
       void loadMyPage()
     }
     setIsAchievementsOpen(true)
@@ -754,7 +882,7 @@ export function HomePage() {
         currentId === deletedPostId ? null : currentId,
       )
       setPostPendingDeletionId(null)
-      await loadMyPage()
+      await loadMyPage(true)
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
@@ -809,18 +937,10 @@ export function HomePage() {
   }
 
   function confirmLogout() {
+    clearMyPageCache()
     clearAuthSession()
     window.sessionStorage.removeItem(activeHomeViewStorageKey)
     window.location.href = '/login'
-  }
-
-  function redirectToLoginForAuthRequired() {
-    clearAuthSession()
-    window.localStorage.removeItem(signupCompleteStorageKey)
-    window.sessionStorage.removeItem(activeHomeViewStorageKey)
-    window.sessionStorage.removeItem(signupScreenStorageKey)
-    window.sessionStorage.removeItem(signupDraftStorageKey)
-    window.location.assign('/login')
   }
 
   function openAccountDeleteConfirm() {
@@ -864,6 +984,7 @@ export function HomePage() {
         name: completeProfile.name,
         avatarKey: completeProfile.avatarId,
       })
+      clearMyPageCache()
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
       window.sessionStorage.removeItem(activeHomeViewStorageKey)
@@ -2005,7 +2126,7 @@ export function HomePage() {
             <p className="profile-state-message" role="alert">
               {myPageError}
             </p>
-          ) : isMyPageLoading && !myPageData ? (
+          ) : isMyPageLoading && !visibleMyPageData ? (
             <p className="profile-state-message">読み込み中...</p>
           ) : allProfileAchievements.length === 0 ? (
             <p className="profile-state-message">まだ記録はありません</p>
@@ -2082,7 +2203,7 @@ export function HomePage() {
             <p className="profile-state-message" role="alert">
               {myPageError}
             </p>
-          ) : isMyPageLoading && !myPageData ? (
+          ) : isMyPageLoading && !visibleMyPageData ? (
             <p className="profile-state-message">読み込み中...</p>
           ) : hasProfileAchievements ? (
             <>
@@ -2093,9 +2214,9 @@ export function HomePage() {
                 <h2 id="profile-stats-title">実績</h2>
                 <ProfileStatsGrid
                   achievementsCount={achievementsCount}
-                  streakDays={myPageData?.streakDays ?? 0}
-                  likesCount={myPageData?.likesCount ?? 0}
-                  commentsCount={myPageData?.commentsCount ?? 0}
+                  streakDays={visibleMyPageData?.streakDays ?? 0}
+                  likesCount={visibleMyPageData?.likesCount ?? 0}
+                  commentsCount={visibleMyPageData?.commentsCount ?? 0}
                 />
               </section>
 
