@@ -128,14 +128,20 @@ function mapAchievement(achievement: ApiAchievement): ProfileAchievement {
 export async function fetchMyPage(
   userId?: number,
   apiBaseUrl = defaultApiBaseUrl,
+  signal?: AbortSignal,
 ): Promise<MyPageData> {
   let response: Response
 
   try {
     response = await fetch(apiUrl(apiBaseUrl, '/mypage'), {
       headers: userHeaders(userId),
+      signal,
     })
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw error
+    }
+
     throw new Error('APIに接続できませんでした。')
   }
 
@@ -146,7 +152,9 @@ export async function fetchMyPage(
   const result = await readJson<MyPageSuccessResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {
-    throw new Error(errorMessage(result as ErrorResponse, 'マイページ取得に失敗しました。'))
+    throw new Error(
+      errorMessage(result as ErrorResponse, 'マイページ取得に失敗しました。'),
+    )
   }
 
   const data = (result as MyPageSuccessResponse).data
@@ -163,6 +171,24 @@ export async function fetchMyPage(
     recentAchievements: data.recent_achievements.map(mapAchievement),
     allAchievements: data.all_achievements.map(mapAchievement),
   }
+}
+
+export function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
+export function isCurrentMyPageResponse(
+  requestUserId: number,
+  currentUserId: number | undefined,
+  requestId: number,
+  activeRequestId: number,
+  signal: AbortSignal,
+) {
+  return (
+    !signal.aborted &&
+    requestUserId === currentUserId &&
+    requestId === activeRequestId
+  )
 }
 
 export async function deleteCompletionPost(
