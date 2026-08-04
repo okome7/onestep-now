@@ -1,5 +1,5 @@
 class AuthSession < ApplicationRecord
-  LIFETIME = 7.days
+  LIFETIME = 30.days
 
   belongs_to :user
 

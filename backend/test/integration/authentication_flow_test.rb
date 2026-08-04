@@ -26,6 +26,12 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_response :ok
   end
 
+  test "Cookieセッションの有効期限は30日後になる" do
+    login_as(@user)
+
+    assert_in_delta 30.days.from_now, @user.auth_sessions.last.expires_at, 5.seconds
+  end
+
   test "未認証ではX-User-Idを指定しても利用できない" do
     get "/api/mypage", headers: { "X-User-Id" => @user.id.to_s }
 
