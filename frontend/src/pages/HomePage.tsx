@@ -89,6 +89,7 @@ export function HomePage() {
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
   const deletedFeedPostIdsRef = useRef(new Set<string>())
+  const latestLikeEventTimesRef = useRef(new Map<string, number>())
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
@@ -720,6 +721,7 @@ export function HomePage() {
                 event,
                 completeProfile.id,
                 deletedFeedPostIdsRef.current,
+                latestLikeEventTimesRef.current,
               ),
             )
           },
@@ -1479,12 +1481,25 @@ export function HomePage() {
           const nextComments = result.comments.filter(
             (comment) => !existingIds.has(comment.id),
           )
+          const firstPageComments = [
+            ...result.comments,
+            ...post.comments.filter(
+              (comment) =>
+                !result.comments.some(
+                  (loadedComment) => loadedComment.id === comment.id,
+                ),
+            ),
+          ].sort(
+            (left, right) =>
+              left.createdAt - right.createdAt ||
+              left.id.localeCompare(right.id),
+          )
 
           return {
             ...post,
             comments:
               page === 1
-                ? result.comments
+                ? firstPageComments
                 : [...nextComments, ...post.comments],
           }
         }),
@@ -1546,16 +1561,26 @@ export function HomePage() {
       )
 
       setFeedPosts((currentPosts) =>
-        currentPosts.map((post) =>
-          post.id === postId
-            ? {
-                ...post,
-                commented: true,
-                commentsCount: post.commentsCount + 1,
-                comments: [...post.comments, createdComment],
-              }
-            : post,
-        ),
+        currentPosts.map((post) => {
+          if (post.id !== postId) {
+            return post
+          }
+
+          const alreadyAdded = post.comments.some(
+            (comment) => comment.id === createdComment.id,
+          )
+
+          return {
+            ...post,
+            commented: true,
+            commentsCount: alreadyAdded
+              ? post.commentsCount
+              : post.commentsCount + 1,
+            comments: alreadyAdded
+              ? post.comments
+              : [...post.comments, createdComment],
+          }
+        }),
       )
       setCommentDrafts((currentDrafts) => ({
         ...currentDrafts,

@@ -3,8 +3,9 @@ import { apiFetch } from './apiClient'
 
 type ApiFeedStatus = 'doing' | 'completed'
 
-type ApiComment = {
+export type ApiComment = {
   id: number
+  user_id?: number
   body: string
   user_name?: string
   avatar_key?: string
@@ -143,7 +144,7 @@ function toTimestamp(value: string) {
   return Number.isNaN(timestamp) ? Date.now() : timestamp
 }
 
-function mapComment(comment: ApiComment): FeedComment {
+export function mapFeedComment(comment: ApiComment): FeedComment {
   return {
     id: String(comment.id),
     body: comment.body,
@@ -159,7 +160,7 @@ export function mapFeedPost(
   post: ApiFeedPost,
   currentUserId?: number,
 ): FeedPost {
-  const comments = post.comments?.map(mapComment) ?? []
+  const comments = post.comments?.map(mapFeedComment) ?? []
 
   return {
     id: String(post.id),
@@ -213,7 +214,7 @@ export async function fetchComments(postId: string, userId?: number, page = 1) {
   const success = result as CommentsResponse
 
   return {
-    comments: success.data.map(mapComment),
+    comments: success.data.map(mapFeedComment),
     page: success.pagination.page,
     hasMore: success.pagination.has_more,
   }
@@ -424,5 +425,5 @@ export async function createComment(
     )
   }
 
-  return mapComment((result as CommentResponse).data)
+  return mapFeedComment((result as CommentResponse).data)
 }
