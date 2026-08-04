@@ -18,7 +18,7 @@ class FeedUpdatesBroadcaster
           post_id: post_id
         }
       )
-    rescue StandardError => error
+    rescue StandardError, LoadError => error
       log_broadcast_error("post_deleted", error)
     end
 
@@ -67,7 +67,7 @@ class FeedUpdatesBroadcaster
           post: FeedPostPayload.new(loaded_post, include_user_id: true).as_json
         }
       )
-    rescue StandardError => error
+    rescue StandardError, LoadError => error
       log_broadcast_error(type, error)
     end
 
@@ -81,12 +81,12 @@ class FeedUpdatesBroadcaster
         STREAM_NAME,
         payload.merge(occurred_at: Time.current.iso8601(6))
       )
-    rescue StandardError => error
+    rescue StandardError, LoadError => error
       log_broadcast_error(type, error)
     end
 
     def log_broadcast_error(type, error)
-      Rails.logger.error("Feed #{type} broadcast failed: #{error.class}: #{error.message}")
+      Rails.logger.error("Feed #{type} broadcast failed: #{error.class}")
     end
   end
 end

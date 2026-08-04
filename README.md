@@ -270,6 +270,16 @@ RESEND_API_KEY=your-resend-api-key
 
 リアルタイム更新の対象はフィードと、フィードから開いているコメント・いいね詳細です。マイページや「すべての達成」など、別の状態を持つ画面のリアルタイム更新は現在の対象外です。
 
+Renderでは`staging`と`production`の両環境でSolid Cableを使用し、`DATABASE_URL`で接続する既存のPostgreSQLへメッセージを保存します。Redisは使用しません。RenderのWeb Serviceで`RAILS_ENV=staging`を使う場合、`RACK_ENV`も`staging`に揃えるか未設定にし、環境名が食い違わないようにしてください。
+
+Solid Cableには`solid_cable_messages`テーブルが必要です。このリポジトリでは`20260802090000_create_solid_cable_messages.rb`で作成し、`backend/bin/render-build.sh`の`bundle exec rails db:migrate`でデプロイ時に適用します。既存環境ではRender Shellから次のコマンドで適用状況を確認できます。
+
+```bash
+RAILS_ENV=staging bundle exec rails db:migrate:status
+```
+
+未適用の場合は、再デプロイするか`RAILS_ENV=staging bundle exec rails db:migrate`を実行してください。
+
 本番環境では、以下の環境変数を設定してください。
 
 ### バックエンド（Rails）

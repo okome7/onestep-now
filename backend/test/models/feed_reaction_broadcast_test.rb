@@ -1,4 +1,5 @@
 require "test_helper"
+require "stringio"
 
 class FeedReactionBroadcastTest < ActiveSupport::TestCase
   include ActionCable::TestHelper
@@ -86,6 +87,28 @@ class FeedReactionBroadcastTest < ActiveSupport::TestCase
       @post.completion_post_likes.create!(user: @reactor)
     end
   ensure
+    ActionCable.instance_variable_set(:@server, original_server)
+  end
+
+  test "アダプター読込失敗でも保存したいいねを失敗扱いにせず機密情報をログへ出さない" do
+    original_server = ActionCable.server
+    failing_server = Object.new
+    failing_server.define_singleton_method(:broadcast) do |*|
+      raise Gem::LoadError, "redis is not part of the bundle: secret-token"
+    end
+    ActionCable.instance_variable_set(:@server, failing_server)
+    original_logger = Rails.logger
+    log_output = StringIO.new
+    Rails.logger = ActiveSupport::Logger.new(log_output)
+
+    assert_difference("CompletionPostLike.count", 1) do
+      @post.completion_post_likes.create!(user: @reactor)
+    end
+
+    assert_includes log_output.string, "Feed like_created broadcast failed: Gem::LoadError"
+    assert_not_includes log_output.string, "secret-token"
+  ensure
+    Rails.logger = original_logger if original_logger
     ActionCable.instance_variable_set(:@server, original_server)
   end
 
