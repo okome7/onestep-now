@@ -285,6 +285,16 @@ REST APIとAction Cableへの接続を許可するフロントエンドのOrigin
 FRONTEND_ORIGINS=https://onestep-now-frontend.vercel.app
 ```
 
+`ALLOWED_HOSTS`
+
+RailsのHost Authorizationで受け入れるHost名を、カンマ区切りで指定します。OriginではなくHost名だけを指定してください。未設定時も次の2つだけが許可されます。
+
+```env
+ALLOWED_HOSTS=onestep-now.onrender.com,onestep-now-frontend.vercel.app
+```
+
+Vercel RewriteはフロントエンドのHostを維持してRenderへ転送するため、RenderのHostに加えてVercelのHostも必要です。`FRONTEND_ORIGINS`はCORS・CSRF・Action CableのOrigin検証、`ALLOWED_HOSTS`はDNSリバインディング攻撃を防ぐHost検証に使われ、用途が異なります。ワイルドカードやURLのスキームは指定しないでください。
+
 ### フロントエンド（React）
 
 `VITE_API_BASE_URL`
@@ -335,5 +345,6 @@ Cron Jobには本番Web Serviceと同じ本番環境の設定が必要です。�
 
 ```env
 FRONTEND_ORIGINS=https://onestep-now-frontend.vercel.app
+ALLOWED_HOSTS=onestep-now.onrender.com,onestep-now-frontend.vercel.app
 VITE_CABLE_URL=wss://onestep-now.onrender.com/cable
 ```
