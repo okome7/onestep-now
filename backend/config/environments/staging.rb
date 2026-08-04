@@ -1,4 +1,5 @@
 require "active_support/core_ext/integer/time"
+require_relative "../allowed_hosts"
 
 Rails.application.configure do
   config.enable_reloading = false
@@ -13,12 +14,7 @@ Rails.application.configure do
   config.cache_store = :null_store
   config.active_job.queue_adapter = :inline
 
-  backend_hosts = ENV.fetch("BACKEND_HOSTS", "")
-                     .split(",")
-                     .map(&:strip)
-                     .reject(&:empty?)
-
-  (%w[.onrender.com] + backend_hosts).each do |host|
+  AllowedHosts.from.each do |host|
     config.hosts << host
   end
 
