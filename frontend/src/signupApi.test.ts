@@ -39,6 +39,7 @@ test('登録フォームの値をAPIに送信する', async () => {
 
   expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/signup', {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -73,6 +74,7 @@ test('メールアドレス確認APIにemailだけを送信する', async () => 
     'http://localhost:3000/signup/email_check',
     {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },

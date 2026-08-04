@@ -10,9 +10,22 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "auth_sessions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "csrf_token_digest", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["token_digest"], name: "index_auth_sessions_on_token_digest", unique: true
+    t.index ["user_id", "expires_at"], name: "index_auth_sessions_on_user_id_and_expires_at"
+    t.index ["user_id"], name: "index_auth_sessions_on_user_id"
+  end
 
   create_table "comments", force: :cascade do |t|
     t.text "body", null: false
@@ -23,7 +36,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_090000) do
     t.bigint "user_id", null: false
     t.index ["completion_post_id"], name: "index_comments_on_completion_post_id"
     t.index ["user_id"], name: "index_comments_on_user_id"
-    t.check_constraint "post_status_when_commented::text = ANY (ARRAY['doing'::character varying::text, 'completed'::character varying::text])", name: "check_comments_post_status_when_commented"
+    t.check_constraint "post_status_when_commented::text = ANY (ARRAY['doing'::character varying, 'completed'::character varying]::text[])", name: "check_comments_post_status_when_commented"
   end
 
   create_table "completion_post_likes", force: :cascade do |t|
@@ -49,7 +62,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_090000) do
     t.index ["task_id"], name: "index_completion_posts_on_task_id", unique: true
     t.index ["user_id", "status"], name: "index_completion_posts_on_user_id_and_status"
     t.index ["user_id"], name: "index_completion_posts_on_user_id"
-    t.check_constraint "status::text = ANY (ARRAY['doing'::character varying::text, 'completed'::character varying::text])", name: "check_completion_posts_status"
+    t.check_constraint "status::text = ANY (ARRAY['doing'::character varying, 'completed'::character varying]::text[])", name: "check_completion_posts_status"
   end
 
   create_table "password_reset_codes", force: :cascade do |t|
@@ -85,7 +98,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_090000) do
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_tasks_on_user_id"
     t.index ["user_id"], name: "index_tasks_on_user_id_active_status", unique: true, where: "((status)::text = 'active'::text)"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'active'::character varying::text, 'completed'::character varying::text])", name: "check_tasks_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'completed'::character varying]::text[])", name: "check_tasks_status"
   end
 
   create_table "users", force: :cascade do |t|
@@ -99,6 +112,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_090000) do
     t.index "lower((email)::text)", name: "index_users_on_lower_email", unique: true
   end
 
+  add_foreign_key "auth_sessions", "users"
   add_foreign_key "comments", "completion_posts"
   add_foreign_key "comments", "users"
   add_foreign_key "completion_post_likes", "completion_posts"

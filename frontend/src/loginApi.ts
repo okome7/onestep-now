@@ -10,7 +10,6 @@ type LoginSuccessResponse = {
     name: string
     email: string
     avatar_key?: string
-    cable_token?: string
   }
 }
 
@@ -60,7 +59,7 @@ export async function login(form: LoginForm, apiBaseUrl = defaultApiBaseUrl) {
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl), {
+    response = await apiFetch(apiUrl(apiBaseUrl), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,3 +99,4 @@ export async function login(form: LoginForm, apiBaseUrl = defaultApiBaseUrl) {
 
   return result.data
 }
+import { apiFetch } from './apiClient'

@@ -11,7 +11,8 @@ class ApplicationCable::ConnectionTest < ActionCable::Connection::TestCase
   end
 
   test "署名済みトークンのユーザーを接続に設定する" do
-    connect params: { token: CableUserToken.issue(@user) }
+    auth_session, = AuthSession.issue_for(@user)
+    connect params: { token: CableUserToken.issue(auth_session) }
 
     assert_equal @user, connection.current_user
   end

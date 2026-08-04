@@ -5,6 +5,7 @@ import type {
   ProfileAchievement,
 } from './appTypes'
 import { AuthRequiredError } from './feedApi'
+import { apiFetch } from './apiClient'
 
 type ApiAchievementUser = {
   id: number
@@ -68,9 +69,9 @@ function apiUrl(apiBaseUrl: string, path: string) {
 }
 
 function userHeaders(userId?: number) {
+  void userId
   return {
     'Content-Type': 'application/json',
-    ...(userId ? { 'X-User-Id': String(userId) } : {}),
   }
 }
 
@@ -133,7 +134,7 @@ export async function fetchMyPage(
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl, '/mypage'), {
+    response = await apiFetch(apiUrl(apiBaseUrl, '/mypage'), {
       headers: userHeaders(userId),
       signal,
     })
@@ -199,7 +200,7 @@ export async function deleteCompletionPost(
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl, `/completion_posts/${postId}`), {
+    response = await apiFetch(apiUrl(apiBaseUrl, `/completion_posts/${postId}`), {
       method: 'DELETE',
       headers: userHeaders(userId),
     })

@@ -1,6 +1,15 @@
 require 'rails_helper'
 
 RSpec.describe "Sessions", type: :request do
+  describe "GET /session" do
+    it "未ログイン時はエラーにせず未認証状態を返すこと" do
+      get "/session", as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq("status" => "success", "data" => nil)
+    end
+  end
+
   describe "POST /login" do
     before do
       User.create!(
@@ -17,7 +26,7 @@ RSpec.describe "Sessions", type: :request do
           email: " LOGIN@example.com ",
           password: "password1"
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:ok)
 
@@ -36,7 +45,7 @@ RSpec.describe "Sessions", type: :request do
           email: "login@example.com",
           password: "wrongpass1"
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:unauthorized)
 

@@ -1,10 +1,3 @@
-type DeleteAccountParams = {
-  id?: number
-  email?: string
-  name?: string
-  avatarKey?: string
-}
-
 type DeleteAccountSuccessResponse = {
   status: 'success'
 }
@@ -39,25 +32,16 @@ function errorMessageFromResult(result: DeleteAccountErrorResponse) {
 }
 
 export async function deleteAccount(
-  params: DeleteAccountParams,
   apiBaseUrl = defaultApiBaseUrl,
 ) {
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl), {
+    response = await apiFetch(apiUrl(apiBaseUrl), {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        user: {
-          id: params.id,
-          email: params.email,
-          name: params.name,
-          avatar_key: params.avatarKey,
-        },
-      }),
     })
   } catch {
     throw new Error(
@@ -79,3 +63,4 @@ export async function deleteAccount(
     throw new Error(errorMessageFromResult(result as DeleteAccountErrorResponse))
   }
 }
+import { apiFetch } from './apiClient'

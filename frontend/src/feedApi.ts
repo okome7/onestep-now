@@ -1,4 +1,5 @@
 import type { FeedComment, FeedPost, FeedPostStatus } from './appTypes'
+import { apiFetch } from './apiClient'
 
 type ApiFeedStatus = 'doing' | 'completed'
 
@@ -112,9 +113,9 @@ function apiUrl(apiBaseUrl: string, path: string) {
 }
 
 function userHeaders(userId?: number) {
+  void userId
   return {
     'Content-Type': 'application/json',
-    ...(userId ? { 'X-User-Id': String(userId) } : {}),
   }
 }
 
@@ -189,7 +190,7 @@ export async function fetchComments(postId: string, userId?: number, page = 1) {
   let response: Response
 
   try {
-    response = await fetch(
+    response = await apiFetch(
       apiUrl(defaultApiBaseUrl, `/completion_posts/${postId}/comments${query}`),
       { headers: userHeaders(userId) },
     )
@@ -227,7 +228,7 @@ export async function fetchFeed(
   const feedPath = page > 1 ? `/feed?page=${page}` : '/feed'
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl, feedPath), {
+    response = await apiFetch(apiUrl(apiBaseUrl, feedPath), {
       headers: userHeaders(userId),
     })
   } catch {
@@ -273,7 +274,7 @@ export async function fetchFeed(
 }
 
 export async function createTask(title: string, userId?: number) {
-  const response = await fetch(apiUrl(defaultApiBaseUrl, '/tasks'), {
+  const response = await apiFetch(apiUrl(defaultApiBaseUrl, '/tasks'), {
     method: 'POST',
     headers: userHeaders(userId),
     body: JSON.stringify({ task: { title } }),
@@ -295,7 +296,7 @@ export async function createTask(title: string, userId?: number) {
 }
 
 export async function startTask(taskId: number, userId?: number) {
-  const response = await fetch(
+  const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/tasks/${taskId}/start`),
     {
       method: 'PATCH',
@@ -319,7 +320,7 @@ export async function startTask(taskId: number, userId?: number) {
 }
 
 export async function completeTask(taskId: number, userId?: number) {
-  const response = await fetch(
+  const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/tasks/${taskId}/complete`),
     {
       method: 'PATCH',
@@ -343,7 +344,7 @@ export async function completeTask(taskId: number, userId?: number) {
 }
 
 export async function cancelTask(taskId: number, userId?: number) {
-  const response = await fetch(apiUrl(defaultApiBaseUrl, `/tasks/${taskId}`), {
+  const response = await apiFetch(apiUrl(defaultApiBaseUrl, `/tasks/${taskId}`), {
     method: 'DELETE',
     headers: userHeaders(userId),
   })
@@ -362,7 +363,7 @@ export async function cancelTask(taskId: number, userId?: number) {
 }
 
 export async function likePost(postId: string, userId?: number) {
-  const response = await fetch(
+  const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/completion_posts/${postId}/likes`),
     {
       method: 'POST',
@@ -380,7 +381,7 @@ export async function likePost(postId: string, userId?: number) {
 }
 
 export async function unlikePost(postId: string, userId?: number) {
-  const response = await fetch(
+  const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/completion_posts/${postId}/likes`),
     {
       method: 'DELETE',
@@ -402,7 +403,7 @@ export async function createComment(
   body: string,
   userId?: number,
 ) {
-  const response = await fetch(
+  const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/completion_posts/${postId}/comments`),
     {
       method: 'POST',

@@ -35,6 +35,7 @@ test('再設定コード送信APIにメールアドレスを送信する', async
     'http://localhost:3000/password_reset',
     {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -70,6 +71,7 @@ test('認証コード確認APIにメールアドレスとコードを送信す�
     'http://localhost:3000/password_reset/verify',
     {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -111,6 +113,7 @@ test('パスワード再設定APIに新しいパスワードを送信する', as
     'http://localhost:3000/password_reset',
     {
       method: 'PATCH',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
       },

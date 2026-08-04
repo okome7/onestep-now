@@ -69,6 +69,7 @@ import {
   unlikePost,
 } from '../feedApi'
 import { applyFeedCableEvent, subscribeToFeedUpdates } from '../feedCable'
+import { fetchCableToken, logoutSession } from '../sessionApi'
 import {
   deleteCompletionPost,
   fetchMyPage,
@@ -694,33 +695,46 @@ export function HomePage() {
       !isFeedOpen ||
       isFeedAccessDenied ||
       isFeedExpired ||
-      !completeProfile.cableToken
+      !completeProfile.id
     ) {
       return undefined
     }
 
-    return subscribeToFeedUpdates({
-      token: completeProfile.cableToken,
-      onEvent: (event) => {
-        if (event.type === 'post_deleted') {
-          deletedFeedPostIdsRef.current.add(String(event.post_id))
-        }
+    let unsubscribe: (() => void) | undefined
+    let cancelled = false
 
-        setFeedPosts((currentPosts) =>
-          applyFeedCableEvent(
-            currentPosts,
-            event,
-            completeProfile.id,
-            deletedFeedPostIdsRef.current,
-          ),
-        )
-      },
-      onReconnect: () => {
-        void loadFeed()
-      },
-    })
+    void fetchCableToken()
+      .then((token) => {
+        if (cancelled) return
+
+        unsubscribe = subscribeToFeedUpdates({
+          token,
+          onEvent: (event) => {
+            if (event.type === 'post_deleted') {
+              deletedFeedPostIdsRef.current.add(String(event.post_id))
+            }
+
+            setFeedPosts((currentPosts) =>
+              applyFeedCableEvent(
+                currentPosts,
+                event,
+                completeProfile.id,
+                deletedFeedPostIdsRef.current,
+              ),
+            )
+          },
+          onReconnect: () => {
+            void loadFeed()
+          },
+        })
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
   }, [
-    completeProfile.cableToken,
     completeProfile.id,
     isFeedAccessDenied,
     isFeedExpired,
@@ -979,11 +993,17 @@ export function HomePage() {
     setIsLogoutConfirmOpen(false)
   }
 
-  function confirmLogout() {
-    clearMyPageCache()
-    clearAuthSession()
-    window.sessionStorage.removeItem(activeHomeViewStorageKey)
-    window.location.href = '/login'
+  async function confirmLogout() {
+    try {
+      await logoutSession()
+      clearMyPageCache()
+      clearAuthSession()
+      window.localStorage.removeItem(signupCompleteStorageKey)
+      window.sessionStorage.removeItem(activeHomeViewStorageKey)
+      window.location.href = '/login'
+    } catch {
+      setIsLogoutConfirmOpen(false)
+    }
   }
 
   function openAccountDeleteConfirm() {
@@ -1021,12 +1041,7 @@ export function HomePage() {
     setAccountDeleteError('')
 
     try {
-      await deleteAccount({
-        id: completeProfile.id,
-        email: completeProfile.email,
-        name: completeProfile.name,
-        avatarKey: completeProfile.avatarId,
-      })
+      await deleteAccount()
       clearMyPageCache()
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
@@ -2060,7 +2075,7 @@ export function HomePage() {
                 <button
                   className="logout-modal-primary"
                   type="button"
-                  onClick={confirmLogout}
+                  onClick={() => void confirmLogout()}
                 >
                   ログアウト
                 </button>

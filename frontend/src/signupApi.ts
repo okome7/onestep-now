@@ -11,7 +11,6 @@ export type SignupUser = {
   name: string
   email: string
   avatar_key?: string
-  cable_token?: string
 }
 
 type SignupSuccessResponse = {
@@ -82,7 +81,7 @@ export async function checkSignupEmail(
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl, '/signup/email_check'), {
+    response = await apiFetch(apiUrl(apiBaseUrl, '/signup/email_check'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -126,7 +125,7 @@ export async function signup(
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl, '/signup'), {
+    response = await apiFetch(apiUrl(apiBaseUrl, '/signup'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -167,3 +166,4 @@ export async function signup(
 
   return result.data
 }
+import { apiFetch } from './apiClient'
