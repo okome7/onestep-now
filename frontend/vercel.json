@@ -1,6 +1,42 @@
 {
   "rewrites": [
     {
+      "source": "/api/login",
+      "destination": "https://onestep-now.onrender.com/login"
+    },
+    {
+      "source": "/api/logout",
+      "destination": "https://onestep-now.onrender.com/logout"
+    },
+    {
+      "source": "/api/session",
+      "destination": "https://onestep-now.onrender.com/session"
+    },
+    {
+      "source": "/api/signup/:path*",
+      "destination": "https://onestep-now.onrender.com/signup/:path*"
+    },
+    {
+      "source": "/api/signup",
+      "destination": "https://onestep-now.onrender.com/signup"
+    },
+    {
+      "source": "/api/password_reset/:path*",
+      "destination": "https://onestep-now.onrender.com/password_reset/:path*"
+    },
+    {
+      "source": "/api/password_reset",
+      "destination": "https://onestep-now.onrender.com/password_reset"
+    },
+    {
+      "source": "/api/account",
+      "destination": "https://onestep-now.onrender.com/account"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://onestep-now.onrender.com/api/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

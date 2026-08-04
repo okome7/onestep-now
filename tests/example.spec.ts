@@ -11,8 +11,35 @@ const backendURL =
     : "http://127.0.0.1:3001");
 const authSessionStorageKey = "onestep-auth-session";
 const signupCompleteStorageKey = "onestep-signup-complete";
+const sessionRoute = /.*\/(?:api\/)?session$/;
+const myPageRoute = /.*\/(?:api\/)?mypage$/;
+const cableTokenRoute = /.*\/(?:api\/)?cable_token$/;
+
+async function mockSession(page: Page, authenticated: boolean) {
+  await page.unroute(sessionRoute);
+  await page.route(sessionRoute, async (route) => {
+    await route.fulfill({
+      status: authenticated ? 200 : 401,
+      contentType: "application/json",
+      body: JSON.stringify(
+        authenticated
+          ? {
+              status: "success",
+              data: {
+                id: 1,
+                name: "おこめ",
+                email: "okome@example.com",
+                avatar_key: "avatar-1",
+              },
+            }
+          : { status: "error", errors: ["認証が必要です"] },
+      ),
+    });
+  });
+}
 
 async function markLoggedIn(page: Page) {
+  await mockSession(page, true);
   await page.evaluate(
     ({ authKey, profileKey }) => {
       localStorage.setItem(authKey, "active");
@@ -33,6 +60,35 @@ async function markLoggedIn(page: Page) {
   );
 }
 
+async function mockAuthenticatedBackgroundApis(page: Page) {
+  await page.route(myPageRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          level: 1,
+          next_level: 2,
+          remaining_to_next_level: 10,
+          progress_percent: 0,
+          achievements_count: 0,
+          streak_days: 0,
+          likes_count: 0,
+          comments_count: 0,
+          recent_achievements: [],
+          all_achievements: [],
+        },
+      }),
+    });
+  });
+  await page.route(cableTokenRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", token: "e2e-cable-token" }),
+    });
+  });
+}
+
 async function gotoHome(page: Page, path = "/home") {
   await markLoggedIn(page);
   await page.goto(path);
@@ -51,6 +107,10 @@ async function mockLogin(
   page: Page,
   response: { status: number; body: Record<string, unknown> },
 ) {
+  if (response.status >= 200 && response.status < 300) {
+    await mockSession(page, true);
+  }
+
   await page.route(/.*\/(?:api\/)?login$/, async (route) => {
     if (route.request().method() !== "POST") {
       await route.fallback();
@@ -256,6 +316,8 @@ async function mockTaskAndFeedApi(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  await mockAuthenticatedBackgroundApis(page);
+  await mockSession(page, false);
   await page.goto("/");
   await page.evaluate(() => {
     sessionStorage.clear();
@@ -272,6 +334,7 @@ test("バックエンドのヘルスチェックが成功する", async ({ reque
 test("バックエンドにデフォルトアイコンで登録できる", async ({ request }) => {
   const email = `e2e+${Date.now()}@example.com`;
   const response = await request.post(`${backendURL}/signup`, {
+    headers: { Origin: "http://localhost:5173" },
     data: {
       user: {
         name: "E2E登録",
@@ -302,6 +365,7 @@ test("バックエンドで保存せずにメールアドレスの重複を確�
 }) => {
   const email = `e2e-check+${Date.now()}@example.com`;
   const response = await request.post(`${backendURL}/signup/email_check`, {
+    headers: { Origin: "http://localhost:5173" },
     data: {
       user: {
         email,
@@ -319,6 +383,7 @@ test("バックエンドで保存せずにメールアドレスの重複を確�
 test("バックエンドでログインできる", async ({ request }) => {
   const email = `e2e-login+${Date.now()}@example.com`;
   await request.post(`${backendURL}/signup`, {
+    headers: { Origin: "http://localhost:5173" },
     data: {
       user: {
         name: "E2Eログイン",
@@ -331,6 +396,7 @@ test("バックエンドでログインできる", async ({ request }) => {
   });
 
   const response = await request.post(`${backendURL}/login`, {
+    headers: { Origin: "http://localhost:5173" },
     data: {
       user: {
         email,
@@ -579,13 +645,13 @@ test("ログイン済みならアプリを開いたときにホーム画面を�
   ).toBeVisible();
 });
 
-test("未ログインでホーム画面を開くと新規登録画面を表示する", async ({
+test("未ログインでホーム画面を開くとログイン画面を表示する", async ({
   page,
 }) => {
   await page.goto("/home");
 
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "ログイン" })).toBeVisible();
 });
 
 test("ログアウトするとログイン状態を削除してログイン画面へ遷移する", async ({
@@ -598,6 +664,13 @@ test("ログアウトするとログイン状態を削除してログイン画�
   await page.getByRole("button", { name: "ログアウト" }).click();
   const dialog = page.getByRole("dialog", { name: "ログアウトしますか？" });
   await expect(dialog).toBeVisible();
+  await mockSession(page, false);
+  await page.route(/.*\/(?:api\/)?logout$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success" }),
+    });
+  });
   await dialog.getByRole("button", { name: "ログアウト" }).click();
 
   await expect(page).toHaveURL(/\/login$/);
@@ -754,6 +827,7 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
 
   expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
 
+  await mockSession(page, true);
   await page.reload();
   await expect(page).toHaveURL(/\/home$/);
   await expect(
@@ -1199,6 +1273,7 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
   await expect(
     page.getByRole("heading", { name: "登録が完了しました！" }),
   ).toBeVisible();
+  await mockSession(page, true);
   await page.reload();
   await expect(page).toHaveURL(/\/home$/);
   await expect(

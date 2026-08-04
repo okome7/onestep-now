@@ -5,6 +5,7 @@ import type {
   ProfileAchievement,
 } from './appTypes'
 import { AuthRequiredError } from './feedApi'
+import { apiFetch } from './apiClient'
 
 type ApiAchievementUser = {
   id: number
@@ -68,9 +69,9 @@ function apiUrl(apiBaseUrl: string, path: string) {
 }
 
 function userHeaders(userId?: number) {
+  void userId
   return {
     'Content-Type': 'application/json',
-    ...(userId ? { 'X-User-Id': String(userId) } : {}),
   }
 }
 
@@ -128,14 +129,20 @@ function mapAchievement(achievement: ApiAchievement): ProfileAchievement {
 export async function fetchMyPage(
   userId?: number,
   apiBaseUrl = defaultApiBaseUrl,
+  signal?: AbortSignal,
 ): Promise<MyPageData> {
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl, '/mypage'), {
+    response = await apiFetch(apiUrl(apiBaseUrl, '/mypage'), {
       headers: userHeaders(userId),
+      signal,
     })
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw error
+    }
+
     throw new Error('APIに接続できませんでした。')
   }
 
@@ -146,7 +153,9 @@ export async function fetchMyPage(
   const result = await readJson<MyPageSuccessResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {
-    throw new Error(errorMessage(result as ErrorResponse, 'マイページ取得に失敗しました。'))
+    throw new Error(
+      errorMessage(result as ErrorResponse, 'マイページ取得に失敗しました。'),
+    )
   }
 
   const data = (result as MyPageSuccessResponse).data
@@ -165,6 +174,24 @@ export async function fetchMyPage(
   }
 }
 
+export function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === 'AbortError'
+}
+
+export function isCurrentMyPageResponse(
+  requestUserId: number,
+  currentUserId: number | undefined,
+  requestId: number,
+  activeRequestId: number,
+  signal: AbortSignal,
+) {
+  return (
+    !signal.aborted &&
+    requestUserId === currentUserId &&
+    requestId === activeRequestId
+  )
+}
+
 export async function deleteCompletionPost(
   postId: string,
   userId?: number,
@@ -173,7 +200,7 @@ export async function deleteCompletionPost(
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl, `/completion_posts/${postId}`), {
+    response = await apiFetch(apiUrl(apiBaseUrl, `/completion_posts/${postId}`), {
       method: 'DELETE',
       headers: userHeaders(userId),
     })

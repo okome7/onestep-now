@@ -1,15 +1,32 @@
 class FeedController < ApplicationController
+  POSTS_LIMIT = 20
+
   before_action :require_current_user
 
   def index
     return render_feed_unavailable unless feed_accessible?
 
-    posts = CompletionPost.includes(:task, :user, :completion_post_likes, comments: :user).order(created_at: :desc)
+    page = [ params.fetch(:page, 1).to_i, 1 ].max
+    posts = CompletionPost
+      .preload(:task, :user, :completion_post_likes)
+      .order(created_at: :desc, id: :desc)
+      .offset((page - 1) * POSTS_LIMIT)
+      .limit(POSTS_LIMIT + 1)
+      .to_a
+    has_more = posts.length > POSTS_LIMIT
+    posts = posts.first(POSTS_LIMIT)
+    @completed_post_counts = completed_post_counts_for(posts)
+    load_comment_summaries(posts)
 
     render json: {
       status: "success",
       remaining_seconds: remaining_seconds,
       feed_access_expires_at: current_user.feed_access_expires_at,
+      pagination: {
+        page: page,
+        per_page: POSTS_LIMIT,
+        has_more: has_more
+      },
       data: posts.map { |post| feed_post_payload(post) }
     }, status: :ok
   end
@@ -37,45 +54,32 @@ class FeedController < ApplicationController
   end
 
   def feed_post_payload(post)
-    is_mine = post.user_id == current_user.id
-
-    {
-      id: post.id,
-      user_name: post.user.name,
-      level: level_for(post.user.completion_posts.completed.count),
-      task_title: post.task.title,
-      status: post.status,
-      status_label: post.status_label,
-      card_variant: post.card_variant,
-      is_mine: is_mine,
-      can_like: true,
-      can_comment: true,
-      likes_count: post.completion_post_likes.size,
-      comments_count: post.comments.size,
-      liked_by_me: post.completion_post_likes.any? { |like| like.user_id == current_user.id },
-      commented_by_me: post.comments.any? { |comment| comment.user_id == current_user.id },
-      comments: post.comments.order(created_at: :asc).map { |comment| comment_payload(comment) },
-      created_at: post.created_at,
-      completed_at: post.completed_at
-    }
+    FeedPostPayload.new(
+      post,
+      viewer: current_user,
+      completed_count: @completed_post_counts.fetch(post.user_id, 0),
+      comment_count: @comment_counts.fetch(post.id, 0),
+      commented_by_viewer: @commented_post_ids.include?(post.id)
+    ).as_json
   end
 
-  def comment_payload(comment)
-    {
-      id: comment.id,
-      user_id: comment.user_id,
-      user_name: comment.user.name,
-      level: level_for(comment.user.completion_posts.completed.count),
-      avatar_key: comment.user.avatar_key,
-      body: comment.body,
-      post_status_when_commented: comment.post_status_when_commented,
-      created_at: comment.created_at
-    }
+  def completed_post_counts_for(posts)
+    user_ids = posts.map(&:user_id).uniq
+
+    CompletionPost.completed.where(user_id: user_ids).group(:user_id).count
   end
 
-  def level_for(completed_count)
-    return 0 if completed_count.zero?
+  def load_comment_summaries(posts)
+    summaries = Comment
+      .where(completion_post_id: posts.map(&:id))
+      .group(:completion_post_id)
+      .pluck(
+        :completion_post_id,
+        Arel.sql("COUNT(*)"),
+        Arel.sql("BOOL_OR(user_id = #{current_user.id})")
+      )
 
-    (completed_count / 10).floor + 1
+    @comment_counts = summaries.to_h { |post_id, count, _commented| [ post_id, count ] }
+    @commented_post_ids = summaries.filter_map { |post_id, _count, commented| post_id if commented }
   end
 end

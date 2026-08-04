@@ -34,6 +34,7 @@ test('ログインフォームの値をAPIに送信する', async () => {
 
   expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/login', {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },

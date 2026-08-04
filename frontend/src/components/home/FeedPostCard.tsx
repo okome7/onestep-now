@@ -66,7 +66,7 @@ export function FeedPostCard({
               aria-hidden="true"
             />
           </span>
-          <span>{post.comments.length}</span>
+          <span>{post.commentsCount}</span>
         </button>
         <time
           className="feed-post-age"

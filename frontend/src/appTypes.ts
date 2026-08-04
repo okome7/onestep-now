@@ -30,6 +30,7 @@ export type FeedPost = {
   status: FeedPostStatus
   statusLabel: string
   likes: number
+  commentsCount: number
   comments: FeedComment[]
   createdAt: number
   liked: boolean

@@ -26,6 +26,16 @@ RSpec.describe "Feed posts", type: :request do
     end
   end
 
+  def sql_query_count
+    count = 0
+    subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+      count += 1 unless payload[:cached] || %w[SCHEMA TRANSACTION].include?(payload[:name])
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") { yield }
+    count
+  end
+
   let(:user) { create_user(email: "owner@example.com") }
   let(:other_user) { create_user(email: "other@example.com") }
 
@@ -33,7 +43,7 @@ RSpec.describe "Feed posts", type: :request do
     it "現在のユーザーのタスクを作成する" do
       post "/api/tasks",
         params: { task: { title: "参考記事を1つ読む" } },
-        headers: { "X-User-Id" => user.id.to_s },
+        headers: authenticated_headers(user),
         as: :json
 
       expect(response).to have_http_status(:created)
@@ -48,7 +58,7 @@ RSpec.describe "Feed posts", type: :request do
     it "タスク開始時にdoingの投稿を作成する" do
       task = user.tasks.create!(title: "参考記事を1つ読む")
 
-      patch "/api/tasks/#{task.id}/start", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      patch "/api/tasks/#{task.id}/start", headers: authenticated_headers(user), as: :json
 
       expect(response).to have_http_status(:ok)
       expect(task.reload).to be_active
@@ -73,7 +83,7 @@ RSpec.describe "Feed posts", type: :request do
       old_post_id = old_task.completion_post.id
       next_task = user.tasks.create!(title: "もう一回始める")
 
-      patch "/api/tasks/#{next_task.id}/start", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      patch "/api/tasks/#{next_task.id}/start", headers: authenticated_headers(user), as: :json
 
       expect(response).to have_http_status(:ok)
       expect(Task.exists?(old_task.id)).to be(false)
@@ -95,7 +105,7 @@ RSpec.describe "Feed posts", type: :request do
       completion_post.comments.create!(user: other_user, body: "応援しています")
 
       expect {
-        patch "/api/tasks/#{task.id}/complete", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        patch "/api/tasks/#{task.id}/complete", headers: authenticated_headers(user), as: :json
       }.not_to change(CompletionPost, :count)
 
       expect(response).to have_http_status(:ok)
@@ -127,7 +137,7 @@ RSpec.describe "Feed posts", type: :request do
       task.create_completion_post!(user: user, status: :doing, content: task.title)
 
       expect {
-        delete "/api/tasks/#{task.id}", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        delete "/api/tasks/#{task.id}", headers: authenticated_headers(user), as: :json
       }.to change(Task, :count).by(-1)
         .and change(CompletionPost, :count).by(-1)
 
@@ -139,7 +149,7 @@ RSpec.describe "Feed posts", type: :request do
       task.create_completion_post!(user: user, status: :completed, content: task.title, completed_at: task.completed_at)
 
       expect {
-        delete "/api/tasks/#{task.id}", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        delete "/api/tasks/#{task.id}", headers: authenticated_headers(user), as: :json
       }.not_to change(Task, :count)
 
       expect(response).to have_http_status(:unprocessable_entity)
@@ -160,7 +170,7 @@ RSpec.describe "Feed posts", type: :request do
       other_completion_post.completion_post_likes.create!(user: user)
       other_completion_post.comments.create!(user: user, body: "応援しています")
 
-      get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      get "/api/feed", headers: authenticated_headers(user), as: :json
 
       expect(response).to have_http_status(:ok)
       body = JSON.parse(response.body)
@@ -192,7 +202,14 @@ RSpec.describe "Feed posts", type: :request do
         "likes_count" => 1,
         "comments_count" => 1
       )
-      expect(other_payload.fetch("comments").first).to include(
+      expect(other_payload.fetch("comments")).to eq([])
+
+      get "/api/completion_posts/#{other_completion_post.id}/comments",
+        headers: authenticated_headers(user),
+        as: :json
+
+      comment_payload = JSON.parse(response.body).fetch("data").first
+      expect(comment_payload).to include(
         "body" => "応援しています",
         "level" => 2,
         "avatar_key" => user.avatar_key,
@@ -203,7 +220,7 @@ RSpec.describe "Feed posts", type: :request do
     it "閲覧時間外はアクセス不可を通常レスポンスで返す" do
       user.update!(feed_access_expires_at: 1.second.ago)
 
-      get "/api/feed", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      get "/api/feed", headers: authenticated_headers(user), as: :json
 
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)).to include(
@@ -211,6 +228,100 @@ RSpec.describe "Feed posts", type: :request do
         "access_allowed" => false,
         "remaining_seconds" => 0,
         "data" => []
+      )
+    end
+
+    it "20件ずつ全投稿をページ取得できる" do
+      user.update!(feed_access_expires_at: 5.minutes.from_now)
+      create_completed_posts(user: other_user, count: 25)
+
+      get "/api/feed", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      first_page = JSON.parse(response.body)
+      expect(first_page.fetch("data").size).to eq(20)
+      expect(first_page.fetch("pagination")).to include(
+        "page" => 1,
+        "per_page" => 20,
+        "has_more" => true
+      )
+
+      get "/api/feed?page=2", headers: authenticated_headers(user)
+
+      second_page = JSON.parse(response.body)
+      expect(second_page.fetch("data").size).to eq(5)
+      expect(second_page.fetch("pagination")).to include(
+        "page" => 2,
+        "per_page" => 20,
+        "has_more" => false
+      )
+      expect(first_page.fetch("data").pluck("id") & second_page.fetch("data").pluck("id")).to be_empty
+    end
+
+    it "投稿やコメントが増えてもSQL数が増えない" do
+      user.update!(feed_access_expires_at: 5.minutes.from_now)
+      first_task = other_user.tasks.create!(title: "最初の投稿")
+      first_post = first_task.create_completion_post!(user: other_user, status: :completed)
+      first_post.completion_post_likes.create!(user: user)
+      first_post.comments.create!(user: user, body: "最初のコメント")
+
+      initial_count = sql_query_count do
+        get "/api/feed", headers: authenticated_headers(user), as: :json
+      end
+
+      5.times do |index|
+        task = other_user.tasks.create!(title: "追加投稿#{index}")
+        post = task.create_completion_post!(user: other_user, status: :completed)
+        post.completion_post_likes.create!(user: user)
+        post.comments.create!(user: user, body: "追加コメント#{index}")
+      end
+
+      increased_count = sql_query_count do
+        get "/api/feed", headers: authenticated_headers(user), as: :json
+      end
+
+      # Cookie session validation adds the session and current-user lookups.
+      expect(initial_count).to be <= 10
+      expect(increased_count).to eq(initial_count)
+    end
+  end
+
+  describe "GET /api/completion_posts/:id/comments" do
+    it "最新側から20件ずつ取得し、各ページ内は古い順で返す" do
+      task = other_user.tasks.create!(title: "コメントが多い投稿")
+      completion_post = task.create_completion_post!(user: other_user, status: :completed)
+      base_time = Time.current.change(usec: 0)
+
+      25.times do |index|
+        completion_post.comments.create!(
+          user: user,
+          body: "コメント#{index}",
+          created_at: base_time + index.seconds,
+          updated_at: base_time + index.seconds
+        )
+      end
+
+      get "/api/completion_posts/#{completion_post.id}/comments",
+        headers: authenticated_headers(user),
+        as: :json
+
+      first_page = JSON.parse(response.body)
+      expect(first_page.fetch("data").pluck("body")).to eq((5..24).map { |index| "コメント#{index}" })
+      expect(first_page.fetch("pagination")).to include(
+        "page" => 1,
+        "per_page" => 20,
+        "has_more" => true
+      )
+
+      get "/api/completion_posts/#{completion_post.id}/comments?page=2",
+        headers: authenticated_headers(user)
+
+      second_page = JSON.parse(response.body)
+      expect(second_page.fetch("data").pluck("body")).to eq((0..4).map { |index| "コメント#{index}" })
+      expect(second_page.fetch("pagination")).to include(
+        "page" => 2,
+        "per_page" => 20,
+        "has_more" => false
       )
     end
   end
@@ -222,7 +333,7 @@ RSpec.describe "Feed posts", type: :request do
 
       post "/api/completion_posts/#{completion_post.id}/comments",
         params: { comment: { body: "おめでとう" } },
-        headers: { "X-User-Id" => user.id.to_s },
+        headers: authenticated_headers(user),
         as: :json
 
       expect(response).to have_http_status(:created)
@@ -238,7 +349,7 @@ RSpec.describe "Feed posts", type: :request do
 
       post "/api/completion_posts/#{completion_post.id}/comments",
         params: { comment: { body: "自分へのコメント" } },
-        headers: { "X-User-Id" => user.id.to_s },
+        headers: authenticated_headers(user),
         as: :json
 
       expect(response).to have_http_status(:created)
@@ -257,7 +368,7 @@ RSpec.describe "Feed posts", type: :request do
       completion_post.completion_post_likes.create!(user: user)
 
       expect {
-        delete "/api/completion_posts/#{completion_post.id}/likes", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        delete "/api/completion_posts/#{completion_post.id}/likes", headers: authenticated_headers(user), as: :json
       }.to change(CompletionPostLike, :count).by(-1)
 
       expect(response).to have_http_status(:ok)
@@ -268,7 +379,7 @@ RSpec.describe "Feed posts", type: :request do
       completion_post = task.create_completion_post!(user: user, status: :doing)
 
       expect {
-        post "/api/completion_posts/#{completion_post.id}/likes", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        post "/api/completion_posts/#{completion_post.id}/likes", headers: authenticated_headers(user), as: :json
       }.to change(CompletionPostLike, :count).by(1)
 
       expect(response).to have_http_status(:created)

@@ -1,4 +1,6 @@
 class PasswordResetsController < ApplicationController
+  skip_before_action :authenticate_user!
+  skip_before_action :verify_csrf_token!
   SUCCESS_MESSAGE = "登録されているメールアドレスの場合、再設定用コードを送信しました"
   VERIFIED_MESSAGE = "認証コードを確認しました"
   RESET_MESSAGE = "パスワードを再設定しました"
@@ -14,7 +16,7 @@ class PasswordResetsController < ApplicationController
       return
     end
 
-    user = User.find_by(email: email)
+    user = User.find_by_email(email)
     _record, code = PasswordResetCode.issue_for(email: email, user: user)
     deliver_reset_code(email:, code:, user:)
 
@@ -37,6 +39,9 @@ class PasswordResetsController < ApplicationController
 
     if user.update(password_params)
       reset_code.mark_used!
+      user.auth_sessions.active.update_all(revoked_at: Time.current)
+      ActionCable.server.remote_connections.where(current_user: user).disconnect
+      expire_authentication_cookies
       render json: { status: "success", message: RESET_MESSAGE }, status: :ok
     else
       render json: { status: "error", errors: user.errors.full_messages }, status: :unprocessable_entity

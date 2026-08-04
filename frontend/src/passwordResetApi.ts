@@ -82,7 +82,7 @@ async function requestPasswordReset(
   let response: Response
 
   try {
-    response = await fetch(apiUrl(apiBaseUrl, path), {
+    response = await apiFetch(apiUrl(apiBaseUrl, path), {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -163,3 +163,4 @@ export function resetPassword(
     apiBaseUrl,
   )
 }
+import { apiFetch } from './apiClient'

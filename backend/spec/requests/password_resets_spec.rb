@@ -21,7 +21,7 @@ RSpec.describe "PasswordResets", type: :request do
       user: {
         email: email
       }
-    }, as: :json
+    }, headers: frontend_headers, as: :json
   end
 
   def delivered_code
@@ -79,7 +79,7 @@ RSpec.describe "PasswordResets", type: :request do
           email: " RESET@example.com ",
           code: code
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:ok)
 
@@ -95,7 +95,7 @@ RSpec.describe "PasswordResets", type: :request do
           email: user.email,
           code: "000000"
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
 
@@ -111,7 +111,7 @@ RSpec.describe "PasswordResets", type: :request do
           email: "missing@example.com",
           code: delivered_code
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
@@ -129,7 +129,7 @@ RSpec.describe "PasswordResets", type: :request do
           password: "newpass1",
           password_confirmation: "newpass1"
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:ok)
 
@@ -145,7 +145,7 @@ RSpec.describe "PasswordResets", type: :request do
           password: "otherpass1",
           password_confirmation: "otherpass1"
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
@@ -161,7 +161,7 @@ RSpec.describe "PasswordResets", type: :request do
           password: "password",
           password_confirmation: "password"
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
 
@@ -182,7 +182,7 @@ RSpec.describe "PasswordResets", type: :request do
           password: "newpass1",
           password_confirmation: "newpass1"
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
     end

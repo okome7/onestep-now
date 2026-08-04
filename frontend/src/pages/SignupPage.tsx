@@ -17,7 +17,6 @@ import {
   getCompleteAvatarSrc,
   getInitialCompleteProfile,
   getInitialForm,
-  hasActiveAuthSession,
   hasErrors,
   isPasswordGuidanceError,
   saveCompleteProfile,
@@ -34,16 +33,9 @@ import type { SignupForm } from '../signupApi'
 
 function getInitialScreen(): SignupScreen {
   const savedScreen = window.sessionStorage.getItem(signupScreenStorageKey)
-  const savedCompleteProfile = window.localStorage.getItem(
-    signupCompleteStorageKey,
-  )
 
-  if (savedScreen === 'complete' || savedScreen === 'icon') {
+  if (savedScreen === 'icon') {
     return savedScreen
-  }
-
-  if (savedCompleteProfile && hasActiveAuthSession()) {
-    return 'complete'
   }
 
   return 'signup'
@@ -595,4 +587,3 @@ export function SignupPage() {
     </main>
   )
 }
-

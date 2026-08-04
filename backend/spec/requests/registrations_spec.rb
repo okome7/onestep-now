@@ -4,7 +4,7 @@ RSpec.describe "Registrations", type: :request do
   describe "POST /signup/email_check" do
     it "ユーザーを作成せず、利用可能なメールアドレスを確認できること" do
       expect {
-        post "/signup/email_check", params: { user: { email: "available@example.com" } }, as: :json
+        post "/signup/email_check", params: { user: { email: "available@example.com" } }, headers: frontend_headers, as: :json
       }.not_to change(User, :count)
 
       expect(response).to have_http_status(:ok)
@@ -22,7 +22,7 @@ RSpec.describe "Registrations", type: :request do
       )
 
       expect {
-        post "/signup/email_check", params: { user: { email: " Registered@example.com " } }, as: :json
+        post "/signup/email_check", params: { user: { email: " Registered@example.com " } }, headers: frontend_headers, as: :json
       }.not_to change(User, :count)
 
       expect(response).to have_http_status(:unprocessable_entity)
@@ -60,7 +60,7 @@ RSpec.describe "Registrations", type: :request do
     context "有効なパラメータの場合" do
       it "ユーザーが作成され、201ステータスと安全なデータが返ること" do
         expect {
-          post "/signup", params: valid_attributes, as: :json
+          post "/signup", params: valid_attributes, headers: frontend_headers, as: :json
         }.to change(User, :count).by(1)
 
         expect(response).to have_http_status(:created)
@@ -80,7 +80,7 @@ RSpec.describe "Registrations", type: :request do
       it "emailを正規化して保存すること" do
         valid_attributes[:user][:email] = " RSpec_Test@Example.COM "
 
-        post "/signup", params: valid_attributes, as: :json
+        post "/signup", params: valid_attributes, headers: frontend_headers, as: :json
 
         expect(response).to have_http_status(:created)
 
@@ -93,7 +93,7 @@ RSpec.describe "Registrations", type: :request do
         avatar_key = "data:image/jpeg;base64,avatar-image"
         valid_attributes[:user][:avatar_key] = avatar_key
 
-        post "/signup", params: valid_attributes, as: :json
+        post "/signup", params: valid_attributes, headers: frontend_headers, as: :json
 
         expect(response).to have_http_status(:created)
 
@@ -106,7 +106,7 @@ RSpec.describe "Registrations", type: :request do
     context "無効なパラメータの場合" do
       it "ユーザーは作成されず、422ステータスとエラーメッセージが返ること" do
         expect {
-          post "/signup", params: invalid_attributes, as: :json
+          post "/signup", params: invalid_attributes, headers: frontend_headers, as: :json
         }.not_to change(User, :count)
 
         expect(response).to have_http_status(:unprocessable_entity)
@@ -127,7 +127,7 @@ RSpec.describe "Registrations", type: :request do
         valid_attributes[:user][:email] = "RSPEC_TEST@example.com"
 
         expect {
-          post "/signup", params: valid_attributes, as: :json
+          post "/signup", params: valid_attributes, headers: frontend_headers, as: :json
         }.not_to change(User, :count)
 
         expect(response).to have_http_status(:unprocessable_entity)
@@ -142,7 +142,7 @@ RSpec.describe "Registrations", type: :request do
         valid_attributes[:user][:password_confirmation] = "パスワード123"
 
         expect {
-          post "/signup", params: valid_attributes, as: :json
+          post "/signup", params: valid_attributes, headers: frontend_headers, as: :json
         }.not_to change(User, :count)
 
         expect(response).to have_http_status(:unprocessable_entity)
@@ -157,7 +157,7 @@ RSpec.describe "Registrations", type: :request do
         valid_attributes[:user][:password_confirmation] = "password"
 
         expect {
-          post "/signup", params: valid_attributes, as: :json
+          post "/signup", params: valid_attributes, headers: frontend_headers, as: :json
         }.not_to change(User, :count)
 
         expect(response).to have_http_status(:unprocessable_entity)
@@ -172,7 +172,7 @@ RSpec.describe "Registrations", type: :request do
         valid_attributes[:user][:password_confirmation] = "12345678"
 
         expect {
-          post "/signup", params: valid_attributes, as: :json
+          post "/signup", params: valid_attributes, headers: frontend_headers, as: :json
         }.not_to change(User, :count)
 
         expect(response).to have_http_status(:unprocessable_entity)
@@ -199,13 +199,10 @@ RSpec.describe "Registrations", type: :request do
         expires_at: 10.minutes.from_now
       )
 
+      headers = authenticated_headers(user)
+
       expect {
-        delete "/account", params: {
-          user: {
-            id: user.id,
-            email: " DELETE@example.com "
-          }
-        }, as: :json
+        delete "/account", headers: headers, as: :json
       }.to change(User, :count).by(-1)
 
       expect(response).to have_http_status(:ok)
@@ -217,66 +214,43 @@ RSpec.describe "Registrations", type: :request do
           email: "delete@example.com",
           password: "password1"
         }
-      }, as: :json
+      }, headers: frontend_headers, as: :json
 
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it "存在しないユーザーは404を返すこと" do
-      delete "/account", params: {
-        user: {
-          email: "missing@example.com"
-        }
-      }, as: :json
+    it "未認証ユーザーは削除できないこと" do
+      delete "/account", headers: frontend_headers, as: :json
 
-      expect(response).to have_http_status(:not_found)
+      expect(response).to have_http_status(:unauthorized)
       json_response = JSON.parse(response.body)
       expect(json_response["status"]).to eq("error")
     end
 
-    it "古い保存データの表示名とアイコンからユーザーを削除できること" do
+    it "リクエスト本文に別ユーザーを指定しても認証中ユーザーだけを削除すること" do
       user = User.create!(
-        name: "Legacy User",
-        email: "legacy-delete@example.com",
+        name: "Authenticated User",
+        email: "authenticated-delete@example.com",
         password: "password1",
-        password_confirmation: "password1",
-        avatar_key: "avatar-3"
+        password_confirmation: "password1"
       )
+      other_user = User.create!(
+        name: "Other User",
+        email: "other-delete@example.com",
+        password: "password1",
+        password_confirmation: "password1"
+      )
+      headers = authenticated_headers(user)
 
       expect {
         delete "/account", params: {
-          user: {
-            name: user.name,
-            avatar_key: user.avatar_key
-          }
-        }, as: :json
+          user: { id: other_user.id, email: other_user.email }
+        }, headers: headers, as: :json
       }.to change(User, :count).by(-1)
 
       expect(response).to have_http_status(:ok)
       expect(User.exists?(user.id)).to be(false)
-    end
-
-    it "表示名とアイコンだけで複数一致する場合は削除しないこと" do
-      2.times do |index|
-        User.create!(
-          name: "Duplicate User",
-          email: "duplicate#{index}@example.com",
-          password: "password1",
-          password_confirmation: "password1",
-          avatar_key: "avatar-4"
-        )
-      end
-
-      expect {
-        delete "/account", params: {
-          user: {
-            name: "Duplicate User",
-            avatar_key: "avatar-4"
-          }
-        }, as: :json
-      }.not_to change(User, :count)
-
-      expect(response).to have_http_status(:conflict)
+      expect(User.exists?(other_user.id)).to be(true)
     end
   end
 end

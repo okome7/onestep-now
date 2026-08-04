@@ -1799,6 +1799,24 @@ body {
   box-shadow: 0 2px 6px rgb(15 23 42 / 12%);
 }
 
+.feed-load-more {
+  min-height: 24px;
+  color: #7b8798;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+}
+
+.feed-load-more button {
+  border: 0;
+  padding: 4px 10px;
+  color: #5f6b7a;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
 .feed-start-gate {
   display: grid;
   justify-items: center;
@@ -1833,7 +1851,6 @@ body {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  margin: 0 0 14px;
   color: #111827;
   font-size: 13px;
   font-weight: 800;
@@ -1861,7 +1878,7 @@ body {
   font-size: 11px;
   font-weight: 800;
   line-height: 1.45;
-  text-align: left;
+  text-align: center;
 }
 
 .feed-start-guide {
@@ -2230,6 +2247,36 @@ body {
 .feed-comment-panel-list li {
   padding: 12px 0 10px;
   border-bottom: 1px solid #e5eaf2;
+}
+
+.feed-comment-panel-list li.feed-comment-load-more {
+  padding: 8px 0;
+  text-align: center;
+}
+
+.feed-comment-load-more button {
+  border: 0;
+  padding: 5px 10px;
+  background: transparent;
+  color: #4d95e5;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.feed-comment-load-more button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.feed-comment-load-error {
+  margin: 0;
+  padding: 6px 12px;
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
 }
 
 .feed-comment-panel-done .feed-comment-panel-list li {

@@ -6,6 +6,7 @@ class User < ApplicationRecord
   has_many :comments, dependent: :destroy
   has_many :completion_post_likes, dependent: :destroy
   has_many :password_reset_codes, dependent: :destroy
+  has_many :auth_sessions, dependent: :destroy
 
   before_validation :normalize_email
 
@@ -22,6 +23,10 @@ class User < ApplicationRecord
       message: "は英字と数字を両方含めてください"
     },
     allow_blank: true
+
+  def self.find_by_email(email)
+    find_by("LOWER(email) = ?", email.to_s.strip.downcase)
+  end
 
   private
 

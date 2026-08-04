@@ -184,4 +184,3 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     </main>
   )
 }
-

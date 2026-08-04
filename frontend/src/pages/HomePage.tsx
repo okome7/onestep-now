@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { deleteAccount } from '../accountApi'
 import {
@@ -56,12 +62,20 @@ import {
   completeTask,
   createComment,
   createTask,
+  fetchComments,
   fetchFeed,
   likePost,
   startTask,
   unlikePost,
 } from '../feedApi'
-import { deleteCompletionPost, fetchMyPage } from '../mypageApi'
+import { applyFeedCableEvent, subscribeToFeedUpdates } from '../feedCable'
+import { fetchCableToken, logoutSession } from '../sessionApi'
+import {
+  deleteCompletionPost,
+  fetchMyPage,
+  isAbortError,
+  isCurrentMyPageResponse,
+} from '../mypageApi'
 
 const feedIntroStorageKey = 'onestep-feed-intro-seen'
 const activeHomeViewStorageKey = 'onestep-active-home-view'
@@ -73,6 +87,9 @@ function getInitialHomeView() {
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
+  const feedLoadMoreRef = useRef<HTMLDivElement>(null)
+  const deletedFeedPostIdsRef = useRef(new Set<string>())
+  const latestLikeEventTimesRef = useRef(new Map<string, number>())
   const [taskText, setTaskText] = useState('')
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
@@ -120,6 +137,12 @@ export function HomePage() {
   const [completeProfile, setCompleteProfile] = useState(() =>
     getInitialCompleteProfile(),
   )
+  const currentMyPageUserIdRef = useRef<number | undefined>(completeProfile.id)
+  const loadedMyPageUserIdRef = useRef<number | null>(null)
+  const myPageAbortControllerRef = useRef<AbortController | null>(null)
+  const myPageRequestUserIdRef = useRef<number | null>(null)
+  const myPageRequestIdRef = useRef(0)
+  const myPageRequestPromiseRef = useRef<Promise<void> | null>(null)
   const [displayNameDraft, setDisplayNameDraft] = useState(
     completeProfile.name || 'おこめ',
   )
@@ -135,9 +158,7 @@ export function HomePage() {
     useState(false)
   const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
     useState(false)
-  const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(
-    0,
-  )
+  const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(0)
   const [feedAccessExpiresAt, setFeedAccessExpiresAt] = useState<number | null>(
     null,
   )
@@ -145,16 +166,25 @@ export function HomePage() {
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
   const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
   const [isFeedLoading, setIsFeedLoading] = useState(false)
+  const [isFeedLoadingMore, setIsFeedLoadingMore] = useState(false)
+  const [feedPage, setFeedPage] = useState(1)
+  const [hasMoreFeedPosts, setHasMoreFeedPosts] = useState(false)
+  const [feedLoadMoreError, setFeedLoadMoreError] = useState('')
   const [isFeedTimeoutModalOpen, setIsFeedTimeoutModalOpen] = useState(false)
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [myPageData, setMyPageData] = useState<MyPageData | null>(null)
+  const [myPageDataUserId, setMyPageDataUserId] = useState<number | null>(null)
   const [isMyPageLoading, setIsMyPageLoading] = useState(false)
   const [myPageError, setMyPageError] = useState('')
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
   )
+  const [commentPage, setCommentPage] = useState(1)
+  const [hasMoreComments, setHasMoreComments] = useState(false)
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false)
+  const [commentsLoadError, setCommentsLoadError] = useState('')
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
@@ -170,53 +200,55 @@ export function HomePage() {
   const trimmedDisplayNameDraft = displayNameDraft.trim()
   const hasDisplayNameDraftChanged = displayNameDraft !== profileName
   const canSaveDisplayName =
-    trimmedDisplayNameDraft.length > 0 && trimmedDisplayNameDraft !== profileName
+    trimmedDisplayNameDraft.length > 0 &&
+    trimmedDisplayNameDraft !== profileName
   const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
-  const canSaveSettingsIcon = selectedSettingsIconId !== completeProfile.avatarId
-  const level = myPageData?.level ?? 0
-  const nextLevel = myPageData?.nextLevel ?? 1
-  const remainingToNextLevel = myPageData?.remainingToNextLevel ?? 10
-  const progressPercent = myPageData?.progressPercent ?? 0
-  const achievementsCount = myPageData?.achievementsCount ?? 0
+  const canSaveSettingsIcon =
+    selectedSettingsIconId !== completeProfile.avatarId
+  const visibleMyPageData =
+    myPageDataUserId === completeProfile.id ? myPageData : null
+  const level = visibleMyPageData?.level ?? 0
+  const nextLevel = visibleMyPageData?.nextLevel ?? 1
+  const remainingToNextLevel = visibleMyPageData?.remainingToNextLevel ?? 10
+  const progressPercent = visibleMyPageData?.progressPercent ?? 0
+  const achievementsCount = visibleMyPageData?.achievementsCount ?? 0
   const hasProfileAchievements = achievementsCount > 0
-  const allProfileAchievements = myPageData?.allAchievements ?? []
-  const recentAchievements = myPageData?.recentAchievements ?? []
+  const allProfileAchievements = visibleMyPageData?.allAchievements ?? []
+  const recentAchievements = visibleMyPageData?.recentAchievements ?? []
   const activeAchievement = activeAchievementId
     ? (allProfileAchievements.find(
         (achievement) => achievement.id === activeAchievementId,
       ) ??
-        recentAchievements.find(
-          (achievement) => achievement.id === activeAchievementId,
-        ) ??
-        null)
+      recentAchievements.find(
+        (achievement) => achievement.id === activeAchievementId,
+      ) ??
+      null)
     : null
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
 
-  function upsertOwnTaskPost(
-    task: {
-      title: string
-      completion_post_id?: number
-      completion_post?: {
+  function upsertOwnTaskPost(task: {
+    title: string
+    completion_post_id?: number
+    completion_post?: {
+      id: number
+      status_label: string
+      card_variant: 'doing' | 'completed'
+      likes_count?: number
+      comments_count?: number
+      liked_by_me?: boolean
+      comments?: Array<{
         id: number
-        status_label: string
-        card_variant: 'doing' | 'completed'
-        likes_count?: number
-        comments_count?: number
-        liked_by_me?: boolean
-        comments?: Array<{
-          id: number
-          body: string
-          user_name?: string
-          avatar_key?: string
-          post_status_when_commented: 'doing' | 'completed'
-          created_at: string
-        }>
+        body: string
+        user_name?: string
+        avatar_key?: string
+        post_status_when_commented: 'doing' | 'completed'
         created_at: string
-      } | null
-    },
-  ) {
+      }>
+      created_at: string
+    } | null
+  }) {
     const completionPost = task.completion_post
     const postId = completionPost?.id ?? task.completion_post_id
 
@@ -234,6 +266,7 @@ export function HomePage() {
         completionPost?.status_label ??
         (completionPost?.card_variant === 'completed' ? 'できた' : 'やります'),
       likes: completionPost?.likes_count ?? 0,
+      commentsCount: completionPost?.comments_count ?? 0,
       comments:
         completionPost?.comments?.map((comment) => ({
           id: String(comment.id),
@@ -272,7 +305,11 @@ export function HomePage() {
               status: nextPost.status,
               statusLabel: nextPost.statusLabel,
               likes: completionPost?.likes_count ?? post.likes,
-              comments: completionPost?.comments ? nextPost.comments : post.comments,
+              commentsCount:
+                completionPost?.comments_count ?? post.commentsCount,
+              comments: completionPost?.comments
+                ? nextPost.comments
+                : post.comments,
               liked: completionPost?.liked_by_me ?? post.liked,
               commented: post.commented,
             }
@@ -349,12 +386,7 @@ export function HomePage() {
   }, [isFeedExpired])
 
   useEffect(() => {
-    if (
-      !isFeedOpen ||
-      isFeedAccessDenied ||
-      isFeedLoading ||
-      isFeedExpired
-    ) {
+    if (!isFeedOpen || isFeedAccessDenied || isFeedLoading || isFeedExpired) {
       return undefined
     }
 
@@ -396,6 +428,7 @@ export function HomePage() {
 
   const loadFeed = useCallback(async () => {
     setFeedError('')
+    setFeedLoadMoreError('')
     setIsFeedLoading(true)
     setIsFeedTimeoutModalOpen(false)
 
@@ -403,7 +436,10 @@ export function HomePage() {
       const result = await fetchFeed(completeProfile.id)
       const nextRemainingSeconds =
         result.remainingSeconds ?? feedViewDurationSeconds
+      deletedFeedPostIdsRef.current.clear()
       setFeedPosts(result.posts)
+      setFeedPage(result.page)
+      setHasMoreFeedPosts(result.hasMore)
       setFeedRemainingSeconds(nextRemainingSeconds)
       setFeedAccessExpiresAt(
         result.feedAccessExpiresAt
@@ -419,6 +455,8 @@ export function HomePage() {
     } catch (caughtError) {
       if (caughtError instanceof FeedAccessDeniedError) {
         setFeedPosts([])
+        setFeedPage(1)
+        setHasMoreFeedPosts(false)
         setFeedRemainingSeconds(0)
         setFeedAccessExpiresAt(null)
         setIsFeedAccessDenied(true)
@@ -438,28 +476,207 @@ export function HomePage() {
     }
   }, [completeProfile.id])
 
-  const loadMyPage = useCallback(async () => {
-    setMyPageError('')
-    setIsMyPageLoading(true)
+  const loadMoreFeed = useCallback(async () => {
+    if (isFeedLoadingMore || !hasMoreFeedPosts) {
+      return
+    }
+
+    setIsFeedLoadingMore(true)
+    setFeedLoadMoreError('')
 
     try {
-      const result = await fetchMyPage(completeProfile.id)
-      setMyPageData(result)
-      setFeedNow(Date.now())
+      const result = await fetchFeed(
+        completeProfile.id,
+        undefined,
+        feedPage + 1,
+      )
+      setFeedPosts((currentPosts) => {
+        const existingIds = new Set(currentPosts.map((post) => post.id))
+        return [
+          ...currentPosts,
+          ...result.posts.filter((post) => !existingIds.has(post.id)),
+        ]
+      })
+      setFeedPage(result.page)
+      setHasMoreFeedPosts(result.hasMore)
     } catch (caughtError) {
-      if (caughtError instanceof AuthRequiredError) {
-        redirectToLoginForAuthRequired()
+      if (caughtError instanceof FeedAccessDeniedError) {
+        setFeedRemainingSeconds(0)
+        setFeedAccessExpiresAt(null)
+        setIsFeedTimeoutModalOpen(true)
         return
       }
 
-      setMyPageError(
+      setFeedLoadMoreError(
         caughtError instanceof Error
           ? caughtError.message
-          : 'マイページ取得に失敗しました。',
+          : '次の投稿の取得に失敗しました。',
       )
     } finally {
-      setIsMyPageLoading(false)
+      setIsFeedLoadingMore(false)
     }
+  }, [completeProfile.id, feedPage, hasMoreFeedPosts, isFeedLoadingMore])
+
+  useEffect(() => {
+    const target = feedLoadMoreRef.current
+
+    if (
+      !isFeedOpen ||
+      isFeedExpired ||
+      !hasMoreFeedPosts ||
+      feedLoadMoreError ||
+      !target
+    ) {
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void loadMoreFeed()
+        }
+      },
+      { rootMargin: '200px 0px' },
+    )
+    observer.observe(target)
+
+    return () => observer.disconnect()
+  }, [
+    feedLoadMoreError,
+    hasMoreFeedPosts,
+    isFeedExpired,
+    isFeedOpen,
+    loadMoreFeed,
+  ])
+
+  const abortMyPageRequest = useCallback(() => {
+    myPageAbortControllerRef.current?.abort()
+    myPageRequestIdRef.current += 1
+    myPageAbortControllerRef.current = null
+    myPageRequestUserIdRef.current = null
+    myPageRequestPromiseRef.current = null
+  }, [])
+
+  const clearMyPageCache = useCallback(() => {
+    abortMyPageRequest()
+    loadedMyPageUserIdRef.current = null
+    setMyPageData(null)
+    setMyPageDataUserId(null)
+    setMyPageError('')
+    setIsMyPageLoading(false)
+    setActiveAchievementId(null)
+    setOpenAchievementMenuId(null)
+    setPostPendingDeletionId(null)
+  }, [abortMyPageRequest])
+
+  const redirectToLoginForAuthRequired = useCallback(() => {
+    clearMyPageCache()
+    clearAuthSession()
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
+    window.sessionStorage.removeItem(signupDraftStorageKey)
+    window.location.assign('/login')
+  }, [clearMyPageCache])
+
+  const loadMyPage = useCallback(
+    (force = false): Promise<void> => {
+      const requestUserId = currentMyPageUserIdRef.current
+
+      if (!requestUserId) {
+        return Promise.resolve()
+      }
+
+      if (!force && loadedMyPageUserIdRef.current === requestUserId) {
+        return Promise.resolve()
+      }
+
+      if (
+        !force &&
+        myPageRequestUserIdRef.current === requestUserId &&
+        myPageRequestPromiseRef.current
+      ) {
+        return myPageRequestPromiseRef.current
+      }
+
+      abortMyPageRequest()
+      const controller = new AbortController()
+      const requestId = myPageRequestIdRef.current + 1
+      myPageRequestIdRef.current = requestId
+      myPageAbortControllerRef.current = controller
+      myPageRequestUserIdRef.current = requestUserId
+      setMyPageError('')
+      setIsMyPageLoading(true)
+
+      const requestPromise = (async () => {
+        try {
+          const result = await fetchMyPage(
+            requestUserId,
+            undefined,
+            controller.signal,
+          )
+
+          if (
+            !isCurrentMyPageResponse(
+              requestUserId,
+              currentMyPageUserIdRef.current,
+              requestId,
+              myPageRequestIdRef.current,
+              controller.signal,
+            )
+          ) {
+            return
+          }
+
+          loadedMyPageUserIdRef.current = requestUserId
+          setMyPageData(result)
+          setMyPageDataUserId(requestUserId)
+          setFeedNow(Date.now())
+        } catch (caughtError) {
+          if (isAbortError(caughtError)) {
+            return
+          }
+
+          if (
+            !isCurrentMyPageResponse(
+              requestUserId,
+              currentMyPageUserIdRef.current,
+              requestId,
+              myPageRequestIdRef.current,
+              controller.signal,
+            )
+          ) {
+            return
+          }
+
+          if (caughtError instanceof AuthRequiredError) {
+            redirectToLoginForAuthRequired()
+            return
+          }
+
+          setMyPageError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : 'マイページ取得に失敗しました。',
+          )
+        } finally {
+          if (requestId === myPageRequestIdRef.current) {
+            myPageAbortControllerRef.current = null
+            myPageRequestUserIdRef.current = null
+            myPageRequestPromiseRef.current = null
+            setIsMyPageLoading(false)
+          }
+        }
+      })()
+
+      myPageRequestPromiseRef.current = requestPromise
+      return requestPromise
+    },
+    [abortMyPageRequest, redirectToLoginForAuthRequired],
+  )
+
+  useLayoutEffect(() => {
+    currentMyPageUserIdRef.current = completeProfile.id
   }, [completeProfile.id])
 
   useEffect(() => {
@@ -475,16 +692,71 @@ export function HomePage() {
   }, [isFeedOpen, loadFeed])
 
   useEffect(() => {
-    if (!isProfileOpen && !isAchievementsOpen) {
+    if (
+      !isFeedOpen ||
+      isFeedAccessDenied ||
+      isFeedExpired ||
+      !completeProfile.id
+    ) {
       return undefined
     }
 
+    let unsubscribe: (() => void) | undefined
+    let cancelled = false
+
+    void fetchCableToken()
+      .then((token) => {
+        if (cancelled) return
+
+        unsubscribe = subscribeToFeedUpdates({
+          token,
+          onEvent: (event) => {
+            if (event.type === 'post_deleted') {
+              deletedFeedPostIdsRef.current.add(String(event.post_id))
+            }
+
+            setFeedPosts((currentPosts) =>
+              applyFeedCableEvent(
+                currentPosts,
+                event,
+                completeProfile.id,
+                deletedFeedPostIdsRef.current,
+                latestLikeEventTimesRef.current,
+              ),
+            )
+          },
+          onReconnect: () => {
+            void loadFeed()
+          },
+        })
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
+  }, [
+    completeProfile.id,
+    isFeedAccessDenied,
+    isFeedExpired,
+    isFeedOpen,
+    loadFeed,
+  ])
+
+  useEffect(() => {
     const timerId = window.setTimeout(() => {
-      void loadMyPage()
+      clearMyPageCache()
+      if (completeProfile.id) {
+        void loadMyPage()
+      }
     }, 0)
 
-    return () => window.clearTimeout(timerId)
-  }, [isAchievementsOpen, isProfileOpen, loadMyPage])
+    return () => {
+      window.clearTimeout(timerId)
+      abortMyPageRequest()
+    }
+  }, [abortMyPageRequest, clearMyPageCache, completeProfile.id, loadMyPage])
 
   function closeFeedIntro() {
     window.localStorage.setItem(feedIntroStorageKey, 'true')
@@ -582,6 +854,8 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     if (isProfileOpen) {
+      void loadMyPage(true)
+    } else if (!visibleMyPageData && !isMyPageLoading) {
       void loadMyPage()
     }
     window.scrollTo({ top: 0, left: 0 })
@@ -590,7 +864,9 @@ export function HomePage() {
   function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
-    void loadMyPage()
+    if (!visibleMyPageData && !isMyPageLoading) {
+      void loadMyPage()
+    }
     setIsAchievementsOpen(true)
     setActiveAchievementId(null)
     setIsProfileOpen(false)
@@ -657,6 +933,7 @@ export function HomePage() {
 
     try {
       await deleteCompletionPost(deletedPostId, completeProfile.id)
+      deletedFeedPostIdsRef.current.add(deletedPostId)
       setFeedPosts((currentPosts) =>
         currentPosts.filter((post) => post.id !== deletedPostId),
       )
@@ -664,7 +941,7 @@ export function HomePage() {
         currentId === deletedPostId ? null : currentId,
       )
       setPostPendingDeletionId(null)
-      await loadMyPage()
+      await loadMyPage(true)
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
@@ -718,19 +995,17 @@ export function HomePage() {
     setIsLogoutConfirmOpen(false)
   }
 
-  function confirmLogout() {
-    clearAuthSession()
-    window.sessionStorage.removeItem(activeHomeViewStorageKey)
-    window.location.href = '/login'
-  }
-
-  function redirectToLoginForAuthRequired() {
-    clearAuthSession()
-    window.localStorage.removeItem(signupCompleteStorageKey)
-    window.sessionStorage.removeItem(activeHomeViewStorageKey)
-    window.sessionStorage.removeItem(signupScreenStorageKey)
-    window.sessionStorage.removeItem(signupDraftStorageKey)
-    window.location.assign('/login')
+  async function confirmLogout() {
+    try {
+      await logoutSession()
+      clearMyPageCache()
+      clearAuthSession()
+      window.localStorage.removeItem(signupCompleteStorageKey)
+      window.sessionStorage.removeItem(activeHomeViewStorageKey)
+      window.location.href = '/login'
+    } catch {
+      setIsLogoutConfirmOpen(false)
+    }
   }
 
   function openAccountDeleteConfirm() {
@@ -755,8 +1030,8 @@ export function HomePage() {
 
     const hasAccountIdentifier = Boolean(
       completeProfile.id ||
-        completeProfile.email ||
-        (completeProfile.name && completeProfile.avatarId),
+      completeProfile.email ||
+      (completeProfile.name && completeProfile.avatarId),
     )
 
     if (!hasAccountIdentifier) {
@@ -768,12 +1043,8 @@ export function HomePage() {
     setAccountDeleteError('')
 
     try {
-      await deleteAccount({
-        id: completeProfile.id,
-        email: completeProfile.email,
-        name: completeProfile.name,
-        avatarKey: completeProfile.avatarId,
-      })
+      await deleteAccount()
+      clearMyPageCache()
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
       window.sessionStorage.removeItem(activeHomeViewStorageKey)
@@ -847,26 +1118,29 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  const saveSettingsIcon = useCallback((event?: FormEvent<HTMLFormElement>) => {
-    event?.preventDefault()
+  const saveSettingsIcon = useCallback(
+    (event?: FormEvent<HTMLFormElement>) => {
+      event?.preventDefault()
 
-    if (!canSaveSettingsIcon) {
-      return
-    }
+      if (!canSaveSettingsIcon) {
+        return
+      }
 
-    const nextProfile = {
-      ...completeProfile,
-      avatarId: selectedSettingsIconId,
-    }
+      const nextProfile = {
+        ...completeProfile,
+        avatarId: selectedSettingsIconId,
+      }
 
-    setCompleteProfile(nextProfile)
-    saveCompleteProfile(nextProfile)
-    setIsIconEditOpen(false)
-    setIsSettingsOpen(true)
-    setIsSettingsAvatarGridOpen(false)
-    setIsIconDiscardConfirmOpen(false)
-    window.scrollTo({ top: 0, left: 0 })
-  }, [canSaveSettingsIcon, completeProfile, selectedSettingsIconId])
+      setCompleteProfile(nextProfile)
+      saveCompleteProfile(nextProfile)
+      setIsIconEditOpen(false)
+      setIsSettingsOpen(true)
+      setIsSettingsAvatarGridOpen(false)
+      setIsIconDiscardConfirmOpen(false)
+      window.scrollTo({ top: 0, left: 0 })
+    },
+    [canSaveSettingsIcon, completeProfile, selectedSettingsIconId],
+  )
 
   useEffect(() => {
     if (!isSettingsOpen || !isIconEditOpen) {
@@ -910,7 +1184,9 @@ export function HomePage() {
     }
   }
 
-  async function handleSettingsPhotoChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleSettingsPhotoChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
     const selectedFile = event.target.files?.[0]
 
     if (!selectedFile) {
@@ -1183,12 +1459,85 @@ export function HomePage() {
     }))
   }
 
+  async function loadPostComments(postId: string, page: number) {
+    if (isCommentsLoading) {
+      return
+    }
+
+    setIsCommentsLoading(true)
+    setCommentsLoadError('')
+
+    try {
+      const result = await fetchComments(postId, completeProfile.id, page)
+      setFeedPosts((currentPosts) =>
+        currentPosts.map((post) => {
+          if (post.id !== postId) {
+            return post
+          }
+
+          const existingIds = new Set(
+            post.comments.map((comment) => comment.id),
+          )
+          const nextComments = result.comments.filter(
+            (comment) => !existingIds.has(comment.id),
+          )
+          const firstPageComments = [
+            ...result.comments,
+            ...post.comments.filter(
+              (comment) =>
+                !result.comments.some(
+                  (loadedComment) => loadedComment.id === comment.id,
+                ),
+            ),
+          ].sort(
+            (left, right) =>
+              left.createdAt - right.createdAt ||
+              left.id.localeCompare(right.id),
+          )
+
+          return {
+            ...post,
+            comments:
+              page === 1
+                ? firstPageComments
+                : [...nextComments, ...post.comments],
+          }
+        }),
+      )
+      setCommentPage(result.page)
+      setHasMoreComments(result.hasMore)
+    } catch (caughtError) {
+      if (caughtError instanceof AuthRequiredError) {
+        redirectToLoginForAuthRequired()
+        return
+      }
+
+      setCommentsLoadError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'コメントの取得に失敗しました。',
+      )
+    } finally {
+      setIsCommentsLoading(false)
+    }
+  }
+
   function openCommentPanel(postId: string) {
     setActiveCommentPostId(postId)
+    setCommentPage(1)
+    setHasMoreComments(false)
+    setCommentsLoadError('')
+    setFeedPosts((currentPosts) =>
+      currentPosts.map((post) =>
+        post.id === postId ? { ...post, comments: [] } : post,
+      ),
+    )
+    void loadPostComments(postId, 1)
   }
 
   function closeCommentPanel() {
     setActiveCommentPostId(null)
+    setCommentsLoadError('')
   }
 
   async function addPostComment(postId: string) {
@@ -1212,15 +1561,26 @@ export function HomePage() {
       )
 
       setFeedPosts((currentPosts) =>
-        currentPosts.map((post) =>
-          post.id === postId
-            ? {
-                ...post,
-                commented: true,
-                comments: [...post.comments, createdComment],
-              }
-            : post,
-        ),
+        currentPosts.map((post) => {
+          if (post.id !== postId) {
+            return post
+          }
+
+          const alreadyAdded = post.comments.some(
+            (comment) => comment.id === createdComment.id,
+          )
+
+          return {
+            ...post,
+            commented: true,
+            commentsCount: alreadyAdded
+              ? post.commentsCount
+              : post.commentsCount + 1,
+            comments: alreadyAdded
+              ? post.comments
+              : [...post.comments, createdComment],
+          }
+        }),
       )
       setCommentDrafts((currentDrafts) => ({
         ...currentDrafts,
@@ -1334,9 +1694,7 @@ export function HomePage() {
               className="icon-edit-action"
               type="button"
               aria-expanded={isSettingsAvatarGridOpen}
-              onClick={() =>
-                setIsSettingsAvatarGridOpen((current) => !current)
-              }
+              onClick={() => setIsSettingsAvatarGridOpen((current) => !current)}
             >
               <img
                 className="icon-edit-action-icon icon-edit-action-icon-grid"
@@ -1344,9 +1702,7 @@ export function HomePage() {
                 alt=""
                 aria-hidden="true"
               />
-              <span className="icon-edit-action-text-grid">
-                アイコンを選択
-              </span>
+              <span className="icon-edit-action-text-grid">アイコンを選択</span>
             </button>
 
             {isSettingsCameraAvailable ? (
@@ -1406,7 +1762,8 @@ export function HomePage() {
                 >
                   {avatarOptions.map((avatar) => {
                     const isCustomPhoto = avatar.id === customPhotoIconId
-                    const hasCustomPhoto = isCustomPhoto && settingsCustomPhotoUrl
+                    const hasCustomPhoto =
+                      isCustomPhoto && settingsCustomPhotoUrl
                     const isCameraSlot = isCustomPhoto && !hasCustomPhoto
                     const avatarId = hasCustomPhoto
                       ? settingsCustomPhotoUrl
@@ -1743,7 +2100,7 @@ export function HomePage() {
                 <button
                   className="logout-modal-primary"
                   type="button"
-                  onClick={confirmLogout}
+                  onClick={() => void confirmLogout()}
                 >
                   ログアウト
                 </button>
@@ -1807,9 +2164,7 @@ export function HomePage() {
               aria-labelledby="account-deleted-modal-title"
               aria-describedby="account-deleted-modal-description"
             >
-              <h2 id="account-deleted-modal-title">
-                アカウントを削除しました
-              </h2>
+              <h2 id="account-deleted-modal-title">アカウントを削除しました</h2>
               <p id="account-deleted-modal-description">
                 ご利用ありがとうございました。
               </p>
@@ -1849,15 +2204,12 @@ export function HomePage() {
           }
         />
 
-        <section
-          className="all-achievements-content"
-          aria-label="すべての達成"
-        >
+        <section className="all-achievements-content" aria-label="すべての達成">
           {myPageError ? (
             <p className="profile-state-message" role="alert">
               {myPageError}
             </p>
-          ) : isMyPageLoading && !myPageData ? (
+          ) : isMyPageLoading && !visibleMyPageData ? (
             <p className="profile-state-message">読み込み中...</p>
           ) : allProfileAchievements.length === 0 ? (
             <p className="profile-state-message">まだ記録はありません</p>
@@ -1934,7 +2286,7 @@ export function HomePage() {
             <p className="profile-state-message" role="alert">
               {myPageError}
             </p>
-          ) : isMyPageLoading && !myPageData ? (
+          ) : isMyPageLoading && !visibleMyPageData ? (
             <p className="profile-state-message">読み込み中...</p>
           ) : hasProfileAchievements ? (
             <>
@@ -1945,9 +2297,9 @@ export function HomePage() {
                 <h2 id="profile-stats-title">実績</h2>
                 <ProfileStatsGrid
                   achievementsCount={achievementsCount}
-                  streakDays={myPageData?.streakDays ?? 0}
-                  likesCount={myPageData?.likesCount ?? 0}
-                  commentsCount={myPageData?.commentsCount ?? 0}
+                  streakDays={visibleMyPageData?.streakDays ?? 0}
+                  likesCount={visibleMyPageData?.likesCount ?? 0}
+                  commentsCount={visibleMyPageData?.commentsCount ?? 0}
                 />
               </section>
 
@@ -2032,15 +2384,32 @@ export function HomePage() {
               {feedError}
             </p>
           ) : (
-            visibleFeedPosts.map((post) => (
-              <FeedPostCard
-                key={post.id}
-                post={post}
-                now={feedNow}
-                onLike={(postId) => void togglePostLike(postId)}
-                onOpenComments={openCommentPanel}
-              />
-            ))
+            <>
+              {visibleFeedPosts.map((post) => (
+                <FeedPostCard
+                  key={post.id}
+                  post={post}
+                  now={feedNow}
+                  onLike={(postId) => void togglePostLike(postId)}
+                  onOpenComments={openCommentPanel}
+                />
+              ))}
+              {hasMoreFeedPosts ? (
+                <div
+                  ref={feedLoadMoreRef}
+                  className="feed-load-more"
+                  aria-label="次の投稿を読み込み中"
+                >
+                  {feedLoadMoreError ? (
+                    <button type="button" onClick={() => void loadMoreFeed()}>
+                      再読み込み
+                    </button>
+                  ) : isFeedLoadingMore ? (
+                    '読み込み中…'
+                  ) : null}
+                </div>
+              ) : null}
+            </>
           )}
         </section>
 
@@ -2064,6 +2433,12 @@ export function HomePage() {
             onClose={closeCommentPanel}
             onDraftChange={handleCommentDraftChange}
             onSubmit={(postId) => void addPostComment(postId)}
+            isLoading={isCommentsLoading}
+            hasMore={hasMoreComments}
+            error={commentsLoadError}
+            onLoadMore={() =>
+              void loadPostComments(activeCommentPost.id, commentPage + 1)
+            }
           />
         ) : null}
       </main>
@@ -2119,4 +2494,3 @@ export function HomePage() {
     </main>
   )
 }
-
