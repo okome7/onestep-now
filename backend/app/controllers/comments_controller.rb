@@ -48,18 +48,10 @@ class CommentsController < ApplicationController
   end
 
   def comment_payload(comment)
-    {
-      id: comment.id,
-      user_id: comment.user_id,
-      user_name: comment.user.name,
-      level: level_for(@completed_post_counts.fetch(comment.user_id, 0)),
-      avatar_key: comment.user.avatar_key,
-      completion_post_id: comment.completion_post_id,
-      body: comment.body,
-      post_status_when_commented: comment.post_status_when_commented,
-      created_at: comment.created_at,
-      updated_at: comment.updated_at
-    }
+    CommentPayload.new(
+      comment,
+      completed_count: @completed_post_counts.fetch(comment.user_id, 0)
+    ).as_json
   end
 
   def completed_post_counts_for(comments)
@@ -67,11 +59,5 @@ class CommentsController < ApplicationController
       .where(user_id: comments.map(&:user_id).uniq)
       .group(:user_id)
       .count
-  end
-
-  def level_for(completed_count)
-    return 0 if completed_count.zero?
-
-    (completed_count / 10).floor + 1
   end
 end

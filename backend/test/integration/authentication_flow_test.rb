@@ -1,6 +1,8 @@
 require "test_helper"
 
 class AuthenticationFlowTest < ActionDispatch::IntegrationTest
+  include ActionCable::TestHelper
+
   ORIGIN = "http://localhost:5173"
 
   setup do
@@ -104,18 +106,54 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
   test "本文のユーザーIDを信用せず現在のユーザーとしていいねとコメントを作成する" do
     other_post = create_post_for(@other_user, "応援対象")
     login_as(@user)
+    clear_messages(FeedUpdatesBroadcaster::STREAM_NAME)
 
-    post "/api/completion_posts/#{other_post.id}/likes",
-      params: { user_id: @other_user.id },
-      headers: authenticated_headers,
-      as: :json
-    post "/api/completion_posts/#{other_post.id}/comments",
-      params: { user_id: @other_user.id, comment: { body: "応援" } },
-      headers: authenticated_headers,
-      as: :json
+    events = capture_broadcasts(FeedUpdatesBroadcaster::STREAM_NAME) do
+      post "/api/completion_posts/#{other_post.id}/likes",
+        params: { user_id: @other_user.id },
+        headers: authenticated_headers,
+        as: :json
+      post "/api/completion_posts/#{other_post.id}/comments",
+        params: { user_id: @other_user.id, comment: { body: "応援" } },
+        headers: authenticated_headers,
+        as: :json
+    end
 
     assert_equal @user.id, other_post.completion_post_likes.last.user_id
     assert_equal @user.id, other_post.comments.last.user_id
+    assert_equal [ @user.id ], events.map { |event| event["user_id"] }.uniq
+  end
+
+  test "未認証のいいねとコメントは配信しない" do
+    other_post = create_post_for(@other_user, "未認証では応援不可")
+    clear_messages(FeedUpdatesBroadcaster::STREAM_NAME)
+
+    assert_no_broadcasts(FeedUpdatesBroadcaster::STREAM_NAME) do
+      post "/api/completion_posts/#{other_post.id}/likes", as: :json
+      assert_response :unauthorized
+      post "/api/completion_posts/#{other_post.id}/comments",
+        params: { comment: { body: "拒否されるコメント" } },
+        as: :json
+      assert_response :unauthorized
+    end
+  end
+
+  test "CSRFエラーのいいねとコメントは配信しない" do
+    other_post = create_post_for(@other_user, "CSRFなしでは応援不可")
+    login_as(@user)
+    clear_messages(FeedUpdatesBroadcaster::STREAM_NAME)
+
+    assert_no_broadcasts(FeedUpdatesBroadcaster::STREAM_NAME) do
+      post "/api/completion_posts/#{other_post.id}/likes",
+        headers: { "Origin" => ORIGIN },
+        as: :json
+      assert_response :forbidden
+      post "/api/completion_posts/#{other_post.id}/comments",
+        params: { comment: { body: "拒否されるコメント" } },
+        headers: { "Origin" => ORIGIN },
+        as: :json
+      assert_response :forbidden
+    end
   end
 
   test "アカウント削除後は認証できない" do

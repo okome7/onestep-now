@@ -116,6 +116,148 @@ describe('applyFeedCableEvent', () => {
 
     expect(posts).toEqual([])
   })
+
+  test('いいね追加イベントの最新件数を反映する', () => {
+    const posts = applyFeedCableEvent(
+      [existingPost],
+      {
+        type: 'like_created',
+        post_id: 1,
+        user_id: 8,
+        likes_count: 3,
+        occurred_at: '2026-08-04T00:00:00Z',
+      },
+      7,
+    )
+
+    expect(posts[0]).toMatchObject({ likes: 3, liked: false })
+  })
+
+  test('自分のいいねイベントだけ自分の状態を更新し重複受信でも加算しない', () => {
+    const event = {
+      type: 'like_created' as const,
+      post_id: 1,
+      user_id: 7,
+      likes_count: 1,
+      occurred_at: '2026-08-04T00:00:00Z',
+    }
+    const once = applyFeedCableEvent([existingPost], event, 7)
+    const twice = applyFeedCableEvent(once, event, 7)
+
+    expect(twice[0]).toMatchObject({ likes: 1, liked: true })
+  })
+
+  test('いいね解除イベントで最新件数と自分の状態を冪等に反映する', () => {
+    const likedPost = { ...existingPost, likes: 1, liked: true }
+    const event = {
+      type: 'like_deleted' as const,
+      post_id: 1,
+      user_id: 7,
+      likes_count: 0,
+      occurred_at: '2026-08-04T00:01:00Z',
+    }
+    const once = applyFeedCableEvent([likedPost], event, 7)
+    const twice = applyFeedCableEvent(once, event, 7)
+
+    expect(twice[0]).toMatchObject({ likes: 0, liked: false })
+  })
+
+  test('新しいいいね解除後に遅れて届いた古いいいね追加を無視する', () => {
+    const latestTimes = new Map<string, number>()
+    const deleted = applyFeedCableEvent(
+      [{ ...existingPost, likes: 1, liked: true }],
+      {
+        type: 'like_deleted',
+        post_id: 1,
+        user_id: 7,
+        likes_count: 0,
+        occurred_at: '2026-08-04T00:02:00Z',
+      },
+      7,
+      new Set(),
+      latestTimes,
+    )
+    const staleCreated = applyFeedCableEvent(
+      deleted,
+      {
+        type: 'like_created',
+        post_id: 1,
+        user_id: 7,
+        likes_count: 1,
+        occurred_at: '2026-08-04T00:01:00Z',
+      },
+      7,
+      new Set(),
+      latestTimes,
+    )
+
+    expect(staleCreated[0]).toMatchObject({ likes: 0, liked: false })
+  })
+
+  test('コメントイベントで件数と一覧を更新し同じIDを重複追加しない', () => {
+    const event = {
+      type: 'comment_created' as const,
+      post_id: 1,
+      user_id: 8,
+      comments_count: 1,
+      occurred_at: '2026-08-04T00:02:00Z',
+      comment: {
+        id: 10,
+        user_id: 8,
+        body: '応援しています',
+        user_name: '応援ユーザー',
+        avatar_key: 'avatar-2',
+        level: 2,
+        post_status_when_commented: 'doing' as const,
+        created_at: '2026-08-04T00:02:00Z',
+      },
+    }
+    const once = applyFeedCableEvent([existingPost], event, 7)
+    const twice = applyFeedCableEvent(once, event, 7)
+
+    expect(twice[0].commentsCount).toBe(1)
+    expect(twice[0].comments).toHaveLength(1)
+    expect(twice[0].comments[0].body).toBe('応援しています')
+    expect(twice[0].commented).toBe(false)
+  })
+
+  test('自分のコメントイベントではコメント済み状態を更新する', () => {
+    const posts = applyFeedCableEvent(
+      [existingPost],
+      {
+        type: 'comment_created',
+        post_id: 1,
+        user_id: 7,
+        comments_count: 1,
+        occurred_at: '2026-08-04T00:02:00Z',
+        comment: {
+          id: 11,
+          user_id: 7,
+          body: '自分のコメント',
+          post_status_when_commented: 'doing',
+          created_at: '2026-08-04T00:02:00Z',
+        },
+      },
+      7,
+    )
+
+    expect(posts[0].commented).toBe(true)
+  })
+
+  test('存在しない投稿と削除済み投稿への反応イベントを無視する', () => {
+    const event = {
+      type: 'like_created' as const,
+      post_id: 1,
+      user_id: 7,
+      likes_count: 1,
+      occurred_at: '2026-08-04T00:00:00Z',
+    }
+
+    expect(applyFeedCableEvent([], event, 7)).toEqual([])
+    expect(
+      applyFeedCableEvent([existingPost], event, 7, new Set(['1'])),
+    ).toEqual([existingPost])
+  })
 })
 
 test('切断後に再接続した場合だけ再同期する', () => {

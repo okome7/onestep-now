@@ -27,6 +27,7 @@ class CompletionPostBroadcastTest < ActiveSupport::TestCase
 
   test "投稿削除のコミット後にpost_deletedを配信する" do
     post = @task.create_completion_post!(user: @user, status: :doing, content: @task.title)
+    post.completion_post_likes.create!(user: @user)
     clear_messages(FeedUpdatesBroadcaster::STREAM_NAME)
 
     assert_broadcast_on(
