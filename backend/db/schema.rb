@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -22,6 +22,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_100000) do
     t.string "token_digest", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["expires_at"], name: "index_auth_sessions_on_expires_at"
+    t.index ["revoked_at"], name: "index_auth_sessions_on_revoked_at"
     t.index ["token_digest"], name: "index_auth_sessions_on_token_digest", unique: true
     t.index ["user_id", "expires_at"], name: "index_auth_sessions_on_user_id_and_expires_at"
     t.index ["user_id"], name: "index_auth_sessions_on_user_id"
