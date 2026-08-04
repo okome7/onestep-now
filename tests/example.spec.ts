@@ -12,6 +12,8 @@ const backendURL =
 const authSessionStorageKey = "onestep-auth-session";
 const signupCompleteStorageKey = "onestep-signup-complete";
 const sessionRoute = /.*\/(?:api\/)?session$/;
+const myPageRoute = /.*\/(?:api\/)?mypage$/;
+const cableTokenRoute = /.*\/(?:api\/)?cable_token$/;
 
 async function mockSession(page: Page, authenticated: boolean) {
   await page.unroute(sessionRoute);
@@ -56,6 +58,35 @@ async function markLoggedIn(page: Page) {
       profileKey: signupCompleteStorageKey,
     },
   );
+}
+
+async function mockAuthenticatedBackgroundApis(page: Page) {
+  await page.route(myPageRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          level: 1,
+          next_level: 2,
+          remaining_to_next_level: 10,
+          progress_percent: 0,
+          achievements_count: 0,
+          streak_days: 0,
+          likes_count: 0,
+          comments_count: 0,
+          recent_achievements: [],
+          all_achievements: [],
+        },
+      }),
+    });
+  });
+  await page.route(cableTokenRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", token: "e2e-cable-token" }),
+    });
+  });
 }
 
 async function gotoHome(page: Page, path = "/home") {
@@ -285,6 +316,7 @@ async function mockTaskAndFeedApi(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  await mockAuthenticatedBackgroundApis(page);
   await mockSession(page, false);
   await page.goto("/");
   await page.evaluate(() => {
