@@ -19,6 +19,7 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 - 新規登録、メールアドレス重複チェック
 - ログイン、パスワード再設定
 - HttpOnly CookieによるログインセッションとCSRF保護
+- 期限切れ・失効済みログインセッションの定期削除
 - アイコン選択、写真選択、スマホ幅でのカメラ撮影導線
 - 表示名・アイコン変更
 - ログアウト、アカウント削除と確認モーダル
@@ -180,6 +181,15 @@ Docker内で実行する場合:
 docker compose exec -e RAILS_ENV=test backend bin/rspec
 ```
 
+認証セッションのクリーンアップを手動実行する場合:
+
+```bash
+cd backend
+bin/rails auth_sessions:cleanup
+```
+
+有効期限または失効日時から24時間以上経過したセッションをバッチ削除します。有効なセッションと、期限切れ・失効直後のセッションは削除しません。開始時刻、対象件数、削除件数、終了時刻はRailsログへ記録されますが、トークンやダイジェスト値は記録されません。
+
 E2E test:
 
 ```bash
@@ -283,6 +293,21 @@ VITE_CABLE_URL=wss://onestep-now.onrender.com/cable
 - `http://127.0.0.1:5173`
 
 `VITE_CABLE_URL`を設定しない場合は、現在アクセスしているホストの`/cable`へ接続します。
+
+## Renderでの認証セッション定期削除
+
+[Render Cron Jobs](https://render.com/docs/cronjobs)を使い、1日1回クリーンアップを実行します。RenderのCron式はUTC基準のため、毎日日本時間3:00に実行する場合は次のように設定します。
+
+- Service type: `Cron Job`
+- Repository / Branch: Rails Web Serviceと同じもの
+- Root Directory: `backend`
+- Build Command: `bundle install`
+- Command: `bin/rails auth_sessions:cleanup`
+- Schedule: `0 18 * * *`（毎日UTC 18:00、日本時間では翌日3:00）
+
+Cron Jobには本番Web Serviceと同じ本番環境の設定が必要です。少なくとも`RAILS_ENV=production`、本番PostgreSQLへ接続する`DATABASE_URL`、Rails起動に必要な`RAILS_MASTER_KEY`を設定し、その他の必須値もWeb Serviceと共有してください。Renderの[Environment Groups](https://render.com/docs/configure-environment-variables#environment-groups)を使うと、Web ServiceとCron Jobで同じ設定を安全に共有できます。
+
+作成後はCron JobのRuns画面から一度手動実行し、ログの`target_count`と`deleted_count`、正常終了を確認してください。タスクは冪等で、対象が0件でも正常終了します。Renderは同じCron Jobを同時に複数実行しませんが、手動実行などが重なっても削除条件は変わらず、既に削除されたレコードを再度削除するだけなので安全です。
 
 ### 本番環境
 

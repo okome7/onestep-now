@@ -7,6 +7,9 @@ class AuthSession < ApplicationRecord
   validates :token_digest, uniqueness: true
 
   scope :active, -> { where(revoked_at: nil).where("expires_at > ?", Time.current) }
+  scope :cleanup_due, ->(cutoff) {
+    where("expires_at <= :cutoff OR revoked_at <= :cutoff", cutoff: cutoff)
+  }
 
   def self.issue_for(user)
     token = SecureRandom.urlsafe_base64(32)
