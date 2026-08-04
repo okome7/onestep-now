@@ -18,6 +18,7 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 
 - 新規登録、メールアドレス重複チェック
 - ログイン、パスワード再設定
+- HttpOnly CookieによるログインセッションとCSRF保護
 - アイコン選択、写真選択、スマホ幅でのカメラ撮影導線
 - 表示名・アイコン変更
 - ログアウト、アカウント削除と確認モーダル
@@ -32,6 +33,7 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 - 完了投稿の日付に基づく連続日数
 - マイページからの自分の投稿削除
 - 投稿削除後の達成回数、連続日数、レベル、いいね・コメント合計の再計算
+- Action Cableによる投稿作成・完了・削除のリアルタイム反映
 
 タスク、投稿、コメント、いいね、実績の集計元データは Rails API と PostgreSQL に保存されます。投稿を削除すると関連するコメントといいねも削除され、フィードとマイページの表示に反映されます。他のユーザーの投稿は削除できないよう、画面表示とAPIの両方で所有者を確認しています。
 
@@ -51,6 +53,8 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 | --- | --- | --- |
 | `POST` | `/signup` | ユーザー登録 |
 | `POST` | `/login` | ログイン |
+| `GET` | `/session` | ログイン状態と現在のユーザーを取得 |
+| `DELETE` | `/logout` | ログアウトとセッション無効化 |
 | `POST` | `/password_reset` | パスワード再設定コード発行 |
 | `POST` | `/password_reset/verify` | 再設定コード確認 |
 | `PATCH` | `/password_reset` | パスワード更新 |
@@ -65,8 +69,11 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 | `POST` | `/api/completion_posts/:completion_post_id/likes` | いいね |
 | `DELETE` | `/api/completion_posts/:completion_post_id/likes` | いいね解除 |
 | `POST` | `/api/completion_posts/:completion_post_id/comments` | コメント投稿 |
+| `POST` | `/api/cable_token` | WebSocket接続用の短期トークン発行 |
 
-APIのユーザー識別には現在 `X-User-Id` ヘッダーを利用しています。本番運用ではサーバー側の安全な認証セッションへ置き換える予定です。
+APIのユーザー識別には、Railsが発行してDBで管理するHttpOnly Cookieセッションを利用します。`X-User-Id`やリクエスト本文のユーザーIDは認証情報として使用しません。状態変更APIはCSRF Cookieと`X-CSRF-Token`の一致、および許可Originを検証します。
+
+Vercel本番環境では、ブラウザから同一Originの`/api`へアクセスし、`frontend/vercel.json`のRewriteを通じてRenderへ転送します。これにより、認証Cookieを第三者Cookieとして扱わせずに利用できます。
 
 ## 技術スタック
 
@@ -214,15 +221,13 @@ RESEND_API_KEY=your-resend-api-key
 
 まだ途中のこと:
 
-- 複数ユーザー間でリアルタイムに応援を届ける仕組み
-- 本番運用を前提にした認証セッション管理
+- いいね・コメントのリアルタイム反映
 - 画像アップロードのストレージ設計
 - UIの細かいレスポンシブ調整
 
 今後やりたいこと:
 
-- ログイン状態をサーバー側で安全に管理
-- リアルタイム通知やフィード更新
+- いいね・コメントのリアルタイム通知
 - プロフィール画像を永続ストレージへ保存
 - 本番デプロイ環境の整備
 
@@ -243,7 +248,7 @@ RESEND_API_KEY=your-resend-api-key
 
 `FRONTEND_ORIGINS`
 
-Action Cableへの接続を許可するフロントエンドのOriginを指定します。
+REST APIとAction Cableへの接続を許可するフロントエンドのOriginを指定します。
 複数指定する場合は、カンマ区切りで設定してください。
 
 例：
@@ -254,6 +259,10 @@ FRONTEND_ORIGINS=https://onestep-now-frontend.vercel.app
 
 ### フロントエンド（React）
 
+`VITE_API_BASE_URL`
+
+本番では未設定にするか`/api`を設定してください。ブラウザからRenderのURLを直接指定すると認証Cookieが第三者Cookieになるため、Vercel Rewriteを経由します。
+
 `VITE_CABLE_URL`
 
 Action Cableへ接続するWebSocket URLを指定します。
@@ -263,6 +272,8 @@ Action Cableへ接続するWebSocket URLを指定します。
 ```env
 VITE_CABLE_URL=wss://onestep-now.onrender.com/cable
 ```
+
+デプロイ後はRailsのDBマイグレーションを実行し、既存ユーザーは一度ログインし直してください。以前localStorageに保存されたユーザー情報や`X-User-Id`は認証には利用されません。
 
 ### 開発環境
 

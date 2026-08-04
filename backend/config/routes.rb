@@ -9,6 +9,8 @@ Rails.application.routes.draw do
   post "signup/email_check", to: "registrations#email_check"
   delete "account", to: "registrations#destroy"
   post "login", to: "sessions#create"
+  get "session", to: "sessions#show"
+  delete "logout", to: "sessions#destroy"
   post "password_reset", to: "password_resets#create"
   post "password_reset/verify", to: "password_resets#verify"
   patch "password_reset", to: "password_resets#update"
@@ -16,6 +18,7 @@ Rails.application.routes.draw do
   scope "/api" do
     get "feed", to: "feed#index"
     get "mypage", to: "mypage#show"
+    post "cable_token", to: "cable_tokens#create"
     post "tasks", to: "tasks#create"
     patch "tasks/:id/start", to: "tasks#start"
     patch "tasks/:id/complete", to: "tasks#complete"

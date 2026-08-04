@@ -11,7 +11,7 @@ RSpec.describe "HealthCheck", type: :request do
       get rails_health_check_path, headers: { "Origin" => "http://localhost:5173" }
 
       expect(response.headers["Access-Control-Allow-Origin"]).to eq("http://localhost:5173")
-      expect(response.headers["Access-Control-Allow-Credentials"]).to be_nil
+      expect(response.headers["Access-Control-Allow-Credentials"]).to eq("true")
     end
 
     it "does not allow arbitrary Vercel preview origins" do

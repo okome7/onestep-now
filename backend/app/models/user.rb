@@ -6,6 +6,7 @@ class User < ApplicationRecord
   has_many :comments, dependent: :destroy
   has_many :completion_post_likes, dependent: :destroy
   has_many :password_reset_codes, dependent: :destroy
+  has_many :auth_sessions, dependent: :destroy
 
   before_validation :normalize_email
 

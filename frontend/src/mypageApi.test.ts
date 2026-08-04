@@ -20,10 +20,8 @@ test('自分の投稿を削除APIへ送信する', async () => {
     'https://api.example.com/api/completion_posts/42',
     {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Id': '7',
-      },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     },
   )
 })

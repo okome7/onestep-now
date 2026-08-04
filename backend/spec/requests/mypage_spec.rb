@@ -50,7 +50,7 @@ RSpec.describe "Mypage", type: :request do
         newest_post.comments.create!(user: fan, body: "おめでとう")
         newest_post.comments.create!(user: user, body: "自分コメント")
 
-        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        get "/api/mypage", headers: authenticated_headers(user), as: :json
 
         expect(response).to have_http_status(:ok)
         data = JSON.parse(response.body).fetch("data")
@@ -87,7 +87,7 @@ RSpec.describe "Mypage", type: :request do
           )
         end
 
-        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        get "/api/mypage", headers: authenticated_headers(user), as: :json
 
         data = JSON.parse(response.body).fetch("data")
         expect(data).to include(
@@ -101,7 +101,7 @@ RSpec.describe "Mypage", type: :request do
     end
 
     it "達成がない場合は空状態用のレベルを返す" do
-      get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+      get "/api/mypage", headers: authenticated_headers(user), as: :json
 
       data = JSON.parse(response.body).fetch("data")
       expect(data).to include(
@@ -124,7 +124,7 @@ RSpec.describe "Mypage", type: :request do
           create_completed_post(user: user, title: "達成#{index}", completed_at: index.minutes.ago)
         end
 
-        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        get "/api/mypage", headers: authenticated_headers(user), as: :json
 
         data = JSON.parse(response.body).fetch("data")
         expect(data.fetch("achievements_count")).to eq(25)
@@ -139,7 +139,7 @@ RSpec.describe "Mypage", type: :request do
       first_post.comments.create!(user: fan, body: "最初のコメント")
 
       initial_count = sql_query_count do
-        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        get "/api/mypage", headers: authenticated_headers(user), as: :json
       end
 
       5.times do |index|
@@ -153,7 +153,7 @@ RSpec.describe "Mypage", type: :request do
       end
 
       increased_count = sql_query_count do
-        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        get "/api/mypage", headers: authenticated_headers(user), as: :json
       end
 
       expect(increased_count).to eq(initial_count)
@@ -168,7 +168,7 @@ RSpec.describe "Mypage", type: :request do
 
       expect {
         delete "/api/completion_posts/#{post.id}",
-          headers: { "X-User-Id" => user.id.to_s },
+          headers: authenticated_headers(user),
           as: :json
       }.to change(CompletionPost, :count).by(-1)
         .and change(CompletionPostLike, :count).by(-1)
@@ -183,7 +183,7 @@ RSpec.describe "Mypage", type: :request do
 
       expect {
         delete "/api/completion_posts/#{post.id}",
-          headers: { "X-User-Id" => user.id.to_s },
+          headers: authenticated_headers(user),
           as: :json
       }.not_to change(CompletionPost, :count)
 
@@ -199,9 +199,9 @@ RSpec.describe "Mypage", type: :request do
         deleted_post.comments.create!(user: fan, body: "削除対象のコメント")
 
         delete "/api/completion_posts/#{deleted_post.id}",
-          headers: { "X-User-Id" => user.id.to_s },
+          headers: authenticated_headers(user),
           as: :json
-        get "/api/mypage", headers: { "X-User-Id" => user.id.to_s }, as: :json
+        get "/api/mypage", headers: authenticated_headers(user), as: :json
 
         data = JSON.parse(response.body).fetch("data")
         expect(data).to include(
