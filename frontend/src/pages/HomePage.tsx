@@ -675,6 +675,26 @@ export function HomePage() {
     [abortMyPageRequest, redirectToLoginForAuthRequired],
   )
 
+  const invalidateMyPageData = useCallback((userId: number) => {
+    if (currentMyPageUserIdRef.current !== userId) {
+      return false
+    }
+
+    loadedMyPageUserIdRef.current = null
+    return true
+  }, [])
+
+  const refreshMyPageData = useCallback(
+    (userId: number): Promise<void> => {
+      if (!invalidateMyPageData(userId)) {
+        return Promise.resolve()
+      }
+
+      return loadMyPage(true)
+    },
+    [invalidateMyPageData, loadMyPage],
+  )
+
   useLayoutEffect(() => {
     currentMyPageUserIdRef.current = completeProfile.id
   }, [completeProfile.id])
@@ -1388,6 +1408,7 @@ export function HomePage() {
           })) ?? [],
       })
       setIsTaskComplete(true)
+      void refreshMyPageData(completeProfile.id)
       await loadFeed()
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
