@@ -984,6 +984,82 @@ test("集中画面でできたを押すと完了画面が表示される", async
     .toBe(true);
 });
 
+test("タスク完了後にマイページの達成と集計を再取得して即時表示する", async ({
+  page,
+}) => {
+  let taskCompleted = false;
+  let myPageRequests = 0;
+  const completedAt = new Date().toISOString();
+  const achievement = {
+    id: 1,
+    can_delete: true,
+    task_title: "スライド1枚作る",
+    likes_count: 0,
+    comments_count: 0,
+    created_at: completedAt,
+    liked_users: [],
+    comments: [],
+  };
+
+  await page.unroute(myPageRoute);
+  await page.route(myPageRoute, async (route) => {
+    myPageRequests += 1;
+    const achievements = taskCompleted ? [achievement] : [];
+
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          level: taskCompleted ? 1 : 0,
+          next_level: taskCompleted ? 2 : 1,
+          remaining_to_next_level: taskCompleted ? 9 : 10,
+          progress_percent: taskCompleted ? 10 : 0,
+          achievements_count: taskCompleted ? 1 : 0,
+          streak_days: taskCompleted ? 1 : 0,
+          likes_count: 0,
+          comments_count: 0,
+          recent_achievements: achievements,
+          all_achievements: achievements,
+        },
+      }),
+    });
+  });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?tasks\/\d+\/complete$/, async (route) => {
+    taskCompleted = true;
+    await route.fallback();
+  });
+  await gotoHome(page);
+  await expect.poll(() => myPageRequests).toBeGreaterThan(0);
+  const requestsAfterPrefetch = myPageRequests;
+
+  await page
+    .getByRole("textbox", { name: "今できること" })
+    .fill("スライド1枚作る");
+  await page.getByRole("button", { name: "始める" }).click();
+  await page.getByRole("button", { name: "できた！" }).click();
+
+  await expect(page.getByRole("heading", { name: "よくできた" })).toBeVisible();
+  await expect
+    .poll(() => myPageRequests)
+    .toBe(requestsAfterPrefetch + 1);
+
+  await page.getByRole("button", { name: "次の一歩へ" }).click();
+  await page.getByRole("link", { name: "プロフィール" }).click();
+
+  await expect(page.getByRole("heading", { name: "最近の達成" })).toBeVisible();
+  await expect(page.getByText("スライド1枚作る")).toBeVisible();
+  await expect(page.getByText("1回", { exact: true })).toBeVisible();
+  await expect(page.getByText("1日", { exact: true })).toBeVisible();
+  await expect(page.getByText("あと9回でLv.2！")).toBeVisible();
+  await expect(page.getByText("10%", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "すべて見る>" }).click();
+  await expect(page.getByRole("heading", { name: "すべての達成" })).toBeVisible();
+  await expect(page.getByText("スライド1枚作る")).toBeVisible();
+  expect(myPageRequests).toBe(requestsAfterPrefetch + 1);
+});
+
 test("フィード閲覧時間外は案内画面からホームへ戻れる", async ({ page }) => {
   await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
     await route.fulfill({
