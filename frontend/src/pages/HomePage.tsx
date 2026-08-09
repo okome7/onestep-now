@@ -62,6 +62,7 @@ import {
   completeTask,
   createComment,
   createTask,
+  fetchActiveTask,
   fetchComments,
   fetchFeed,
   likePost,
@@ -95,8 +96,12 @@ export function HomePage() {
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null)
+  const [activeTaskStartedAt, setActiveTaskStartedAt] = useState<number | null>(
+    null,
+  )
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [isActiveTaskRestoring, setIsActiveTaskRestoring] = useState(true)
   const [completedTaskReactions, setCompletedTaskReactions] = useState({
     likes: 0,
     comments: [] as FeedComment[],
@@ -327,12 +332,23 @@ export function HomePage() {
       return undefined
     }
 
+    const updateElapsedSeconds = () => {
+      if (activeTaskStartedAt === null) {
+        return
+      }
+
+      setElapsedSeconds(
+        Math.max(0, Math.floor((Date.now() - activeTaskStartedAt) / 1000)),
+      )
+    }
+
+    updateElapsedSeconds()
     const timerId = window.setInterval(() => {
-      setElapsedSeconds((current) => current + 1)
+      updateElapsedSeconds()
     }, 1000)
 
     return () => window.clearInterval(timerId)
-  }, [isTaskRunning])
+  }, [activeTaskStartedAt, isTaskRunning])
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 639px)')
@@ -582,6 +598,66 @@ export function HomePage() {
     window.sessionStorage.removeItem(signupDraftStorageKey)
     window.location.assign('/login')
   }, [clearMyPageCache])
+
+  useEffect(() => {
+    let isCancelled = false
+
+    async function restoreActiveTask() {
+      if (!completeProfile.id) {
+        setIsActiveTaskRestoring(false)
+        return
+      }
+
+      try {
+        const task = await fetchActiveTask(completeProfile.id)
+        if (isCancelled || !task) {
+          return
+        }
+
+        const startedAt = task.started_at
+          ? new Date(task.started_at).getTime()
+          : Date.now()
+        setActiveTaskId(task.id)
+        setActiveTask(task.title)
+        setActiveTaskStartedAt(startedAt)
+        setElapsedSeconds(
+          Math.max(0, Math.floor((Date.now() - startedAt) / 1000)),
+        )
+        setIsTaskComplete(false)
+        setCompletedTaskReactions({ likes: 0, comments: [] })
+        setIsFeedOpen(false)
+        setIsProfileOpen(false)
+        setIsAchievementsOpen(false)
+        setIsSettingsOpen(false)
+        setIsNameEditOpen(false)
+        setIsIconEditOpen(false)
+        window.sessionStorage.removeItem(activeHomeViewStorageKey)
+      } catch (caughtError) {
+        if (caughtError instanceof AuthRequiredError) {
+          redirectToLoginForAuthRequired()
+          return
+        }
+
+        if (!isCancelled) {
+          setTaskError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : '進行中のタスク取得に失敗しました。',
+          )
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsActiveTaskRestoring(false)
+        }
+      }
+    }
+
+    void restoreActiveTask()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [completeProfile.id, redirectToLoginForAuthRequired])
 
   const loadMyPage = useCallback(
     (force = false): Promise<void> => {
@@ -1333,8 +1409,12 @@ export function HomePage() {
     try {
       const task = await createTask(nextTask, completeProfile.id)
       const startedTask = await startTask(task.id, completeProfile.id)
+      const startedAt = startedTask.started_at
+        ? new Date(startedTask.started_at).getTime()
+        : Date.now()
       setActiveTaskId(startedTask.id)
       setActiveTask(startedTask.title)
+      setActiveTaskStartedAt(startedAt)
       setElapsedSeconds(0)
       setIsTaskComplete(false)
       setCompletedTaskReactions({ likes: 0, comments: [] })
@@ -1395,6 +1475,7 @@ export function HomePage() {
     setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
+    setActiveTaskStartedAt(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
     setCompletedTaskReactions({ likes: 0, comments: [] })
@@ -1465,6 +1546,7 @@ export function HomePage() {
     setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
+    setActiveTaskStartedAt(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
     setCompletedTaskReactions({ likes: 0, comments: [] })
@@ -1649,6 +1731,10 @@ export function HomePage() {
 
       await loadFeed()
     }
+  }
+
+  if (isActiveTaskRestoring) {
+    return null
   }
 
   if (isSettingsOpen && isNameEditOpen) {
