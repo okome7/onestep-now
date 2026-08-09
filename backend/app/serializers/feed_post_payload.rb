@@ -12,6 +12,7 @@ class FeedPostPayload
     payload = {
       id: post.id,
       user_name: post.user.name,
+      avatar_key: post.user.avatar_key,
       level: level_for(completed_count),
       task_title: post.task.title,
       status: post.status,

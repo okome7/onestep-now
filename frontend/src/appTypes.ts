@@ -25,6 +25,7 @@ export type FeedComment = {
 export type FeedPost = {
   id: string
   userName: string
+  avatarId: string
   level: number
   task: string
   status: FeedPostStatus
