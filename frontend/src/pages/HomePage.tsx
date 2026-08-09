@@ -755,14 +755,18 @@ export function HomePage() {
     [abortMyPageRequest, redirectToLoginForAuthRequired],
   )
 
-  const invalidateMyPageData = useCallback((userId: number) => {
-    if (currentMyPageUserIdRef.current !== userId) {
-      return false
-    }
+  const invalidateMyPageData = useCallback(
+    (userId: number) => {
+      if (currentMyPageUserIdRef.current !== userId) {
+        return false
+      }
 
-    loadedMyPageUserIdRef.current = null
-    return true
-  }, [])
+      abortMyPageRequest()
+      loadedMyPageUserIdRef.current = null
+      return true
+    },
+    [abortMyPageRequest],
+  )
 
   const refreshMyPageData = useCallback(
     (userId: number): Promise<void> => {
@@ -953,20 +957,14 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    if (isProfileOpen) {
-      void loadMyPage(true)
-    } else if (!visibleMyPageData && !isMyPageLoading) {
-      void loadMyPage()
-    }
+    void loadMyPage(isProfileOpen)
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
-    if (!visibleMyPageData && !isMyPageLoading) {
-      void loadMyPage()
-    }
+    void loadMyPage()
     setIsAchievementsOpen(true)
     setActiveAchievementId(null)
     setIsProfileOpen(false)
@@ -1579,6 +1577,9 @@ export function HomePage() {
       } else {
         await likePost(postId, completeProfile.id)
       }
+      if (completeProfile.id) {
+        invalidateMyPageData(completeProfile.id)
+      }
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
@@ -1723,6 +1724,9 @@ export function HomePage() {
         ...currentDrafts,
         [postId]: '',
       }))
+      if (completeProfile.id) {
+        invalidateMyPageData(completeProfile.id)
+      }
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
