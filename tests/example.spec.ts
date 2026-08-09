@@ -328,6 +328,7 @@ test.beforeEach(async ({ page }) => {
   await mockAuthenticatedBackgroundApis(page);
   await mockSession(page, false);
   await page.goto("/");
+  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
   await page.evaluate(() => {
     sessionStorage.clear();
     localStorage.clear();
