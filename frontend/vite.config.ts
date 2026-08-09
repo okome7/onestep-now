@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const backendScopedApiPaths =
-  /^\/api\/(?:feed|mypage|cable_token|tasks(?:\/|$)|completion_posts(?:\/|$))/
+  /^\/api\/(?:profile|feed|mypage|cable_token|tasks(?:\/|$)|completion_posts(?:\/|$))/
 
 // https://vite.dev/config/
 export default defineConfig({
