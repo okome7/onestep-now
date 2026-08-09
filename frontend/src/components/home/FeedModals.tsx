@@ -18,11 +18,11 @@ export function FeedIntroModal({ onClose }: FeedIntroModalProps) {
         aria-modal="true"
         aria-labelledby="feed-intro-title"
       >
-        <h2 id="feed-intro-title">利用時間は5分限定！</h2>
+        <h2 id="feed-intro-title">利用時間は3分限定！</h2>
         <p>
           みんなの「やります」「できた」にリアクションして応援しましょう！
           <br />
-          フィードは5分だけ見られます
+          フィードは3分だけ見られます
         </p>
         <button
           className="feed-expired-start-button"
@@ -52,7 +52,7 @@ export function FeedExpiredModal({ onStart }: FeedExpiredModalProps) {
           alt=""
           aria-hidden="true"
         />
-        <h2 id="feed-expired-title">5分経過しました</h2>
+        <h2 id="feed-expired-title">3分経過しました</h2>
         <p id="feed-expired-description">
           リフレッシュできましたか？
           <br />

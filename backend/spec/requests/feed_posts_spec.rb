@@ -113,7 +113,7 @@ RSpec.describe "Feed posts", type: :request do
       expect(task.completed_at).to be_present
       expect(completion_post.reload).to be_completed
       expect(completion_post.completed_at.to_i).to eq(task.completed_at.to_i)
-      expect(user.reload.feed_access_expires_at).to be > Time.current
+      expect(user.reload.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
       body = JSON.parse(response.body)
       expect(body.dig("data", "completion_post")).to include(
         "id" => completion_post.id,
@@ -159,7 +159,7 @@ RSpec.describe "Feed posts", type: :request do
 
   describe "GET /api/feed" do
     it "自分の投稿も含め、操作可否を返す" do
-      user.update!(feed_access_expires_at: 5.minutes.from_now)
+      user.update!(feed_access_expires_at: 3.minutes.from_now)
       create_completed_posts(user: user, count: 9)
       create_completed_posts(user: other_user, count: 20)
       own_task = user.tasks.create!(title: "自分のタスク")
@@ -178,7 +178,7 @@ RSpec.describe "Feed posts", type: :request do
       own_payload = data.find { |post| post["id"] == own_post.id }
       other_payload = data.find { |post| post["id"] == other_completion_post.id }
 
-      expect(body.fetch("remaining_seconds")).to be_between(1, 300)
+      expect(body.fetch("remaining_seconds")).to be_between(1, 180)
       expect(body.fetch("feed_access_expires_at")).to be_present
       expect(own_payload).to include(
         "task_title" => "自分のタスク",
@@ -232,7 +232,7 @@ RSpec.describe "Feed posts", type: :request do
     end
 
     it "20件ずつ全投稿をページ取得できる" do
-      user.update!(feed_access_expires_at: 5.minutes.from_now)
+      user.update!(feed_access_expires_at: 3.minutes.from_now)
       create_completed_posts(user: other_user, count: 25)
 
       get "/api/feed", headers: authenticated_headers(user), as: :json
@@ -259,7 +259,7 @@ RSpec.describe "Feed posts", type: :request do
     end
 
     it "投稿やコメントが増えてもSQL数が増えない" do
-      user.update!(feed_access_expires_at: 5.minutes.from_now)
+      user.update!(feed_access_expires_at: 3.minutes.from_now)
       first_task = other_user.tasks.create!(title: "最初の投稿")
       first_post = first_task.create_completion_post!(user: other_user, status: :completed)
       first_post.completion_post_likes.create!(user: user)

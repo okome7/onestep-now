@@ -25,7 +25,7 @@ export const signupCompleteStorageKey = 'onestep-signup-complete'
 export const authSessionStorageKey = 'onestep-auth-session'
 export const avatarImageSize = 256
 export const avatarImageQuality = 0.82
-export const feedViewDurationSeconds = 5 * 60
+export const feedViewDurationSeconds = 3 * 60
 
 export const sampleFeedPosts: Array<
   Omit<FeedPost, 'createdAt'> & { ageMinutes: number }

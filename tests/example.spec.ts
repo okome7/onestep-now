@@ -286,8 +286,8 @@ async function mockTaskAndFeedApi(page: Page) {
       contentType: "application/json",
       body: JSON.stringify({
         status: "success",
-        remaining_seconds: 5 * 60,
-        feed_access_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        remaining_seconds: 3 * 60,
+        feed_access_expires_at: new Date(Date.now() + 3 * 60 * 1000).toISOString(),
         data: activeTask
           ? [
               {
@@ -1081,14 +1081,14 @@ test("フィード閲覧時間外は案内画面からホームへ戻れる", as
     page.getByRole("heading", { name: "フィード", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "フィードは5分だけ見られます" }),
+    page.getByRole("heading", { name: "フィードは3分だけ見られます" }),
   ).toBeVisible();
   await expect(page.getByText("フィードってなに？")).toBeVisible();
   await expect(page.getByText("1. やります")).toBeVisible();
   await expect(page.getByText("2. できた！")).toBeVisible();
   await expect(page.getByText("3. フィード解放")).toBeVisible();
   await expect(
-    page.getByRole("dialog", { name: "5分経過しました" }),
+    page.getByRole("dialog", { name: "3分経過しました" }),
   ).toHaveCount(0);
 
   await page.getByRole("button", { name: "最初の一歩を始める" }).click();
@@ -1184,10 +1184,10 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   await page.getByRole("link", { name: "みんなを見る" }).click();
 
   await expect(page.getByRole("heading", { name: "フィード" })).toBeVisible();
-  await page.clock.fastForward(5 * 60 * 1000);
+  await page.clock.fastForward(3 * 60 * 1000);
 
   const expiredDialog = page.getByRole("dialog", {
-    name: "5分経過しました",
+    name: "3分経過しました",
   });
   await expect(expiredDialog).toBeVisible();
   await expect(
