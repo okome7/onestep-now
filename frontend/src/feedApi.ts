@@ -30,6 +30,7 @@ export type ApiFeedPost = {
   created_at: string
   comments?: ApiComment[]
   user_name?: string
+  avatar_key?: string
   level?: number
 }
 
@@ -168,6 +169,7 @@ export function mapFeedPost(
       post.is_mine || post.user_id === currentUserId
         ? 'あなた'
         : (post.user_name ?? 'みき'),
+    avatarId: post.avatar_key ?? 'avatar-1',
     level: post.level ?? 1,
     task: post.task_title,
     status: uiStatus(post.card_variant),

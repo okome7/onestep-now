@@ -1,4 +1,4 @@
-import { formatFeedPostAge } from '../../appHelpers'
+import { formatFeedPostAge, getAvatarSrc } from '../../appHelpers'
 import type { FeedPost } from '../../appTypes'
 import commentActiveIcon from '../../assets/icons/comment-active.svg'
 import commentIcon from '../../assets/icons/comment.svg'
@@ -22,7 +22,12 @@ export function FeedPostCard({
     <article className={`feed-card feed-card-${post.status}`}>
       <div className="feed-card-header">
         <div className="feed-user">
-          <span className="feed-avatar" aria-hidden="true" />
+          <img
+            className="feed-avatar"
+            src={getAvatarSrc(post.avatarId)}
+            alt=""
+            aria-hidden="true"
+          />
           <span className="feed-user-name">{post.userName}</span>
           <span className="feed-user-level">Lv.{post.level}</span>
         </div>

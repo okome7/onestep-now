@@ -182,6 +182,7 @@ RSpec.describe "Feed posts", type: :request do
       expect(body.fetch("feed_access_expires_at")).to be_present
       expect(own_payload).to include(
         "task_title" => "自分のタスク",
+        "avatar_key" => user.avatar_key,
         "status" => "completed",
         "status_label" => "できた",
         "card_variant" => "completed",
@@ -193,6 +194,7 @@ RSpec.describe "Feed posts", type: :request do
         "commented_by_me" => false
       )
       expect(other_payload).to include(
+        "avatar_key" => other_user.avatar_key,
         "is_mine" => false,
         "can_like" => true,
         "can_comment" => true,
