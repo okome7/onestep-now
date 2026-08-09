@@ -200,7 +200,9 @@ async function mockTaskAndFeedApi(page: Page) {
           avatar_key: `avatar-${(index % 8) + 1}`,
           body,
           post_status_when_commented: "doing",
-          created_at: new Date(Date.now() - (completionComments.length - index) * 1000).toISOString(),
+          created_at: new Date(
+            Date.now() - (completionComments.length - index) * 1000,
+          ).toISOString(),
         }))
       : [];
 
@@ -296,7 +298,9 @@ async function mockTaskAndFeedApi(page: Page) {
       body: JSON.stringify({
         status: "success",
         remaining_seconds: 3 * 60,
-        feed_access_expires_at: new Date(Date.now() + 3 * 60 * 1000).toISOString(),
+        feed_access_expires_at: new Date(
+          Date.now() + 3 * 60 * 1000,
+        ).toISOString(),
         data: activeTask
           ? [
               {
@@ -889,7 +893,9 @@ test("ホーム画面は末尾スラッシュ付きでも表示される", async
   ).toBeVisible();
 });
 
-test("ホーム画面でやることを入力せずに始めるとエラーが表示される", async ({ page }) => {
+test("ホーム画面でやることを入力せずに始めるとエラーが表示される", async ({
+  page,
+}) => {
   await gotoHome(page);
 
   await page.getByRole("button", { name: "始める" }).click();
@@ -946,9 +952,9 @@ test("集中画面でやめるを押すと確認モーダルが表示され、�
   await expect(
     page.getByRole("textbox", { name: "今できること" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("textbox", { name: "今できること" }),
-  ).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "今できること" })).toHaveValue(
+    "",
+  );
   await expect(
     page.getByRole("heading", { name: "スライド1枚作る" }),
   ).toHaveCount(0);
@@ -1102,9 +1108,7 @@ test("タスク完了後にマイページの達成と集計を再取得して�
   await page.getByRole("button", { name: "できた！" }).click();
 
   await expect(page.getByRole("heading", { name: "よくできた" })).toBeVisible();
-  await expect
-    .poll(() => myPageRequests)
-    .toBe(requestsAfterPrefetch + 1);
+  await expect.poll(() => myPageRequests).toBe(requestsAfterPrefetch + 1);
 
   await page.getByRole("button", { name: "次の一歩へ" }).click();
   await page.getByRole("link", { name: "プロフィール" }).click();
@@ -1116,9 +1120,173 @@ test("タスク完了後にマイページの達成と集計を再取得して�
   await expect(page.getByText("あと9回でLv.2！")).toBeVisible();
   await expect(page.getByText("10%", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "すべて見る>" }).click();
-  await expect(page.getByRole("heading", { name: "すべての達成" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "すべての達成" }),
+  ).toBeVisible();
   await expect(page.getByText("スライド1枚作る")).toBeVisible();
   expect(myPageRequests).toBe(requestsAfterPrefetch + 1);
+});
+
+test("フィードのいいねとコメント後にマイページを再取得する", async ({
+  page,
+}) => {
+  let likesCount = 0;
+  let commentsCount = 0;
+  let myPageRequests = 0;
+  const createdAt = new Date().toISOString();
+
+  await page.unroute(myPageRoute);
+  await page.route(myPageRoute, async (route) => {
+    myPageRequests += 1;
+    const achievement = {
+      id: 71,
+      task_title: "同期を確認するタスク",
+      likes_count: likesCount,
+      comments_count: commentsCount,
+      created_at: createdAt,
+      liked_users: [],
+      comments: commentsCount
+        ? [
+            {
+              id: 81,
+              user_name: "おこめ",
+              user_level: 1,
+              body: "反映確認コメント",
+              created_at: createdAt,
+            },
+          ]
+        : [],
+    };
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          level: 1,
+          next_level: 2,
+          remaining_to_next_level: 9,
+          progress_percent: 10,
+          achievements_count: 1,
+          streak_days: 1,
+          likes_count: likesCount,
+          comments_count: commentsCount,
+          recent_achievements: [achievement],
+          all_achievements: [achievement],
+        },
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_access_expires_at: new Date(Date.now() + 180_000).toISOString(),
+        data: [
+          {
+            id: 71,
+            user_name: "おこめ",
+            level: 1,
+            task_title: "同期を確認するタスク",
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            is_mine: false,
+            can_like: true,
+            can_comment: true,
+            likes_count: likesCount,
+            comments_count: commentsCount,
+            liked_by_me: likesCount > 0,
+            comments: [],
+            created_at: createdAt,
+            completed_at: createdAt,
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(/.*\/completion_posts\/71\/likes$/, async (route) => {
+    likesCount = route.request().method() === "DELETE" ? 0 : 1;
+    await route.fulfill({ status: 204 });
+  });
+  await page.route(/.*\/completion_posts\/71\/comments$/, async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "success",
+          data: [],
+          pagination: { page: 1, has_more: false },
+        }),
+      });
+      return;
+    }
+
+    commentsCount = 1;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: 81,
+          user_id: 1,
+          user_name: "おこめ",
+          body: "反映確認コメント",
+          post_status_when_commented: "completed",
+          created_at: createdAt,
+        },
+      }),
+    });
+  });
+
+  await markLoggedIn(page);
+  await page.evaluate(() => {
+    sessionStorage.setItem("onestep-active-home-view", "feed");
+    localStorage.setItem("onestep-feed-intro-seen", "true");
+  });
+  await page.goto("/home");
+  await expect(page.getByText("同期を確認するタスク")).toBeVisible();
+  await expect.poll(() => myPageRequests).toBeGreaterThan(0);
+
+  const feedCard = page.locator(".feed-card").filter({
+    hasText: "同期を確認するタスク",
+  });
+  await feedCard.locator(".feed-reaction").click();
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  let achievementCard = page.locator(".profile-achievement-card").filter({
+    hasText: "同期を確認するタスク",
+  });
+  await expect(
+    achievementCard.locator(".achievement-reaction-button").first(),
+  ).toContainText("1");
+
+  await page.getByRole("link", { name: "投稿" }).click();
+  await feedCard.locator(".feed-reaction").click();
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  achievementCard = page.locator(".profile-achievement-card").filter({
+    hasText: "同期を確認するタスク",
+  });
+  await expect(
+    achievementCard.locator(".achievement-reaction-button").first(),
+  ).toContainText("0");
+
+  await page.getByRole("link", { name: "投稿" }).click();
+  await feedCard
+    .getByRole("button", { name: "おこめさんのコメントを開く" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "おこめさんの投稿にコメントする" })
+    .fill("反映確認コメント");
+  await page.getByRole("button", { name: "コメントを送信" }).click();
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  achievementCard = page.locator(".profile-achievement-card").filter({
+    hasText: "同期を確認するタスク",
+  });
+  await expect(
+    achievementCard.locator(".achievement-reaction-button").nth(1),
+  ).toContainText("1");
 });
 
 test("フィード閲覧時間外は案内画面からホームへ戻れる", async ({ page }) => {
