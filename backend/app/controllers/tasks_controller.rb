@@ -2,6 +2,13 @@ class TasksController < ApplicationController
   before_action :require_current_user
   before_action :set_task, only: [ :start, :complete, :destroy ]
 
+  def active
+    task = current_user.tasks.active.order(started_at: :desc).first
+    data = task ? task_payload(task_with_associations(task)) : nil
+
+    render json: { status: "success", data: data }, status: :ok
+  end
+
   def create
     task = current_user.tasks.create!(task_params.merge(status: :pending))
     render json: { status: "success", data: task_payload(task) }, status: :created

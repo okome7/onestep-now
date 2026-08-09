@@ -54,6 +54,35 @@ RSpec.describe "Feed posts", type: :request do
     end
   end
 
+  describe "GET /api/tasks/active" do
+    it "現在のユーザーの進行中タスクと開始時刻を返す" do
+      started_at = 75.seconds.ago
+      task = user.tasks.create!(title: "復元するタスク", status: :active, started_at: started_at)
+      task.create_completion_post!(user: user, status: :doing, content: task.title)
+      other_user.tasks.create!(title: "他人のタスク", status: :active, started_at: 1.minute.ago)
+
+      get "/api/tasks/active", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body).fetch("data")
+      expect(data).to include(
+        "id" => task.id,
+        "title" => "復元するタスク",
+        "status" => "active"
+      )
+      expect(Time.zone.parse(data.fetch("started_at"))).to be_within(1.second).of(started_at)
+    end
+
+    it "進行中タスクがなければnullを返す" do
+      user.tasks.create!(title: "完了タスク", status: :completed, completed_at: Time.current)
+
+      get "/api/tasks/active", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body).fetch("data")).to be_nil
+    end
+  end
+
   describe "PATCH /api/tasks/:id/start" do
     it "タスク開始時にdoingの投稿を作成する" do
       task = user.tasks.create!(title: "参考記事を1つ読む")
