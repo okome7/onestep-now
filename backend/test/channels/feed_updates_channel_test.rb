@@ -7,7 +7,7 @@ class FeedUpdatesChannelTest < ActionCable::Channel::TestCase
       email: "feed-channel@example.com",
       password: "password1",
       avatar_key: "avatar-1",
-      feed_access_expires_at: 5.minutes.from_now
+      feed_access_expires_at: 3.minutes.from_now
     )
   end
 
