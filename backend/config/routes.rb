@@ -16,6 +16,7 @@ Rails.application.routes.draw do
   patch "password_reset", to: "password_resets#update"
 
   scope "/api" do
+    patch "profile", to: "profiles#update"
     get "feed", to: "feed#index"
     get "mypage", to: "mypage#show"
     post "cable_token", to: "cable_tokens#create"

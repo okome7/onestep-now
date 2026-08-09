@@ -76,6 +76,7 @@ import {
   isAbortError,
   isCurrentMyPageResponse,
 } from '../mypageApi'
+import { updateProfile } from '../profileApi'
 
 const feedIntroStorageKey = 'onestep-feed-intro-seen'
 const activeHomeViewStorageKey = 'onestep-active-home-view'
@@ -134,6 +135,8 @@ export function HomePage() {
     useState(false)
   const [isIconDiscardConfirmOpen, setIsIconDiscardConfirmOpen] =
     useState(false)
+  const [isProfileSaving, setIsProfileSaving] = useState(false)
+  const [profileSaveError, setProfileSaveError] = useState('')
   const [completeProfile, setCompleteProfile] = useState(() =>
     getInitialCompleteProfile(),
   )
@@ -1089,6 +1092,7 @@ export function HomePage() {
 
   function openNameEdit() {
     setDisplayNameDraft(profileName)
+    setProfileSaveError('')
     setIsNameEditOpen(true)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -1112,6 +1116,7 @@ export function HomePage() {
   function openIconEdit() {
     const nextAvatarId = completeProfile.avatarId
 
+    setProfileSaveError('')
     setSelectedSettingsIconId(nextAvatarId)
     setSettingsCustomPhotoUrl(
       isAvatarImageDataUrl(nextAvatarId) ? nextAvatarId : '',
@@ -1139,27 +1144,41 @@ export function HomePage() {
   }
 
   const saveSettingsIcon = useCallback(
-    (event?: FormEvent<HTMLFormElement>) => {
+    async (event?: FormEvent<HTMLFormElement>) => {
       event?.preventDefault()
 
-      if (!canSaveSettingsIcon) {
+      if (!canSaveSettingsIcon || isProfileSaving) {
         return
       }
 
-      const nextProfile = {
-        ...completeProfile,
-        avatarId: selectedSettingsIconId,
+      setIsProfileSaving(true)
+      setProfileSaveError('')
+      try {
+        const user = await updateProfile({ avatarKey: selectedSettingsIconId })
+        const nextProfile = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatarId: user.avatar_key ?? selectedSettingsIconId,
+        }
+        setCompleteProfile(nextProfile)
+        saveCompleteProfile(nextProfile)
+        setIsIconEditOpen(false)
+        setIsSettingsOpen(true)
+        setIsSettingsAvatarGridOpen(false)
+        setIsIconDiscardConfirmOpen(false)
+        window.scrollTo({ top: 0, left: 0 })
+      } catch (error) {
+        setProfileSaveError(
+          error instanceof Error
+            ? error.message
+            : 'プロフィールの保存に失敗しました。',
+        )
+      } finally {
+        setIsProfileSaving(false)
       }
-
-      setCompleteProfile(nextProfile)
-      saveCompleteProfile(nextProfile)
-      setIsIconEditOpen(false)
-      setIsSettingsOpen(true)
-      setIsSettingsAvatarGridOpen(false)
-      setIsIconDiscardConfirmOpen(false)
-      window.scrollTo({ top: 0, left: 0 })
     },
-    [canSaveSettingsIcon, completeProfile, selectedSettingsIconId],
+    [canSaveSettingsIcon, isProfileSaving, selectedSettingsIconId],
   )
 
   useEffect(() => {
@@ -1256,24 +1275,38 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function saveDisplayName(event: FormEvent<HTMLFormElement>) {
+  async function saveDisplayName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!canSaveDisplayName) {
+    if (!canSaveDisplayName || isProfileSaving) {
       return
     }
 
-    const nextProfile = {
-      ...completeProfile,
-      name: trimmedDisplayNameDraft,
+    setIsProfileSaving(true)
+    setProfileSaveError('')
+    try {
+      const user = await updateProfile({ name: trimmedDisplayNameDraft })
+      const nextProfile = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarId: user.avatar_key ?? completeProfile.avatarId,
+      }
+      setCompleteProfile(nextProfile)
+      saveCompleteProfile(nextProfile)
+      setIsNameEditOpen(false)
+      setIsSettingsOpen(true)
+      setIsNameDiscardConfirmOpen(false)
+      window.scrollTo({ top: 0, left: 0 })
+    } catch (error) {
+      setProfileSaveError(
+        error instanceof Error
+          ? error.message
+          : 'プロフィールの保存に失敗しました。',
+      )
+    } finally {
+      setIsProfileSaving(false)
     }
-
-    setCompleteProfile(nextProfile)
-    saveCompleteProfile(nextProfile)
-    setIsNameEditOpen(false)
-    setIsSettingsOpen(true)
-    setIsNameDiscardConfirmOpen(false)
-    window.scrollTo({ top: 0, left: 0 })
   }
 
   async function handleTaskStart() {
@@ -1637,7 +1670,7 @@ export function HomePage() {
               className="name-edit-done-button"
               type="submit"
               form="display-name-form"
-              disabled={!canSaveDisplayName}
+              disabled={!canSaveDisplayName || isProfileSaving}
             >
               完了
             </button>
@@ -1658,6 +1691,11 @@ export function HomePage() {
               onChange={(event) => setDisplayNameDraft(event.target.value)}
             />
           </form>
+          {profileSaveError ? (
+            <p className="notice error" role="alert">
+              {profileSaveError}
+            </p>
+          ) : null}
         </section>
 
         {isNameDiscardConfirmOpen ? (
@@ -1690,7 +1728,7 @@ export function HomePage() {
               className="name-edit-done-button"
               type="submit"
               form="settings-icon-form"
-              disabled={!canSaveSettingsIcon}
+              disabled={!canSaveSettingsIcon || isProfileSaving}
             >
               完了
             </button>
@@ -1709,6 +1747,11 @@ export function HomePage() {
             alt=""
             aria-hidden="true"
           />
+          {profileSaveError ? (
+            <p className="notice error" role="alert">
+              {profileSaveError}
+            </p>
+          ) : null}
 
           <div className="icon-edit-action-list">
             <button
