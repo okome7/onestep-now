@@ -47,25 +47,35 @@ type FeedSuccessResponse = {
   }
 }
 
+export type TaskData = {
+  id: number
+  title: string
+  status: 'pending' | 'active' | 'completed'
+  started_at?: string | null
+  completed_at?: string | null
+  completion_post_id?: number
+  completion_post?: {
+    id: number
+    status: ApiFeedStatus
+    status_label: string
+    card_variant: ApiFeedStatus
+    likes_count?: number
+    comments_count?: number
+    liked_by_me?: boolean
+    comments?: ApiComment[]
+    created_at: string
+    completed_at?: string | null
+  } | null
+}
+
 type TaskResponse = {
   status: 'success'
-  data: {
-    id: number
-    title: string
-    completion_post_id?: number
-    completion_post?: {
-      id: number
-      status: ApiFeedStatus
-      status_label: string
-      card_variant: ApiFeedStatus
-      likes_count?: number
-      comments_count?: number
-      liked_by_me?: boolean
-      comments?: ApiComment[]
-      created_at: string
-      completed_at?: string | null
-    } | null
-  }
+  data: TaskData
+}
+
+type ActiveTaskResponse = {
+  status: 'success'
+  data: TaskData | null
 }
 
 type CommentResponse = {
@@ -298,6 +308,29 @@ export async function createTask(title: string, userId?: number) {
   return (result as TaskResponse).data
 }
 
+export async function fetchActiveTask(userId?: number) {
+  const response = await apiFetch(apiUrl(defaultApiBaseUrl, '/tasks/active'), {
+    headers: userHeaders(userId),
+  })
+
+  if (response.status === 401) {
+    throw new AuthRequiredError()
+  }
+
+  const result = await readJson<ActiveTaskResponse | ErrorResponse>(response)
+
+  if (!response.ok || result.status === 'error') {
+    throw new Error(
+      errorMessage(
+        result as ErrorResponse,
+        '進行中のタスク取得に失敗しました。',
+      ),
+    )
+  }
+
+  return (result as ActiveTaskResponse).data
+}
+
 export async function startTask(taskId: number, userId?: number) {
   const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/tasks/${taskId}/start`),
@@ -347,10 +380,13 @@ export async function completeTask(taskId: number, userId?: number) {
 }
 
 export async function cancelTask(taskId: number, userId?: number) {
-  const response = await apiFetch(apiUrl(defaultApiBaseUrl, `/tasks/${taskId}`), {
-    method: 'DELETE',
-    headers: userHeaders(userId),
-  })
+  const response = await apiFetch(
+    apiUrl(defaultApiBaseUrl, `/tasks/${taskId}`),
+    {
+      method: 'DELETE',
+      headers: userHeaders(userId),
+    },
+  )
 
   if (response.status === 401) {
     throw new AuthRequiredError()

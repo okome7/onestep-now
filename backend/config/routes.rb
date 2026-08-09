@@ -20,6 +20,7 @@ Rails.application.routes.draw do
     get "feed", to: "feed#index"
     get "mypage", to: "mypage#show"
     post "cable_token", to: "cable_tokens#create"
+    get "tasks/active", to: "tasks#active"
     post "tasks", to: "tasks#create"
     patch "tasks/:id/start", to: "tasks#start"
     patch "tasks/:id/complete", to: "tasks#complete"

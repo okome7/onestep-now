@@ -14,6 +14,7 @@ const signupCompleteStorageKey = "onestep-signup-complete";
 const sessionRoute = /.*\/(?:api\/)?session$/;
 const myPageRoute = /.*\/(?:api\/)?mypage$/;
 const cableTokenRoute = /.*\/(?:api\/)?cable_token$/;
+const activeTaskRoute = /.*\/(?:api\/)?tasks\/active$/;
 
 async function mockSession(page: Page, authenticated: boolean) {
   await page.unroute(sessionRoute);
@@ -34,6 +35,13 @@ async function mockSession(page: Page, authenticated: boolean) {
             }
           : { status: "error", errors: ["認証が必要です"] },
       ),
+    });
+  });
+  await page.unroute(activeTaskRoute);
+  await page.route(activeTaskRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", data: null }),
     });
   });
 }
@@ -230,6 +238,7 @@ async function mockTaskAndFeedApi(page: Page) {
           id: taskId,
           title: activeTask,
           status: "active",
+          started_at: new Date().toISOString(),
           completion_post_id: completionPostId,
         },
       }),
@@ -982,6 +991,44 @@ test("集中画面でできたを押すと完了画面が表示される", async
       ),
     )
     .toBe(true);
+});
+
+test("ブラウザを再起動しても進行中タスクと経過時間を復元する", async ({
+  page,
+}) => {
+  const startedAt = new Date(Date.now() - 65 * 1000).toISOString();
+  await markLoggedIn(page);
+  await page.unroute(activeTaskRoute);
+  await page.route(activeTaskRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: 42,
+          title: "再起動後も続けるタスク",
+          status: "active",
+          started_at: startedAt,
+          completion_post_id: 52,
+        },
+      }),
+    });
+  });
+  await page.evaluate(() => {
+    sessionStorage.setItem("onestep-active-home-view", "feed");
+  });
+
+  await page.goto("/home");
+  await expect(
+    page.getByRole("heading", { name: "再起動後も続けるタスク" }),
+  ).toBeVisible();
+  await expect(page.locator(".focus-timer")).toHaveText(/01:(0[5-9]|1\d)/);
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "再起動後も続けるタスク" }),
+  ).toBeVisible();
+  await expect(page.locator(".focus-timer")).toHaveText(/01:(0[5-9]|1\d)/);
 });
 
 test("タスク完了後にマイページの達成と集計を再取得して即時表示する", async ({
