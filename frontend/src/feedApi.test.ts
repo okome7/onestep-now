@@ -55,7 +55,7 @@ test('本番APIベースURLから/api付きのフィードURLを組み立てる'
       Promise.resolve({
         status: 'success',
         data: [],
-        remaining_seconds: 300,
+        remaining_seconds: 180,
       }),
   })
 
@@ -77,7 +77,7 @@ test('2ページ目のフィードURLとページ情報を扱う', async () => {
       Promise.resolve({
         status: 'success',
         data: [],
-        remaining_seconds: 300,
+        remaining_seconds: 180,
         pagination: { page: 2, per_page: 20, has_more: true },
       }),
   })

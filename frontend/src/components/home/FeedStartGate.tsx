@@ -19,14 +19,14 @@ export function FeedStartGate({ onStart }: FeedStartGateProps) {
             alt=""
             aria-hidden="true"
           />
-          フィードは5分だけ見られます
+          フィードは3分だけ見られます
         </h2>
         <p>
           タスクを完了すると、
           <br />
           みんなの「やります」「できた」を
           <br />
-          5分間だけチェックできます。
+          3分間だけチェックできます。
         </p>
       </div>
       <section className="feed-start-guide" aria-labelledby="feed-start-guide-title">
@@ -54,7 +54,7 @@ export function FeedStartGate({ onStart }: FeedStartGateProps) {
           <li>
             <span className="feed-start-step-icon feed-start-step-heart">♥</span>
             <strong>3. フィード解放</strong>
-            <small>完了すると5分間だけ見られる！</small>
+            <small>完了すると3分間だけ見られる！</small>
           </li>
         </ol>
       </section>
