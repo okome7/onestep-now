@@ -999,6 +999,19 @@ test("ブラウザを再起動しても進行中タスクと経過時間を復�
 }) => {
   const startedAt = new Date(Date.now() - 65 * 1000).toISOString();
   await markLoggedIn(page);
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 3 * 60,
+        feed_access_expires_at: new Date(
+          Date.now() + 3 * 60 * 1000,
+        ).toISOString(),
+        data: [],
+      }),
+    });
+  });
   await page.unroute(activeTaskRoute);
   await page.route(activeTaskRoute, async (route) => {
     await route.fulfill({
