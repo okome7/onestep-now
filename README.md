@@ -21,7 +21,7 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 - HttpOnly CookieによるログインセッションとCSRF保護
 - 期限切れ・失効済みログインセッションの定期削除
 - アイコン選択、写真選択、スマホ幅でのカメラ撮影導線
-- 表示名・アイコン変更
+- 表示名・アイコン変更とDBへの永続化
 - ログアウト、アカウント削除と確認モーダル
 - タスクの作成、開始、完了、中止
 - 集中中のタイマー画面
@@ -36,7 +36,9 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 - 投稿削除後の達成回数、連続日数、レベル、いいね・コメント合計の再計算
 - Action Cable / Solid Cableによる投稿作成・完了・削除、いいね追加・解除、コメント追加のリアルタイム反映
 
-タスク、投稿、コメント、いいね、実績の集計元データは Rails API と PostgreSQL に保存されます。投稿を削除すると関連するコメントといいねも削除され、フィードとマイページの表示に反映されます。他のユーザーの投稿は削除できないよう、画面表示とAPIの両方で所有者を確認しています。
+ユーザーの表示名・アイコン、タスク、投稿、コメント、いいね、実績の集計元データは Rails API と PostgreSQL に保存されます。表示名とアイコンはリロードや再ログイン後も維持されます。投稿を削除すると関連するコメントといいねも削除され、フィードとマイページの表示に反映されます。他のユーザーの投稿は削除できないよう、画面表示とAPIの両方で所有者を確認しています。
+
+タスク完了時にフィードの閲覧期限が3分後へ設定されます。残り時間はサーバーが返す閲覧期限を基準に計算するため、リロードしても3分へリセットされません。期限経過後は、次のタスクを完了するまでフィードを閲覧できません。
 
 ## 画面の流れ
 
@@ -53,6 +55,7 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 | Method | Path | 内容 |
 | --- | --- | --- |
 | `POST` | `/signup` | ユーザー登録 |
+| `POST` | `/signup/email_check` | メールアドレスの重複確認 |
 | `POST` | `/login` | ログイン |
 | `GET` | `/session` | ログイン状態と現在のユーザーを取得 |
 | `DELETE` | `/logout` | ログアウトとセッション無効化 |
@@ -60,6 +63,7 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 | `POST` | `/password_reset/verify` | 再設定コード確認 |
 | `PATCH` | `/password_reset` | パスワード更新 |
 | `DELETE` | `/account` | アカウント削除 |
+| `PATCH` | `/api/profile` | 現在のユーザーの表示名・アイコンを更新 |
 | `POST` | `/api/tasks` | タスク作成 |
 | `PATCH` | `/api/tasks/:id/start` | タスク開始と投稿作成 |
 | `PATCH` | `/api/tasks/:id/complete` | タスクと投稿を完了状態へ更新 |
@@ -70,6 +74,7 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 | `POST` | `/api/completion_posts/:completion_post_id/likes` | いいね |
 | `DELETE` | `/api/completion_posts/:completion_post_id/likes` | いいね解除 |
 | `POST` | `/api/completion_posts/:completion_post_id/comments` | コメント投稿 |
+| `GET` | `/api/completion_posts/:completion_post_id/comments` | コメント一覧取得 |
 | `POST` | `/api/cable_token` | WebSocket接続用の短期トークン発行 |
 
 APIのユーザー識別には、Railsが発行してDBで管理するHttpOnly Cookieセッションを利用します。`X-User-Id`やリクエスト本文のユーザーIDは認証情報として使用しません。状態変更APIはCSRF Cookieと`X-CSRF-Token`の一致、および許可Originを検証します。

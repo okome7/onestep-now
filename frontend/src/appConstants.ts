@@ -33,6 +33,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-1',
     userName: 'あや',
+    avatarId: 'avatar-1',
     level: 5,
     task: '参考記事を1つ読む',
     status: 'done',
@@ -50,6 +51,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-2',
     userName: 'たろう',
+    avatarId: 'avatar-2',
     level: 20,
     task: '問題5問解く',
     status: 'doing',
@@ -67,6 +69,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-3',
     userName: 'みき',
+    avatarId: 'avatar-3',
     level: 7,
     task: '洗い物をする',
     status: 'done',
@@ -84,6 +87,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-4',
     userName: 'けんじ',
+    avatarId: 'avatar-4',
     level: 1,
     task: 'バグを直す',
     status: 'doing',
@@ -101,6 +105,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-5',
     userName: 'はる',
+    avatarId: 'avatar-5',
     level: 16,
     task: '部屋を片付ける',
     status: 'done',
@@ -118,6 +123,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-6',
     userName: 'ゆい',
+    avatarId: 'avatar-6',
     level: 9,
     task: 'ストレッチを5分する',
     status: 'doing',
@@ -135,6 +141,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-7',
     userName: 'そうた',
+    avatarId: 'avatar-7',
     level: 12,
     task: '英単語を10個覚える',
     status: 'done',
@@ -152,6 +159,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-8',
     userName: 'りん',
+    avatarId: 'avatar-8',
     level: 3,
     task: '机の上を整理する',
     status: 'doing',
@@ -169,6 +177,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-9',
     userName: 'なお',
+    avatarId: 'avatar-1',
     level: 18,
     task: 'メールを1件返信する',
     status: 'done',
@@ -186,6 +195,7 @@ export const sampleFeedPosts: Array<
   {
     id: 'sample-10',
     userName: 'まい',
+    avatarId: 'avatar-2',
     level: 6,
     task: '明日の予定を3つ書く',
     status: 'doing',

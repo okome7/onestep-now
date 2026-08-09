@@ -2027,7 +2027,7 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #d8d8d8;
+  object-fit: cover;
 }
 
 .feed-user-name {

@@ -8,6 +8,7 @@ vi.mock('@rails/actioncable', () => ({ createConsumer: vi.fn() }))
 const existingPost: FeedPost = {
   id: '1',
   userName: '既存ユーザー',
+  avatarId: 'avatar-1',
   level: 1,
   task: '既存投稿',
   status: 'doing',
@@ -29,6 +30,7 @@ const createdEvent = {
     id: 2,
     user_id: 7,
     user_name: '投稿者',
+    avatar_key: 'avatar-3',
     task_title: '新しい投稿',
     card_variant: 'doing' as const,
     is_mine: false,
@@ -51,7 +53,11 @@ describe('applyFeedCableEvent', () => {
     const posts = applyFeedCableEvent([existingPost], createdEvent, 7)
 
     expect(posts.map((post) => post.id)).toEqual(['2', '1'])
-    expect(posts[0]).toMatchObject({ userName: 'あなた', isOwnPost: true })
+    expect(posts[0]).toMatchObject({
+      userName: 'あなた',
+      avatarId: 'avatar-3',
+      isOwnPost: true,
+    })
   })
 
   test('同じ作成イベントを複数回受信しても重複しない', () => {

@@ -262,6 +262,7 @@ export function HomePage() {
     const nextPost: FeedPost = {
       id: String(postId),
       userName: 'あなた',
+      avatarId: completeProfile.avatarId,
       level: 1,
       task: task.title,
       status: completionPost?.card_variant === 'completed' ? 'done' : 'doing',
