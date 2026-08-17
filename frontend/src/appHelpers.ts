@@ -39,10 +39,17 @@ export function isValidEmail(value: string) {
 }
 
 export function formatElapsedTime(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
+  const formattedMinutes = String(minutes).padStart(2, '0')
+  const formattedSeconds = String(seconds).padStart(2, '0')
 
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  if (hours < 1) {
+    return `${formattedMinutes}:${formattedSeconds}`
+  }
+
+  return `${String(hours).padStart(2, '0')}:${formattedMinutes}:${formattedSeconds}`
 }
 
 export function formatFeedRemainingTime(totalSeconds: number) {
