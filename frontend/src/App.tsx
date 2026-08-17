@@ -5,12 +5,22 @@ import {
   currentPathname,
   saveCompleteProfile,
 } from './appHelpers'
-import { avatarOptions, authSessionStorageKey, signupCompleteStorageKey } from './appConstants'
+import {
+  avatarOptions,
+  authSessionStorageKey,
+  signupCompleteStorageKey,
+} from './appConstants'
 import { fetchSession } from './sessionApi'
 import { LoginPage } from './pages/LoginPage'
 import { PasswordResetPage } from './pages/PasswordResetPage'
 import { SignupPage } from './pages/SignupPage'
 import { HomePage } from './pages/HomePage'
+import { LoadingScreen } from './components/LoadingScreen'
+
+export const loadingScreenDelayMs = 300
+const sessionRetryDelayMs = 2000
+
+type InitialLoadingStage = 'hidden' | 'loading'
 
 function pathForAuthState(pathname: string, isAuthenticated: boolean) {
   if (isAuthenticated && pathname === '/') {
@@ -27,10 +37,47 @@ function pathForAuthState(pathname: string, isAuthenticated: boolean) {
 function App() {
   const [pathname, setPathname] = useState(currentPathname)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [initialLoadingStage, setInitialLoadingStage] =
+    useState<InitialLoadingStage>('hidden')
 
   useEffect(() => {
+    let isCancelled = false
+    let restoreId = 0
+    let loadingTimerId: number | undefined
+    let retryTimerId: number | undefined
+
+    const waitBeforeRetry = () =>
+      new Promise<void>((resolve) => {
+        retryTimerId = window.setTimeout(resolve, sessionRetryDelayMs)
+      })
+
     const restoreSession = async () => {
-      const user = await fetchSession().catch(() => null)
+      const currentRestoreId = ++restoreId
+      window.clearTimeout(loadingTimerId)
+      window.clearTimeout(retryTimerId)
+      setInitialLoadingStage('hidden')
+      loadingTimerId = window.setTimeout(() => {
+        if (!isCancelled && currentRestoreId === restoreId) {
+          setInitialLoadingStage('loading')
+        }
+      }, loadingScreenDelayMs)
+      let user: Awaited<ReturnType<typeof fetchSession>> | undefined
+
+      while (!isCancelled && currentRestoreId === restoreId) {
+        try {
+          user = await fetchSession()
+          break
+        } catch {
+          await waitBeforeRetry()
+        }
+      }
+
+      if (isCancelled || currentRestoreId !== restoreId) {
+        return
+      }
+
+      window.clearTimeout(loadingTimerId)
+      setInitialLoadingStage('hidden')
       const authenticated = Boolean(user)
 
       if (user) {
@@ -79,6 +126,10 @@ function App() {
     void restoreSession()
 
     return () => {
+      isCancelled = true
+      restoreId += 1
+      window.clearTimeout(loadingTimerId)
+      window.clearTimeout(retryTimerId)
       window.removeEventListener('popstate', updatePathname)
       window.removeEventListener('storage', handleStorage)
       window.removeEventListener('onestep:unauthorized', handleUnauthorized)
@@ -93,6 +144,10 @@ function App() {
   }
 
   if (isAuthenticated === null) {
+    if (initialLoadingStage === 'loading') {
+      return <LoadingScreen />
+    }
+
     return null
   }
 
