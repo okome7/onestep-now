@@ -102,6 +102,11 @@ async function gotoHome(page: Page, path = "/home") {
   await page.goto(path);
 }
 
+async function gotoSignup(page: Page) {
+  await page.goto("/");
+  await page.getByRole("link", { name: "新規登録" }).click();
+}
+
 async function mockSignupEmailCheck(page: Page) {
   await page.route(/.*\/(?:api\/)?signup\/email_check$/, async (route) => {
     await route.fulfill({
@@ -332,11 +337,36 @@ test.beforeEach(async ({ page }) => {
   await mockAuthenticatedBackgroundApis(page);
   await mockSession(page, false);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
   await page.evaluate(() => {
     sessionStorage.clear();
     localStorage.clear();
   });
+});
+
+test("未ログイン時にウェルカム画面から認証画面へ遷移できる", async ({
+  page,
+}) => {
+  await expect(page.getByAltText("OneStep Nowのロゴ")).toHaveAttribute(
+    "src",
+    "/favicon.svg",
+  );
+  await expect(page.getByText("今できることから、")).toBeVisible();
+  await expect(page.getByText("一歩ずつ。")).toBeVisible();
+  await expect(
+    page.getByText("考える前に、まずひとつ始めよう。"),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "ログイン" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "ログイン" })).toBeVisible();
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "新規登録" }).click();
+  await expect(page).toHaveURL(/\/signup$/);
+  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
 });
 
 test("バックエンドのヘルスチェックが成功する", async ({ request }) => {
@@ -433,7 +463,7 @@ test("バックエンドでログインできる", async ({ request }) => {
 });
 
 test("フロントエンドの新規登録画面が表示される", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
   await expect(page.getByLabel("表示名")).toBeVisible();
@@ -446,7 +476,7 @@ test("フロントエンドの新規登録画面が表示される", async ({ pa
 });
 
 test("新規登録画面の入力欄の幅が揃っている", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   const inputWidths = await page.evaluate(() => {
     const targets = ["name", "email", "password", "passwordConfirmation"];
@@ -467,7 +497,7 @@ test("新規登録画面の入力欄の幅が揃っている", async ({ page }) 
 test("新規登録画面のリロード後も名前とメールアドレスを保持する", async ({
   page,
 }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -484,7 +514,7 @@ test("新規登録画面のリロード後も名前とメールアドレスを�
 });
 
 test("パスワードの表示と非表示を切り替えられる", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   const passwordInput = page.getByPlaceholder("パスワードを入力");
   const toggleButton = page.getByRole("button", {
@@ -499,7 +529,7 @@ test("パスワードの表示と非表示を切り替えられる", async ({ pa
 });
 
 test("パスワードに英数字以外は入力できない", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   const passwordInput = page.getByPlaceholder("パスワードを入力");
   const confirmationInput = page.getByPlaceholder("パスワードを再入力");
@@ -512,7 +542,7 @@ test("パスワードに英数字以外は入力できない", async ({ page }) 
 });
 
 test("パスワードは英字と数字の両方が必要", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -540,7 +570,7 @@ test("パスワードは英字と数字の両方が必要", async ({ page }) => 
 });
 
 test("入力エラーをフォーム内に表示する", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   const submitButton = page.getByRole("button", { name: "登録" });
   await page.getByLabel("表示名").fill("おこめ");
@@ -596,7 +626,7 @@ test("ログイン画面の新規登録リンクは登録入力画面へ遷移�
 
   await page.getByRole("link", { name: "新規登録" }).click();
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/signup$/);
   await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "登録が完了しました！" }),
@@ -659,13 +689,15 @@ test("ログイン済みならアプリを開いたときにホーム画面を�
   ).toBeVisible();
 });
 
-test("未ログインでホーム画面を開くとログイン画面を表示する", async ({
+test("未ログインでホーム画面を開くとウェルカム画面を表示する", async ({
   page,
 }) => {
   await page.goto("/home");
 
-  await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("heading", { name: "ログイン" })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
 });
 
 test("ログアウトするとログイン状態を削除してログイン画面へ遷移する", async ({
@@ -695,7 +727,9 @@ test("ログアウトするとログイン状態を削除してログイン画�
     .toBeNull();
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
 });
 
 test("ログイン情報が違う場合はエラーを表示する", async ({ page }) => {
@@ -760,6 +794,10 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   const signupRequests: unknown[] = [];
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     signupRequests.push(route.request().postDataJSON());
     await route.fulfill({
       contentType: "application/json",
@@ -770,7 +808,7 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -842,7 +880,7 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
 
   await mockSession(page, true);
-  await page.reload();
+  await page.goto("/");
   await expect(page).toHaveURL(/\/home$/);
   await expect(
     page.getByRole("heading", { name: "OneStep Now" }),
@@ -1446,6 +1484,10 @@ test("登録済みメールアドレスは新規登録時にエラーを表示�
     });
   });
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     signupRequests.push(route.request().postDataJSON());
     await route.fulfill({
       contentType: "application/json",
@@ -1456,7 +1498,7 @@ test("登録済みメールアドレスは新規登録時にエラーを表示�
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -1481,6 +1523,10 @@ test("スマホでは写真の選び方を下に並べて表示する", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -1490,7 +1536,7 @@ test("スマホでは写真の選び方を下に並べて表示する", async ({
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -1511,6 +1557,10 @@ test("スマホで写真の選択肢を表示しても決定ボタンの位置�
   await page.setViewportSize({ width: 390, height: 844 });
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -1520,7 +1570,7 @@ test("スマホで写真の選択肢を表示しても決定ボタンの位置�
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -1542,6 +1592,10 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
   const signupRequests: unknown[] = [];
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     const requestBody = route.request().postDataJSON();
     signupRequests.push(requestBody);
     await route.fulfill({
@@ -1558,7 +1612,7 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome-photo@example.com");
@@ -1579,7 +1633,7 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
     page.getByRole("heading", { name: "登録が完了しました！" }),
   ).toBeVisible();
   await mockSession(page, true);
-  await page.reload();
+  await page.goto("/");
   await expect(page).toHaveURL(/\/home$/);
   await expect(
     page.getByRole("heading", { name: "OneStep Now" }),

@@ -16,6 +16,7 @@ import { PasswordResetPage } from './pages/PasswordResetPage'
 import { SignupPage } from './pages/SignupPage'
 import { HomePage } from './pages/HomePage'
 import { LoadingScreen } from './components/LoadingScreen'
+import { WelcomePage } from './pages/WelcomePage'
 
 export const loadingScreenDelayMs = 300
 const sessionRetryDelayMs = 2000
@@ -28,7 +29,7 @@ function pathForAuthState(pathname: string, isAuthenticated: boolean) {
   }
 
   if (!isAuthenticated && pathname === '/home') {
-    return '/login'
+    return '/'
   }
 
   return pathname
@@ -115,8 +116,8 @@ function App() {
       setIsAuthenticated(false)
 
       if (currentPathname() === '/home') {
-        window.history.replaceState(null, '', '/login')
-        setPathname('/login')
+        window.history.replaceState(null, '', '/')
+        setPathname('/')
       }
     }
 
@@ -143,6 +144,12 @@ function App() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
+  function openAuthenticationPage(path: '/login' | '/signup') {
+    window.history.pushState(null, '', path)
+    setPathname(path)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
   if (isAuthenticated === null) {
     if (initialLoadingStage === 'loading') {
       return <LoadingScreen />
@@ -163,7 +170,11 @@ function App() {
     return <HomePage />
   }
 
-  return <SignupPage />
+  if (pathname === '/signup') {
+    return <SignupPage />
+  }
+
+  return <WelcomePage onNavigate={openAuthenticationPage} />
 }
 
 export default App

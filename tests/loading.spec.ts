@@ -12,7 +12,9 @@ test("300ms未満の応答ではローディング画面を表示しない", asy
   });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
   await expect(page.getByText("読み込んでいます…")).toHaveCount(0);
 });
 
@@ -26,7 +28,9 @@ test("300ms以上かかる場合は通常ローディング画面を表示する
 
   await page.goto("/");
   await expect(page.getByText("読み込んでいます…")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
 });
 
 test("1500msを超えても通常ローディング画面を表示し続ける", async ({ page }) => {
@@ -37,7 +41,9 @@ test("1500msを超えても通常ローディング画面を表示し続ける",
 
   await page.goto("/");
   await expect(page.getByText("読み込んでいます…")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
 });
 
 test("一時的な503後も再試行して通常画面へ遷移する", async ({ page }) => {
@@ -54,7 +60,7 @@ test("一時的な503後も再試行して通常画面へ遷移する", async ({
 
   await page.goto("/");
   await expect(page.getByText("読み込んでいます…")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible({
-    timeout: 5000,
-  });
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible({ timeout: 5000 });
 });

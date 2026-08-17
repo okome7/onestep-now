@@ -174,7 +174,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <p>アカウントをお持ちでないですか？</p>
           <a
             className="login-action-link"
-            href="/"
+            href="/signup"
             onClick={handleSignupLinkClick}
           >
             新規登録
