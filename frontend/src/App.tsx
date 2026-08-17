@@ -15,10 +15,12 @@ import { LoginPage } from './pages/LoginPage'
 import { PasswordResetPage } from './pages/PasswordResetPage'
 import { SignupPage } from './pages/SignupPage'
 import { HomePage } from './pages/HomePage'
-import { ServerStartingScreen } from './components/ServerStartingScreen'
+import { LoadingScreen } from './components/LoadingScreen'
 
-const serverStartingDelayMs = 1500
+export const loadingScreenDelayMs = 300
 const sessionRetryDelayMs = 2000
+
+type InitialLoadingStage = 'hidden' | 'loading'
 
 function pathForAuthState(pathname: string, isAuthenticated: boolean) {
   if (isAuthenticated && pathname === '/') {
@@ -35,12 +37,13 @@ function pathForAuthState(pathname: string, isAuthenticated: boolean) {
 function App() {
   const [pathname, setPathname] = useState(currentPathname)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [isServerStarting, setIsServerStarting] = useState(false)
+  const [initialLoadingStage, setInitialLoadingStage] =
+    useState<InitialLoadingStage>('hidden')
 
   useEffect(() => {
     let isCancelled = false
     let restoreId = 0
-    let startingTimerId: number | undefined
+    let loadingTimerId: number | undefined
     let retryTimerId: number | undefined
 
     const waitBeforeRetry = () =>
@@ -50,15 +53,14 @@ function App() {
 
     const restoreSession = async () => {
       const currentRestoreId = ++restoreId
-      window.clearTimeout(startingTimerId)
+      window.clearTimeout(loadingTimerId)
       window.clearTimeout(retryTimerId)
-      setIsServerStarting(false)
-      startingTimerId = window.setTimeout(() => {
+      setInitialLoadingStage('hidden')
+      loadingTimerId = window.setTimeout(() => {
         if (!isCancelled && currentRestoreId === restoreId) {
-          setIsServerStarting(true)
+          setInitialLoadingStage('loading')
         }
-      }, serverStartingDelayMs)
-
+      }, loadingScreenDelayMs)
       let user: Awaited<ReturnType<typeof fetchSession>> | undefined
 
       while (!isCancelled && currentRestoreId === restoreId) {
@@ -74,8 +76,8 @@ function App() {
         return
       }
 
-      window.clearTimeout(startingTimerId)
-      setIsServerStarting(false)
+      window.clearTimeout(loadingTimerId)
+      setInitialLoadingStage('hidden')
       const authenticated = Boolean(user)
 
       if (user) {
@@ -126,7 +128,7 @@ function App() {
     return () => {
       isCancelled = true
       restoreId += 1
-      window.clearTimeout(startingTimerId)
+      window.clearTimeout(loadingTimerId)
       window.clearTimeout(retryTimerId)
       window.removeEventListener('popstate', updatePathname)
       window.removeEventListener('storage', handleStorage)
@@ -142,7 +144,11 @@ function App() {
   }
 
   if (isAuthenticated === null) {
-    return isServerStarting ? <ServerStartingScreen /> : null
+    if (initialLoadingStage === 'loading') {
+      return <LoadingScreen />
+    }
+
+    return null
   }
 
   if (pathname === '/login') {

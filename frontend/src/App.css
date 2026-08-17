@@ -77,108 +77,67 @@ body {
   justify-content: flex-end;
 }
 
-.server-starting-page {
+.loading-page {
   min-height: 100dvh;
-  padding-top: 64px;
   background: #f4f7fb;
 }
 
-.server-starting-content {
+.loading-content {
   display: flex;
-  min-height: calc(100dvh - 64px);
+  min-height: 100dvh;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 24px 80px;
+  gap: 22px;
+  padding: 24px;
   text-align: center;
 }
 
-.server-starting-icon {
-  display: grid;
-  width: 104px;
-  height: 104px;
-  place-items: center;
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.loading-spinner span {
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 10px 30px rgb(77 149 229 / 10%);
-  color: #4d95e5;
+  background: #4d95e5;
+  animation: loading-dot 1.15s ease-in-out infinite;
 }
 
-.server-starting-icon svg {
-  width: 58px;
-  height: 58px;
+.loading-spinner span:nth-child(2) {
+  animation-delay: 0.14s;
 }
 
-.server-starting-content h2 {
-  margin: 28px 0 10px;
-  color: #111827;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.4;
+.loading-spinner span:nth-child(3) {
+  animation-delay: 0.28s;
 }
 
-.server-starting-description,
-.server-starting-wait {
+.loading-content p {
   margin: 0;
   color: #7b8797;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.7;
 }
 
-.server-starting-progress {
-  width: min(100%, 352px);
-  height: 9px;
-  margin: 28px 0 18px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #dfe9f5;
-}
-
-.server-starting-progress span {
-  display: block;
-  width: 38%;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #4d95e5, #78b6f4);
-  animation: server-starting-progress 1.5s ease-in-out infinite;
-}
-
-@keyframes server-starting-progress {
-  0% {
-    transform: translateX(-105%);
-  }
-
+@keyframes loading-dot {
+  0%,
+  60%,
   100% {
-    transform: translateX(275%);
-  }
-}
-
-@media (max-width: 639px) {
-  .server-starting-content {
-    justify-content: flex-start;
-    padding: 18vh 24px 48px;
+    opacity: 0.35;
+    transform: translateY(0);
   }
 
-  .server-starting-icon {
-    width: 92px;
-    height: 92px;
-  }
-
-  .server-starting-icon svg {
-    width: 52px;
-    height: 52px;
-  }
-
-  .server-starting-content h2 {
-    margin-top: 24px;
-    font-size: 20px;
+  30% {
+    opacity: 1;
+    transform: translateY(-8px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .server-starting-progress span {
-    width: 55%;
+  .loading-spinner span {
     animation: none;
   }
 }
