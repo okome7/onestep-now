@@ -5619,7 +5619,7 @@ body,
 .feed-page
   > :not(.home-header):not(.home-bottom-nav):not(
     .feed-comment-backdrop
-  ):not(.feed-comment-panel),
+  ):not(.feed-comment-panel):not(.feed-expired-backdrop),
 .profile-page:not(.achievements-page)
   > :not(.home-header):not(.home-bottom-nav):not(
     .feed-comment-backdrop

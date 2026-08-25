@@ -1458,6 +1458,9 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   const expiredDialog = page.getByRole("dialog", {
     name: "3分経過しました",
   });
+  const expiredBackdrop = expiredDialog.locator("..");
+  await expect(expiredBackdrop).toHaveCSS("position", "fixed");
+  await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(expiredDialog).toBeVisible();
   await expect(
     expiredDialog.getByText("リフレッシュできましたか？"),
