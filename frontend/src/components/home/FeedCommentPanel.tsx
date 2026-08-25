@@ -1,5 +1,6 @@
 import { formatFeedPostAge, getAvatarSrc } from '../../appHelpers'
 import type { FeedPost } from '../../appTypes'
+import { useBottomSheet } from './useBottomSheet'
 
 type FeedCommentPanelProps = {
   post: FeedPost
@@ -26,16 +27,18 @@ export function FeedCommentPanel({
   error,
   onLoadMore,
 }: FeedCommentPanelProps) {
+  const { isClosing, requestClose } = useBottomSheet(onClose)
+
   return (
     <>
       <button
-        className="feed-comment-backdrop"
+        className={`feed-comment-backdrop${isClosing ? ' is-closing' : ''}`}
         type="button"
         aria-label="コメントを閉じる"
-        onClick={onClose}
+        onClick={requestClose}
       />
       <section
-        className={`feed-comment-panel feed-comment-panel-${post.status}`}
+        className={`feed-comment-panel feed-comment-panel-${post.status}${isClosing ? ' is-closing' : ''}`}
         aria-labelledby="feed-comment-panel-title"
       >
         <div className="feed-comment-panel-header">
@@ -44,7 +47,7 @@ export function FeedCommentPanel({
             className="feed-comment-panel-close"
             type="button"
             aria-label="コメントを閉じる"
-            onClick={onClose}
+            onClick={requestClose}
           >
             ×
           </button>
@@ -88,7 +91,7 @@ export function FeedCommentPanel({
             ))}
           </ul>
         ) : (
-          <p className="feed-comment-empty">まだコメントはありません</p>
+          <p className="feed-comment-empty">コメントはありません</p>
         )}
 
         {error ? (

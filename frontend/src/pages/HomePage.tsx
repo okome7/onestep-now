@@ -50,6 +50,7 @@ import {
   PostDeleteModal,
   TaskCompleteScreen,
 } from '../components/home'
+import { resetBottomSheetScrollLock } from '../components/home/useBottomSheet'
 import {
   AppHeader,
   HomeBottomNav,
@@ -235,6 +236,12 @@ export function HomePage() {
   const activeCommentPost = activeCommentPostId
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
+
+  useEffect(() => {
+    if (activeAchievementId === null && activeCommentPostId === null) {
+      resetBottomSheetScrollLock()
+    }
+  }, [activeAchievementId, activeCommentPostId])
 
   function upsertOwnTaskPost(task: {
     title: string
@@ -996,6 +1003,7 @@ export function HomePage() {
   }
 
   function closeAchievementDetail() {
+    resetBottomSheetScrollLock()
     setActiveAchievementId(null)
   }
 
