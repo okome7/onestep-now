@@ -6,8 +6,12 @@ type SignupHeaderProps = {
 }
 
 export function SignupHeader({ title, onBack }: SignupHeaderProps) {
+  const isAuthHeader = title === 'ログイン' || title === '新規登録'
+
   return (
-    <header className="signup-header">
+    <header
+      className={`signup-header ${isAuthHeader ? 'signup-header-auth' : ''}`}
+    >
       {onBack ? (
         <button
           className="back-button"
@@ -34,8 +38,13 @@ export function AppHeader({
   leftAction = null,
   rightAction = null,
 }: AppHeaderProps) {
+  const isBrandHeader = title === 'OneStep Now'
+  const isMainSectionHeader = title === 'フィード' || title === 'マイページ'
+
   return (
-    <header className="home-header">
+    <header
+      className={`home-header ${isBrandHeader ? 'home-header-brand' : ''} ${isMainSectionHeader ? 'home-header-section' : ''}`}
+    >
       <div
         className="home-header-action"
         aria-hidden={leftAction ? undefined : 'true'}
@@ -46,6 +55,9 @@ export function AppHeader({
       <div className="home-header-action home-header-action-right">
         {rightAction}
       </div>
+      {isBrandHeader ? (
+        <p className="home-brand-message">考える前に、まずひとつ始めよう。</p>
+      ) : null}
     </header>
   )
 }

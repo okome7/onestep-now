@@ -1318,6 +1318,8 @@ test("フィードのいいねとコメント後にマイページを再取得�
     .getByRole("textbox", { name: "おこめさんの投稿にコメントする" })
     .fill("反映確認コメント");
   await page.getByRole("button", { name: "コメントを送信" }).click();
+  await page.locator(".feed-comment-panel-close").click();
+  await expect(page.locator(".feed-comment-panel")).toBeHidden();
   await page.getByRole("link", { name: "プロフィール" }).click();
   achievementCard = page.locator(".profile-achievement-card").filter({
     hasText: "同期を確認するタスク",
