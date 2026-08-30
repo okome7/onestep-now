@@ -424,6 +424,7 @@ export function HomePage() {
     const expirationTimerId = window.setTimeout(() => {
       setFeedRemainingSeconds(0)
       setFeedAccessExpiresAt(null)
+      setIsFeedIntroOpen(false)
       setIsFeedTimeoutModalOpen(true)
       setFeedNow(Date.now())
     }, feedRemainingSeconds * 1000)
@@ -433,6 +434,7 @@ export function HomePage() {
 
         if (nextSeconds === 0) {
           setFeedAccessExpiresAt(null)
+          setIsFeedIntroOpen(false)
           setIsFeedTimeoutModalOpen(true)
         }
 

@@ -4629,6 +4629,10 @@ body,
   width: min(calc(100% - 40px), 420px);
 }
 
+.feed-list:not(:has(.feed-start-gate)) {
+  padding-bottom: 34px;
+}
+
 .feed-card {
   border-radius: 16px;
   padding: 18px 20px 16px;
@@ -4713,6 +4717,10 @@ body,
   .feed-list:not(:has(.feed-start-gate)),
   .profile-page:not(.achievements-page) .profile-content {
     width: min(calc(100% - 20px), 420px);
+  }
+
+  .feed-list:not(:has(.feed-start-gate)) {
+    padding-bottom: calc(98px + env(safe-area-inset-bottom));
   }
 
   .feed-card {
@@ -5619,7 +5627,7 @@ body,
 .feed-page
   > :not(.home-header):not(.home-bottom-nav):not(
     .feed-comment-backdrop
-  ):not(.feed-comment-panel),
+  ):not(.feed-comment-panel):not(.feed-expired-backdrop),
 .profile-page:not(.achievements-page)
   > :not(.home-header):not(.home-bottom-nav):not(
     .feed-comment-backdrop
