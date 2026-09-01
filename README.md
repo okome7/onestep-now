@@ -21,13 +21,14 @@ OneStep Now では、行動前に見られる情報をかなり絞り、まず1�
 - HttpOnly CookieによるログインセッションとCSRF保護
 - 期限切れ・失効済みログインセッションの定期削除
 - アイコン選択、写真選択、スマホ幅でのカメラ撮影導線
-- 表示名・アイコン変更とDBへの永続化
+- 表示名・アイコンの変更とDBへの永続化
 - ログアウト、アカウント削除と確認モーダル
 - タスクの作成、開始、完了、中止
 - 集中中のタイマー画面
 - タスク開始時の「やります」投稿と完了時の「できた」投稿
 - 完了後に3分間だけ見られるフィード
 - 投稿へのいいね、いいね解除、コメント
+- フィードのページネーションと追加読み込み
 - マイページの実績、最近の達成、すべての達成
 - 達成ごとのいいね・コメント詳細
 - 達成回数に基づくレベルと進捗
@@ -167,10 +168,12 @@ bin/rails s
 
 ## テスト
 
-Frontend build:
+Frontend lint / test / build:
 
 ```bash
 cd frontend
+npm run lint
+npm test
 npm run build
 ```
 
@@ -179,6 +182,15 @@ Backend test:
 ```bash
 cd backend
 bin/rspec
+```
+
+Backend lint / security check:
+
+```bash
+cd backend
+bin/rubocop --parallel
+bin/brakeman -q -w2
+bin/bundler-audit check --update
 ```
 
 Docker内で実行する場合:
@@ -229,6 +241,7 @@ RESEND_API_KEY=your-resend-api-key
 - パスワード再設定
 - アカウント削除
 - タスク、投稿、フィード、いいね、コメントのDB永続化
+- 設定画面から変更した表示名・アイコンのDB永続化
 - 新規登録からホーム、集中、完了、フィードまでの主要フロー
 - マイページの実データによる実績・レベル・連続日数表示
 - 自分の投稿削除と、削除後のフィード・実績再計算
@@ -238,7 +251,7 @@ RESEND_API_KEY=your-resend-api-key
 
 まだ途中のこと:
 
-- 画像アップロードのストレージ設計
+- 写真アイコン向けの外部オブジェクトストレージ対応
 - UIの細かいレスポンシブ調整
 
 今後やりたいこと:
