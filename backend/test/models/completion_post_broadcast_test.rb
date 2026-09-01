@@ -23,6 +23,7 @@ class CompletionPostBroadcastTest < ActiveSupport::TestCase
     assert_equal "post_created", event["type"]
     assert_equal "リアルタイム投稿", event.dig("post", "task_title")
     assert_equal @user.id, event.dig("post", "user_id")
+    assert_equal @user.avatar_key, event.dig("post", "avatar_key")
   end
 
   test "投稿削除のコミット後にpost_deletedを配信する" do

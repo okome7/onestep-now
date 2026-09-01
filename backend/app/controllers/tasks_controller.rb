@@ -2,6 +2,13 @@ class TasksController < ApplicationController
   before_action :require_current_user
   before_action :set_task, only: [ :start, :complete, :destroy ]
 
+  def active
+    task = current_user.tasks.active.order(started_at: :desc).first
+    data = task ? task_payload(task_with_associations(task)) : nil
+
+    render json: { status: "success", data: data }, status: :ok
+  end
+
   def create
     task = current_user.tasks.create!(task_params.merge(status: :pending))
     render json: { status: "success", data: task_payload(task) }, status: :created
@@ -36,7 +43,7 @@ class TasksController < ApplicationController
       @task.update!(status: :completed, completed_at: completed_at)
       post = @task.completion_post || @task.create_completion_post!(user: current_user, status: :doing, content: @task.title)
       post.update!(status: :completed, completed_at: completed_at)
-      current_user.update!(feed_access_expires_at: 5.minutes.from_now)
+      current_user.update!(feed_access_expires_at: 3.minutes.from_now)
     end
 
     render json: { status: "success", data: task_payload(task_with_associations(@task)) }, status: :ok

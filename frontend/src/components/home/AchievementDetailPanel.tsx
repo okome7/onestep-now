@@ -1,5 +1,6 @@
 import { formatFeedPostAge } from '../../appHelpers'
 import type { AchievementDetailTab, ProfileAchievement } from '../../appTypes'
+import { useBottomSheet } from './useBottomSheet'
 
 type AchievementDetailPanelProps = {
   achievement: ProfileAchievement
@@ -16,16 +17,18 @@ export function AchievementDetailPanel({
   onClose,
   onTabChange,
 }: AchievementDetailPanelProps) {
+  const { isClosing, requestClose } = useBottomSheet(onClose)
+
   return (
     <>
       <button
-        className="feed-comment-backdrop achievement-detail-backdrop"
+        className={`feed-comment-backdrop achievement-detail-backdrop${isClosing ? ' is-closing' : ''}`}
         type="button"
         aria-label="詳細を閉じる"
-        onClick={onClose}
+        onClick={requestClose}
       />
       <section
-        className="feed-comment-panel feed-comment-panel-done achievement-detail-panel"
+        className={`feed-comment-panel feed-comment-panel-done achievement-detail-panel${isClosing ? ' is-closing' : ''}`}
         aria-labelledby="achievement-detail-title"
       >
         <div className="feed-comment-panel-header">
@@ -36,7 +39,7 @@ export function AchievementDetailPanel({
             className="feed-comment-panel-close"
             type="button"
             aria-label="詳細を閉じる"
-            onClick={onClose}
+            onClick={requestClose}
           >
             ×
           </button>
@@ -65,7 +68,9 @@ export function AchievementDetailPanel({
 
         <div className="feed-comment-panel-task">{achievement.task}</div>
 
-        {activeTab === 'likes' ? (
+        {activeTab === 'likes' && achievement.likedUsers.length === 0 ? (
+          <p className="feed-comment-empty">いいねはありません</p>
+        ) : activeTab === 'likes' ? (
           <ul
             className="feed-comment-panel-list achievement-detail-list"
             aria-label="いいねした人"
@@ -83,6 +88,8 @@ export function AchievementDetailPanel({
               </li>
             ))}
           </ul>
+        ) : achievement.commentItems.length === 0 ? (
+          <p className="feed-comment-empty">コメントはありません</p>
         ) : (
           <ul className="feed-comment-panel-list" aria-label="コメント一覧">
             {achievement.commentItems.map((comment) => (

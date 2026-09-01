@@ -1,5 +1,4 @@
 import feedStartClockIcon from '../../assets/icons/feed-start-clock.svg'
-import feedStartIllustrationIcon from '../../assets/icons/feed-start-illustration.svg'
 
 type FeedStartGateProps = {
   onStart: () => void
@@ -8,26 +7,22 @@ type FeedStartGateProps = {
 export function FeedStartGate({ onStart }: FeedStartGateProps) {
   return (
     <section className="feed-start-gate" aria-labelledby="feed-start-title">
-      <div className="feed-start-illustration" aria-hidden="true">
-        <img src={feedStartIllustrationIcon} alt="" />
-      </div>
       <div className="feed-start-gate-card">
-        <h2 id="feed-start-title">
+        <span className="feed-start-clock-wrap" aria-hidden="true">
           <img
             className="feed-start-clock"
             src={feedStartClockIcon}
             alt=""
-            aria-hidden="true"
           />
-          フィードは5分だけ見られます
-        </h2>
-        <p>
-          タスクを完了すると、
-          <br />
-          みんなの「やります」「できた」を
-          <br />
-          5分間だけチェックできます。
-        </p>
+        </span>
+        <div className="feed-start-gate-copy">
+          <h2 id="feed-start-title">フィードは3分だけ見られます</h2>
+          <p>
+            タスクを完了すると、みんなの「やります」「できた」を
+            <br />
+            3分間だけチェックできます。
+          </p>
+        </div>
       </div>
       <section className="feed-start-guide" aria-labelledby="feed-start-guide-title">
         <h3 id="feed-start-guide-title">フィードってなに？</h3>
@@ -54,7 +49,7 @@ export function FeedStartGate({ onStart }: FeedStartGateProps) {
           <li>
             <span className="feed-start-step-icon feed-start-step-heart">♥</span>
             <strong>3. フィード解放</strong>
-            <small>完了すると5分間だけ見られる！</small>
+            <small>完了すると3分間だけ見られる！</small>
           </li>
         </ol>
       </section>

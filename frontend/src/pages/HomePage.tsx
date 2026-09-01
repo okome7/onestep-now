@@ -50,6 +50,7 @@ import {
   PostDeleteModal,
   TaskCompleteScreen,
 } from '../components/home'
+import { resetBottomSheetScrollLock } from '../components/home/useBottomSheet'
 import {
   AppHeader,
   HomeBottomNav,
@@ -62,6 +63,7 @@ import {
   completeTask,
   createComment,
   createTask,
+  fetchActiveTask,
   fetchComments,
   fetchFeed,
   likePost,
@@ -76,6 +78,7 @@ import {
   isAbortError,
   isCurrentMyPageResponse,
 } from '../mypageApi'
+import { updateProfile } from '../profileApi'
 
 const feedIntroStorageKey = 'onestep-feed-intro-seen'
 const activeHomeViewStorageKey = 'onestep-active-home-view'
@@ -94,8 +97,12 @@ export function HomePage() {
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null)
+  const [activeTaskStartedAt, setActiveTaskStartedAt] = useState<number | null>(
+    null,
+  )
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [isTaskComplete, setIsTaskComplete] = useState(false)
+  const [isActiveTaskRestoring, setIsActiveTaskRestoring] = useState(true)
   const [completedTaskReactions, setCompletedTaskReactions] = useState({
     likes: 0,
     comments: [] as FeedComment[],
@@ -134,6 +141,8 @@ export function HomePage() {
     useState(false)
   const [isIconDiscardConfirmOpen, setIsIconDiscardConfirmOpen] =
     useState(false)
+  const [isProfileSaving, setIsProfileSaving] = useState(false)
+  const [profileSaveError, setProfileSaveError] = useState('')
   const [completeProfile, setCompleteProfile] = useState(() =>
     getInitialCompleteProfile(),
   )
@@ -228,6 +237,12 @@ export function HomePage() {
     ? (feedPosts.find((post) => post.id === activeCommentPostId) ?? null)
     : null
 
+  useEffect(() => {
+    if (activeAchievementId === null && activeCommentPostId === null) {
+      resetBottomSheetScrollLock()
+    }
+  }, [activeAchievementId, activeCommentPostId])
+
   function upsertOwnTaskPost(task: {
     title: string
     completion_post_id?: number
@@ -259,6 +274,7 @@ export function HomePage() {
     const nextPost: FeedPost = {
       id: String(postId),
       userName: 'あなた',
+      avatarId: completeProfile.avatarId,
       level: 1,
       task: task.title,
       status: completionPost?.card_variant === 'completed' ? 'done' : 'doing',
@@ -323,12 +339,23 @@ export function HomePage() {
       return undefined
     }
 
+    const updateElapsedSeconds = () => {
+      if (activeTaskStartedAt === null) {
+        return
+      }
+
+      setElapsedSeconds(
+        Math.max(0, Math.floor((Date.now() - activeTaskStartedAt) / 1000)),
+      )
+    }
+
+    updateElapsedSeconds()
     const timerId = window.setInterval(() => {
-      setElapsedSeconds((current) => current + 1)
+      updateElapsedSeconds()
     }, 1000)
 
     return () => window.clearInterval(timerId)
-  }, [isTaskRunning])
+  }, [activeTaskStartedAt, isTaskRunning])
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 639px)')
@@ -397,6 +424,7 @@ export function HomePage() {
     const expirationTimerId = window.setTimeout(() => {
       setFeedRemainingSeconds(0)
       setFeedAccessExpiresAt(null)
+      setIsFeedIntroOpen(false)
       setIsFeedTimeoutModalOpen(true)
       setFeedNow(Date.now())
     }, feedRemainingSeconds * 1000)
@@ -406,6 +434,7 @@ export function HomePage() {
 
         if (nextSeconds === 0) {
           setFeedAccessExpiresAt(null)
+          setIsFeedIntroOpen(false)
           setIsFeedTimeoutModalOpen(true)
         }
 
@@ -579,6 +608,66 @@ export function HomePage() {
     window.location.assign('/login')
   }, [clearMyPageCache])
 
+  useEffect(() => {
+    let isCancelled = false
+
+    async function restoreActiveTask() {
+      if (!completeProfile.id) {
+        setIsActiveTaskRestoring(false)
+        return
+      }
+
+      try {
+        const task = await fetchActiveTask(completeProfile.id)
+        if (isCancelled || !task) {
+          return
+        }
+
+        const startedAt = task.started_at
+          ? new Date(task.started_at).getTime()
+          : Date.now()
+        setActiveTaskId(task.id)
+        setActiveTask(task.title)
+        setActiveTaskStartedAt(startedAt)
+        setElapsedSeconds(
+          Math.max(0, Math.floor((Date.now() - startedAt) / 1000)),
+        )
+        setIsTaskComplete(false)
+        setCompletedTaskReactions({ likes: 0, comments: [] })
+        setIsFeedOpen(false)
+        setIsProfileOpen(false)
+        setIsAchievementsOpen(false)
+        setIsSettingsOpen(false)
+        setIsNameEditOpen(false)
+        setIsIconEditOpen(false)
+        window.sessionStorage.removeItem(activeHomeViewStorageKey)
+      } catch (caughtError) {
+        if (caughtError instanceof AuthRequiredError) {
+          redirectToLoginForAuthRequired()
+          return
+        }
+
+        if (!isCancelled) {
+          setTaskError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : '進行中のタスク取得に失敗しました。',
+          )
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsActiveTaskRestoring(false)
+        }
+      }
+    }
+
+    void restoreActiveTask()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [completeProfile.id, redirectToLoginForAuthRequired])
+
   const loadMyPage = useCallback(
     (force = false): Promise<void> => {
       const requestUserId = currentMyPageUserIdRef.current
@@ -675,14 +764,18 @@ export function HomePage() {
     [abortMyPageRequest, redirectToLoginForAuthRequired],
   )
 
-  const invalidateMyPageData = useCallback((userId: number) => {
-    if (currentMyPageUserIdRef.current !== userId) {
-      return false
-    }
+  const invalidateMyPageData = useCallback(
+    (userId: number) => {
+      if (currentMyPageUserIdRef.current !== userId) {
+        return false
+      }
 
-    loadedMyPageUserIdRef.current = null
-    return true
-  }, [])
+      abortMyPageRequest()
+      loadedMyPageUserIdRef.current = null
+      return true
+    },
+    [abortMyPageRequest],
+  )
 
   const refreshMyPageData = useCallback(
     (userId: number): Promise<void> => {
@@ -873,20 +966,14 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    if (isProfileOpen) {
-      void loadMyPage(true)
-    } else if (!visibleMyPageData && !isMyPageLoading) {
-      void loadMyPage()
-    }
+    void loadMyPage(isProfileOpen)
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openAchievements(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
-    if (!visibleMyPageData && !isMyPageLoading) {
-      void loadMyPage()
-    }
+    void loadMyPage()
     setIsAchievementsOpen(true)
     setActiveAchievementId(null)
     setIsProfileOpen(false)
@@ -918,6 +1005,7 @@ export function HomePage() {
   }
 
   function closeAchievementDetail() {
+    resetBottomSheetScrollLock()
     setActiveAchievementId(null)
   }
 
@@ -1089,6 +1177,7 @@ export function HomePage() {
 
   function openNameEdit() {
     setDisplayNameDraft(profileName)
+    setProfileSaveError('')
     setIsNameEditOpen(true)
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
@@ -1112,6 +1201,7 @@ export function HomePage() {
   function openIconEdit() {
     const nextAvatarId = completeProfile.avatarId
 
+    setProfileSaveError('')
     setSelectedSettingsIconId(nextAvatarId)
     setSettingsCustomPhotoUrl(
       isAvatarImageDataUrl(nextAvatarId) ? nextAvatarId : '',
@@ -1139,27 +1229,41 @@ export function HomePage() {
   }
 
   const saveSettingsIcon = useCallback(
-    (event?: FormEvent<HTMLFormElement>) => {
+    async (event?: FormEvent<HTMLFormElement>) => {
       event?.preventDefault()
 
-      if (!canSaveSettingsIcon) {
+      if (!canSaveSettingsIcon || isProfileSaving) {
         return
       }
 
-      const nextProfile = {
-        ...completeProfile,
-        avatarId: selectedSettingsIconId,
+      setIsProfileSaving(true)
+      setProfileSaveError('')
+      try {
+        const user = await updateProfile({ avatarKey: selectedSettingsIconId })
+        const nextProfile = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatarId: user.avatar_key ?? selectedSettingsIconId,
+        }
+        setCompleteProfile(nextProfile)
+        saveCompleteProfile(nextProfile)
+        setIsIconEditOpen(false)
+        setIsSettingsOpen(true)
+        setIsSettingsAvatarGridOpen(false)
+        setIsIconDiscardConfirmOpen(false)
+        window.scrollTo({ top: 0, left: 0 })
+      } catch (error) {
+        setProfileSaveError(
+          error instanceof Error
+            ? error.message
+            : 'プロフィールの保存に失敗しました。',
+        )
+      } finally {
+        setIsProfileSaving(false)
       }
-
-      setCompleteProfile(nextProfile)
-      saveCompleteProfile(nextProfile)
-      setIsIconEditOpen(false)
-      setIsSettingsOpen(true)
-      setIsSettingsAvatarGridOpen(false)
-      setIsIconDiscardConfirmOpen(false)
-      window.scrollTo({ top: 0, left: 0 })
     },
-    [canSaveSettingsIcon, completeProfile, selectedSettingsIconId],
+    [canSaveSettingsIcon, isProfileSaving, selectedSettingsIconId],
   )
 
   useEffect(() => {
@@ -1256,24 +1360,38 @@ export function HomePage() {
     window.scrollTo({ top: 0, left: 0 })
   }
 
-  function saveDisplayName(event: FormEvent<HTMLFormElement>) {
+  async function saveDisplayName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!canSaveDisplayName) {
+    if (!canSaveDisplayName || isProfileSaving) {
       return
     }
 
-    const nextProfile = {
-      ...completeProfile,
-      name: trimmedDisplayNameDraft,
+    setIsProfileSaving(true)
+    setProfileSaveError('')
+    try {
+      const user = await updateProfile({ name: trimmedDisplayNameDraft })
+      const nextProfile = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarId: user.avatar_key ?? completeProfile.avatarId,
+      }
+      setCompleteProfile(nextProfile)
+      saveCompleteProfile(nextProfile)
+      setIsNameEditOpen(false)
+      setIsSettingsOpen(true)
+      setIsNameDiscardConfirmOpen(false)
+      window.scrollTo({ top: 0, left: 0 })
+    } catch (error) {
+      setProfileSaveError(
+        error instanceof Error
+          ? error.message
+          : 'プロフィールの保存に失敗しました。',
+      )
+    } finally {
+      setIsProfileSaving(false)
     }
-
-    setCompleteProfile(nextProfile)
-    saveCompleteProfile(nextProfile)
-    setIsNameEditOpen(false)
-    setIsSettingsOpen(true)
-    setIsNameDiscardConfirmOpen(false)
-    window.scrollTo({ top: 0, left: 0 })
   }
 
   async function handleTaskStart() {
@@ -1299,8 +1417,12 @@ export function HomePage() {
     try {
       const task = await createTask(nextTask, completeProfile.id)
       const startedTask = await startTask(task.id, completeProfile.id)
+      const startedAt = startedTask.started_at
+        ? new Date(startedTask.started_at).getTime()
+        : Date.now()
       setActiveTaskId(startedTask.id)
       setActiveTask(startedTask.title)
+      setActiveTaskStartedAt(startedAt)
       setElapsedSeconds(0)
       setIsTaskComplete(false)
       setCompletedTaskReactions({ likes: 0, comments: [] })
@@ -1361,6 +1483,7 @@ export function HomePage() {
     setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
+    setActiveTaskStartedAt(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
     setCompletedTaskReactions({ likes: 0, comments: [] })
@@ -1431,6 +1554,7 @@ export function HomePage() {
     setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
+    setActiveTaskStartedAt(null)
     setElapsedSeconds(0)
     setIsTaskComplete(false)
     setCompletedTaskReactions({ likes: 0, comments: [] })
@@ -1462,6 +1586,9 @@ export function HomePage() {
         await unlikePost(postId, completeProfile.id)
       } else {
         await likePost(postId, completeProfile.id)
+      }
+      if (completeProfile.id) {
+        invalidateMyPageData(completeProfile.id)
       }
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
@@ -1607,6 +1734,9 @@ export function HomePage() {
         ...currentDrafts,
         [postId]: '',
       }))
+      if (completeProfile.id) {
+        invalidateMyPageData(completeProfile.id)
+      }
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
@@ -1615,6 +1745,10 @@ export function HomePage() {
 
       await loadFeed()
     }
+  }
+
+  if (isActiveTaskRestoring) {
+    return null
   }
 
   if (isSettingsOpen && isNameEditOpen) {
@@ -1637,7 +1771,7 @@ export function HomePage() {
               className="name-edit-done-button"
               type="submit"
               form="display-name-form"
-              disabled={!canSaveDisplayName}
+              disabled={!canSaveDisplayName || isProfileSaving}
             >
               完了
             </button>
@@ -1658,6 +1792,11 @@ export function HomePage() {
               onChange={(event) => setDisplayNameDraft(event.target.value)}
             />
           </form>
+          {profileSaveError ? (
+            <p className="notice error" role="alert">
+              {profileSaveError}
+            </p>
+          ) : null}
         </section>
 
         {isNameDiscardConfirmOpen ? (
@@ -1690,7 +1829,7 @@ export function HomePage() {
               className="name-edit-done-button"
               type="submit"
               form="settings-icon-form"
-              disabled={!canSaveSettingsIcon}
+              disabled={!canSaveSettingsIcon || isProfileSaving}
             >
               完了
             </button>
@@ -1709,6 +1848,11 @@ export function HomePage() {
             alt=""
             aria-hidden="true"
           />
+          {profileSaveError ? (
+            <p className="notice error" role="alert">
+              {profileSaveError}
+            </p>
+          ) : null}
 
           <div className="icon-edit-action-list">
             <button

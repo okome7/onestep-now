@@ -3,6 +3,7 @@ import {
   AuthRequiredError,
   FeedAccessDeniedError,
   createTask,
+  fetchActiveTask,
   fetchComments,
   fetchFeed,
 } from './feedApi'
@@ -55,7 +56,7 @@ test('本番APIベースURLから/api付きのフィードURLを組み立てる'
       Promise.resolve({
         status: 'success',
         data: [],
-        remaining_seconds: 300,
+        remaining_seconds: 180,
       }),
   })
 
@@ -77,7 +78,7 @@ test('2ページ目のフィードURLとページ情報を扱う', async () => {
       Promise.resolve({
         status: 'success',
         data: [],
-        remaining_seconds: 300,
+        remaining_seconds: 180,
         pagination: { page: 2, per_page: 20, has_more: true },
       }),
   })
@@ -151,5 +152,35 @@ test('タスク開始前の認証エラーは認証必須エラーとして扱�
 
   await expect(createTask('最初のタスク', 1)).rejects.toBeInstanceOf(
     AuthRequiredError,
+  )
+})
+
+test('進行中タスクと開始時刻を取得する', async () => {
+  const startedAt = '2026-08-09T00:00:00Z'
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: () =>
+      Promise.resolve({
+        status: 'success',
+        data: {
+          id: 10,
+          title: '復元するタスク',
+          status: 'active',
+          started_at: startedAt,
+        },
+      }),
+  })
+  vi.stubGlobal('fetch', fetchMock)
+
+  await expect(fetchActiveTask(1)).resolves.toMatchObject({
+    id: 10,
+    title: '復元するタスク',
+    started_at: startedAt,
+  })
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/tasks/active',
+    expect.any(Object),
   )
 })

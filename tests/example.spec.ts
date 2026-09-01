@@ -14,6 +14,7 @@ const signupCompleteStorageKey = "onestep-signup-complete";
 const sessionRoute = /.*\/(?:api\/)?session$/;
 const myPageRoute = /.*\/(?:api\/)?mypage$/;
 const cableTokenRoute = /.*\/(?:api\/)?cable_token$/;
+const activeTaskRoute = /.*\/(?:api\/)?tasks\/active$/;
 
 async function mockSession(page: Page, authenticated: boolean) {
   await page.unroute(sessionRoute);
@@ -34,6 +35,13 @@ async function mockSession(page: Page, authenticated: boolean) {
             }
           : { status: "error", errors: ["認証が必要です"] },
       ),
+    });
+  });
+  await page.unroute(activeTaskRoute);
+  await page.route(activeTaskRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", data: null }),
     });
   });
 }
@@ -92,6 +100,11 @@ async function mockAuthenticatedBackgroundApis(page: Page) {
 async function gotoHome(page: Page, path = "/home") {
   await markLoggedIn(page);
   await page.goto(path);
+}
+
+async function gotoSignup(page: Page) {
+  await page.goto("/");
+  await page.getByRole("link", { name: "新規登録" }).click();
 }
 
 async function mockSignupEmailCheck(page: Page) {
@@ -192,7 +205,9 @@ async function mockTaskAndFeedApi(page: Page) {
           avatar_key: `avatar-${(index % 8) + 1}`,
           body,
           post_status_when_commented: "doing",
-          created_at: new Date(Date.now() - (completionComments.length - index) * 1000).toISOString(),
+          created_at: new Date(
+            Date.now() - (completionComments.length - index) * 1000,
+          ).toISOString(),
         }))
       : [];
 
@@ -230,6 +245,7 @@ async function mockTaskAndFeedApi(page: Page) {
           id: taskId,
           title: activeTask,
           status: "active",
+          started_at: new Date().toISOString(),
           completion_post_id: completionPostId,
         },
       }),
@@ -286,8 +302,10 @@ async function mockTaskAndFeedApi(page: Page) {
       contentType: "application/json",
       body: JSON.stringify({
         status: "success",
-        remaining_seconds: 5 * 60,
-        feed_access_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        remaining_seconds: 3 * 60,
+        feed_access_expires_at: new Date(
+          Date.now() + 3 * 60 * 1000,
+        ).toISOString(),
         data: activeTask
           ? [
               {
@@ -319,10 +337,36 @@ test.beforeEach(async ({ page }) => {
   await mockAuthenticatedBackgroundApis(page);
   await mockSession(page, false);
   await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
   await page.evaluate(() => {
     sessionStorage.clear();
     localStorage.clear();
   });
+});
+
+test("未ログイン時にウェルカム画面から認証画面へ遷移できる", async ({
+  page,
+}) => {
+  await expect(page.getByAltText("OneStep Nowのロゴ")).toHaveAttribute(
+    "src",
+    "/favicon.svg",
+  );
+  await expect(page.getByText("今できることから、")).toBeVisible();
+  await expect(page.getByText("一歩ずつ。")).toBeVisible();
+  await expect(
+    page.getByText("考える前に、まずひとつ始めよう。"),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "ログイン" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "ログイン" })).toBeVisible();
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "新規登録" }).click();
+  await expect(page).toHaveURL(/\/signup$/);
+  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
 });
 
 test("バックエンドのヘルスチェックが成功する", async ({ request }) => {
@@ -419,7 +463,7 @@ test("バックエンドでログインできる", async ({ request }) => {
 });
 
 test("フロントエンドの新規登録画面が表示される", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
   await expect(page.getByLabel("表示名")).toBeVisible();
@@ -432,7 +476,7 @@ test("フロントエンドの新規登録画面が表示される", async ({ pa
 });
 
 test("新規登録画面の入力欄の幅が揃っている", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   const inputWidths = await page.evaluate(() => {
     const targets = ["name", "email", "password", "passwordConfirmation"];
@@ -453,7 +497,7 @@ test("新規登録画面の入力欄の幅が揃っている", async ({ page }) 
 test("新規登録画面のリロード後も名前とメールアドレスを保持する", async ({
   page,
 }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -470,7 +514,7 @@ test("新規登録画面のリロード後も名前とメールアドレスを�
 });
 
 test("パスワードの表示と非表示を切り替えられる", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   const passwordInput = page.getByPlaceholder("パスワードを入力");
   const toggleButton = page.getByRole("button", {
@@ -485,7 +529,7 @@ test("パスワードの表示と非表示を切り替えられる", async ({ pa
 });
 
 test("パスワードに英数字以外は入力できない", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   const passwordInput = page.getByPlaceholder("パスワードを入力");
   const confirmationInput = page.getByPlaceholder("パスワードを再入力");
@@ -498,7 +542,7 @@ test("パスワードに英数字以外は入力できない", async ({ page }) 
 });
 
 test("パスワードは英字と数字の両方が必要", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -526,7 +570,7 @@ test("パスワードは英字と数字の両方が必要", async ({ page }) => 
 });
 
 test("入力エラーをフォーム内に表示する", async ({ page }) => {
-  await page.goto("/");
+  await gotoSignup(page);
 
   const submitButton = page.getByRole("button", { name: "登録" });
   await page.getByLabel("表示名").fill("おこめ");
@@ -582,7 +626,7 @@ test("ログイン画面の新規登録リンクは登録入力画面へ遷移�
 
   await page.getByRole("link", { name: "新規登録" }).click();
 
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/signup$/);
   await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "登録が完了しました！" }),
@@ -645,13 +689,15 @@ test("ログイン済みならアプリを開いたときにホーム画面を�
   ).toBeVisible();
 });
 
-test("未ログインでホーム画面を開くとログイン画面を表示する", async ({
+test("未ログインでホーム画面を開くとウェルカム画面を表示する", async ({
   page,
 }) => {
   await page.goto("/home");
 
-  await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("heading", { name: "ログイン" })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
 });
 
 test("ログアウトするとログイン状態を削除してログイン画面へ遷移する", async ({
@@ -681,7 +727,9 @@ test("ログアウトするとログイン状態を削除してログイン画�
     .toBeNull();
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "OneStep Now" }),
+  ).toBeVisible();
 });
 
 test("ログイン情報が違う場合はエラーを表示する", async ({ page }) => {
@@ -746,6 +794,10 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   const signupRequests: unknown[] = [];
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     signupRequests.push(route.request().postDataJSON());
     await route.fulfill({
       contentType: "application/json",
@@ -756,7 +808,7 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -828,7 +880,7 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
   expect(pageSize.scrollHeight).toBeLessThanOrEqual(pageSize.height);
 
   await mockSession(page, true);
-  await page.reload();
+  await page.goto("/");
   await expect(page).toHaveURL(/\/home$/);
   await expect(
     page.getByRole("heading", { name: "OneStep Now" }),
@@ -879,7 +931,9 @@ test("ホーム画面は末尾スラッシュ付きでも表示される", async
   ).toBeVisible();
 });
 
-test("ホーム画面でやることを入力せずに始めるとエラーが表示される", async ({ page }) => {
+test("ホーム画面でやることを入力せずに始めるとエラーが表示される", async ({
+  page,
+}) => {
   await gotoHome(page);
 
   await page.getByRole("button", { name: "始める" }).click();
@@ -936,9 +990,9 @@ test("集中画面でやめるを押すと確認モーダルが表示され、�
   await expect(
     page.getByRole("textbox", { name: "今できること" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("textbox", { name: "今できること" }),
-  ).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "今できること" })).toHaveValue(
+    "",
+  );
   await expect(
     page.getByRole("heading", { name: "スライド1枚作る" }),
   ).toHaveCount(0);
@@ -982,6 +1036,57 @@ test("集中画面でできたを押すと完了画面が表示される", async
       ),
     )
     .toBe(true);
+});
+
+test("ブラウザを再起動しても進行中タスクと経過時間を復元する", async ({
+  page,
+}) => {
+  const startedAt = new Date(Date.now() - 65 * 1000).toISOString();
+  await markLoggedIn(page);
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 3 * 60,
+        feed_access_expires_at: new Date(
+          Date.now() + 3 * 60 * 1000,
+        ).toISOString(),
+        data: [],
+      }),
+    });
+  });
+  await page.unroute(activeTaskRoute);
+  await page.route(activeTaskRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: 42,
+          title: "再起動後も続けるタスク",
+          status: "active",
+          started_at: startedAt,
+          completion_post_id: 52,
+        },
+      }),
+    });
+  });
+  await page.evaluate(() => {
+    sessionStorage.setItem("onestep-active-home-view", "feed");
+  });
+
+  await page.goto("/home");
+  await expect(
+    page.getByRole("heading", { name: "再起動後も続けるタスク" }),
+  ).toBeVisible();
+  await expect(page.locator(".focus-timer")).toHaveText(/01:(0[5-9]|1\d)/);
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "再起動後も続けるタスク" }),
+  ).toBeVisible();
+  await expect(page.locator(".focus-timer")).toHaveText(/01:(0[5-9]|1\d)/);
 });
 
 test("タスク完了後にマイページの達成と集計を再取得して即時表示する", async ({
@@ -1041,9 +1146,7 @@ test("タスク完了後にマイページの達成と集計を再取得して�
   await page.getByRole("button", { name: "できた！" }).click();
 
   await expect(page.getByRole("heading", { name: "よくできた" })).toBeVisible();
-  await expect
-    .poll(() => myPageRequests)
-    .toBe(requestsAfterPrefetch + 1);
+  await expect.poll(() => myPageRequests).toBe(requestsAfterPrefetch + 1);
 
   await page.getByRole("button", { name: "次の一歩へ" }).click();
   await page.getByRole("link", { name: "プロフィール" }).click();
@@ -1055,9 +1158,175 @@ test("タスク完了後にマイページの達成と集計を再取得して�
   await expect(page.getByText("あと9回でLv.2！")).toBeVisible();
   await expect(page.getByText("10%", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "すべて見る>" }).click();
-  await expect(page.getByRole("heading", { name: "すべての達成" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "すべての達成" }),
+  ).toBeVisible();
   await expect(page.getByText("スライド1枚作る")).toBeVisible();
   expect(myPageRequests).toBe(requestsAfterPrefetch + 1);
+});
+
+test("フィードのいいねとコメント後にマイページを再取得する", async ({
+  page,
+}) => {
+  let likesCount = 0;
+  let commentsCount = 0;
+  let myPageRequests = 0;
+  const createdAt = new Date().toISOString();
+
+  await page.unroute(myPageRoute);
+  await page.route(myPageRoute, async (route) => {
+    myPageRequests += 1;
+    const achievement = {
+      id: 71,
+      task_title: "同期を確認するタスク",
+      likes_count: likesCount,
+      comments_count: commentsCount,
+      created_at: createdAt,
+      liked_users: [],
+      comments: commentsCount
+        ? [
+            {
+              id: 81,
+              user_name: "おこめ",
+              user_level: 1,
+              body: "反映確認コメント",
+              created_at: createdAt,
+            },
+          ]
+        : [],
+    };
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          level: 1,
+          next_level: 2,
+          remaining_to_next_level: 9,
+          progress_percent: 10,
+          achievements_count: 1,
+          streak_days: 1,
+          likes_count: likesCount,
+          comments_count: commentsCount,
+          recent_achievements: [achievement],
+          all_achievements: [achievement],
+        },
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_access_expires_at: new Date(Date.now() + 180_000).toISOString(),
+        data: [
+          {
+            id: 71,
+            user_name: "おこめ",
+            level: 1,
+            task_title: "同期を確認するタスク",
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            is_mine: false,
+            can_like: true,
+            can_comment: true,
+            likes_count: likesCount,
+            comments_count: commentsCount,
+            liked_by_me: likesCount > 0,
+            comments: [],
+            created_at: createdAt,
+            completed_at: createdAt,
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(/.*\/completion_posts\/71\/likes$/, async (route) => {
+    likesCount = route.request().method() === "DELETE" ? 0 : 1;
+    await route.fulfill({ status: 204 });
+  });
+  await page.route(/.*\/completion_posts\/71\/comments$/, async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "success",
+          data: [],
+          pagination: { page: 1, has_more: false },
+        }),
+      });
+      return;
+    }
+
+    commentsCount = 1;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: 81,
+          user_id: 1,
+          user_name: "おこめ",
+          body: "反映確認コメント",
+          post_status_when_commented: "completed",
+          created_at: createdAt,
+        },
+      }),
+    });
+  });
+
+  await markLoggedIn(page);
+  await page.evaluate(() => {
+    sessionStorage.setItem("onestep-active-home-view", "feed");
+    localStorage.setItem("onestep-feed-intro-seen", "true");
+  });
+  await page.goto("/home");
+  await expect(page.getByText("同期を確認するタスク")).toBeVisible();
+  await expect.poll(() => myPageRequests).toBeGreaterThan(0);
+
+  const feedCard = page.locator(".feed-card").filter({
+    hasText: "同期を確認するタスク",
+  });
+  await feedCard.locator(".feed-reaction").click();
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  let achievementCard = page.locator(".profile-achievement-card").filter({
+    hasText: "同期を確認するタスク",
+  });
+  await expect(
+    achievementCard.locator(".achievement-reaction-button").first(),
+  ).toContainText("1");
+
+  await page.getByRole("link", { name: "投稿" }).click();
+  await feedCard.locator(".feed-reaction").click();
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  achievementCard = page.locator(".profile-achievement-card").filter({
+    hasText: "同期を確認するタスク",
+  });
+  await expect(
+    achievementCard.locator(".achievement-reaction-button").first(),
+  ).toContainText("0");
+
+  await page.getByRole("link", { name: "投稿" }).click();
+  await feedCard
+    .getByRole("button", { name: "おこめさんのコメントを開く" })
+    .click();
+  await page
+    .getByRole("textbox", { name: "おこめさんの投稿にコメントする" })
+    .fill("反映確認コメント");
+  await page.getByRole("button", { name: "コメントを送信" }).click();
+  await page.locator(".feed-comment-panel-close").click();
+  await expect(page.locator(".feed-comment-panel")).toBeHidden();
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  achievementCard = page.locator(".profile-achievement-card").filter({
+    hasText: "同期を確認するタスク",
+  });
+  await expect(
+    achievementCard.locator(".achievement-reaction-button").nth(1),
+  ).toContainText("1");
 });
 
 test("フィード閲覧時間外は案内画面からホームへ戻れる", async ({ page }) => {
@@ -1081,14 +1350,14 @@ test("フィード閲覧時間外は案内画面からホームへ戻れる", as
     page.getByRole("heading", { name: "フィード", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "フィードは5分だけ見られます" }),
+    page.getByRole("heading", { name: "フィードは3分だけ見られます" }),
   ).toBeVisible();
   await expect(page.getByText("フィードってなに？")).toBeVisible();
   await expect(page.getByText("1. やります")).toBeVisible();
   await expect(page.getByText("2. できた！")).toBeVisible();
   await expect(page.getByText("3. フィード解放")).toBeVisible();
   await expect(
-    page.getByRole("dialog", { name: "5分経過しました" }),
+    page.getByRole("dialog", { name: "3分経過しました" }),
   ).toHaveCount(0);
 
   await page.getByRole("button", { name: "最初の一歩を始める" }).click();
@@ -1184,11 +1453,14 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   await page.getByRole("link", { name: "みんなを見る" }).click();
 
   await expect(page.getByRole("heading", { name: "フィード" })).toBeVisible();
-  await page.clock.fastForward(5 * 60 * 1000);
+  await page.clock.fastForward(3 * 60 * 1000);
 
   const expiredDialog = page.getByRole("dialog", {
-    name: "5分経過しました",
+    name: "3分経過しました",
   });
+  const expiredBackdrop = expiredDialog.locator("..");
+  await expect(expiredBackdrop).toHaveCSS("position", "fixed");
+  await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(expiredDialog).toBeVisible();
   await expect(
     expiredDialog.getByText("リフレッシュできましたか？"),
@@ -1217,6 +1489,10 @@ test("登録済みメールアドレスは新規登録時にエラーを表示�
     });
   });
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     signupRequests.push(route.request().postDataJSON());
     await route.fulfill({
       contentType: "application/json",
@@ -1227,7 +1503,7 @@ test("登録済みメールアドレスは新規登録時にエラーを表示�
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -1252,6 +1528,10 @@ test("スマホでは写真の選び方を下に並べて表示する", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -1261,7 +1541,7 @@ test("スマホでは写真の選び方を下に並べて表示する", async ({
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -1282,6 +1562,10 @@ test("スマホで写真の選択肢を表示しても決定ボタンの位置�
   await page.setViewportSize({ width: 390, height: 844 });
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -1291,7 +1575,7 @@ test("スマホで写真の選択肢を表示しても決定ボタンの位置�
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome@example.com");
@@ -1313,6 +1597,10 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
   const signupRequests: unknown[] = [];
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fallback();
+      return;
+    }
     const requestBody = route.request().postDataJSON();
     signupRequests.push(requestBody);
     await route.fulfill({
@@ -1329,7 +1617,7 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
     });
   });
 
-  await page.goto("/");
+  await gotoSignup(page);
 
   await page.getByLabel("表示名").fill("おこめ");
   await page.getByLabel("メールアドレス").fill("okome-photo@example.com");
@@ -1350,7 +1638,7 @@ test("選んだ写真を登録APIに送信して完了画面でも保持する",
     page.getByRole("heading", { name: "登録が完了しました！" }),
   ).toBeVisible();
   await mockSession(page, true);
-  await page.reload();
+  await page.goto("/");
   await expect(page).toHaveURL(/\/home$/);
   await expect(
     page.getByRole("heading", { name: "OneStep Now" }),

@@ -21,7 +21,7 @@ function apiUrl(path: string, apiBaseUrl = defaultApiBaseUrl) {
 export async function fetchSession(apiBaseUrl = defaultApiBaseUrl) {
   const response = await apiFetch(apiUrl('/session', apiBaseUrl))
   if (!response.ok) {
-    return null
+    throw new Error('セッションの確認に失敗しました。')
   }
 
   const result = (await response.json()) as SessionResponse

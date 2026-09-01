@@ -62,26 +62,31 @@ export function AchievementList({
           <article className={cardClassName} key={achievement.id}>
             <div className="profile-achievement-header">
               <strong>{achievement.task}</strong>
-              {achievement.canDelete && onToggleMenu && onRequestDelete ? (
-                <div className="profile-achievement-menu-container">
-                  <button
-                    className="profile-achievement-menu-button"
-                    type="button"
-                    aria-label={`${achievement.task}のメニュー`}
-                    aria-expanded={openMenuId === achievement.id}
-                    aria-haspopup="menu"
-                    onClick={() => onToggleMenu(achievement.id)}
-                  >
-                    …
-                  </button>
-                  {openMenuId === achievement.id ? (
-                    <div className="profile-achievement-menu" role="menu">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => onRequestDelete(achievement.id)}
-                      >
-                        <svg viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+              <div className="profile-achievement-controls">
+                {achievement.canDelete && onToggleMenu && onRequestDelete ? (
+                  <div className="profile-achievement-menu-container">
+                    <button
+                      className="profile-achievement-menu-button"
+                      type="button"
+                      aria-label={`${achievement.task}のメニュー`}
+                      aria-expanded={openMenuId === achievement.id}
+                      aria-haspopup="menu"
+                      onClick={() => onToggleMenu(achievement.id)}
+                    >
+                      …
+                    </button>
+                    {openMenuId === achievement.id ? (
+                      <div className="profile-achievement-menu" role="menu">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => onRequestDelete(achievement.id)}
+                        >
+                          <svg
+                            viewBox="0 0 28 28"
+                            aria-hidden="true"
+                            focusable="false"
+                          >
                           <rect
                             x="11"
                             y="4.5"
@@ -118,13 +123,14 @@ export function AchievementList({
                             strokeWidth="2.3"
                             strokeLinecap="round"
                           />
-                        </svg>
-                        投稿を削除
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+                          </svg>
+                          投稿を削除
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
             <div className="profile-achievement-meta">
               <button
