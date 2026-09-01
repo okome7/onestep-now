@@ -5588,6 +5588,13 @@ body,
   padding-right: clamp(4px, 3vw, 28px);
 }
 
+.feed-page .home-header-section .home-header-action-right {
+  position: fixed;
+  top: 25px;
+  right: 18px;
+  z-index: 11;
+}
+
 .home-header-section .feed-countdown {
   border: 1px solid rgb(216 224 244 / 78%);
   border-radius: 999px;
