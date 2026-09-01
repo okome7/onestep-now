@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
+
 type PostDeleteModalProps = {
   isDeleting: boolean
   error: string
@@ -11,7 +14,20 @@ export function PostDeleteModal({
   onCancel,
   onConfirm,
 }: PostDeleteModalProps) {
-  return (
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow
+    const previousDocumentOverflow = document.documentElement.style.overflow
+
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousDocumentOverflow
+    }
+  }, [])
+
+  return createPortal(
     <div className="post-delete-modal-backdrop" role="presentation">
       <section
         className="post-delete-modal"
@@ -43,6 +59,7 @@ export function PostDeleteModal({
           </button>
         </div>
       </section>
-    </div>
+    </div>,
+    document.body,
   )
 }
