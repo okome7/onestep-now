@@ -1871,10 +1871,17 @@ export function HomePage() {
             </button>
 
             {isSettingsCameraAvailable ? (
-              <button
+              <label
                 className="icon-edit-action icon-edit-camera-action"
-                type="button"
-                onClick={() => settingsCameraInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                htmlFor="settings-camera-input"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    settingsCameraInputRef.current?.click()
+                  }
+                }}
               >
                 <img
                   className="icon-edit-action-icon icon-edit-action-icon-camera"
@@ -1883,7 +1890,7 @@ export function HomePage() {
                   aria-hidden="true"
                 />
                 <span>カメラで撮影</span>
-              </button>
+              </label>
             ) : null}
 
             <button
@@ -1967,6 +1974,7 @@ export function HomePage() {
           ) : null}
 
           <input
+            id="settings-camera-input"
             ref={settingsCameraInputRef}
             className="photo-input"
             type="file"

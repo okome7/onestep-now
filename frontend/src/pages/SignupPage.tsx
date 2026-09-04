@@ -308,10 +308,17 @@ export function SignupPage() {
           </div>
 
           <div className="icon-edit-action-list signup-photo-action-list">
-            <button
+            <label
               className="icon-edit-action icon-edit-camera-action"
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              htmlFor="signup-camera-input"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  cameraInputRef.current?.click()
+                }
+              }}
             >
               <img
                 className="icon-edit-action-icon icon-edit-action-icon-camera"
@@ -320,7 +327,7 @@ export function SignupPage() {
                 aria-hidden="true"
               />
               <span>カメラで撮影</span>
-            </button>
+            </label>
             <button
               className="icon-edit-action"
               type="button"
@@ -335,6 +342,7 @@ export function SignupPage() {
           </div>
 
           <input
+            id="signup-camera-input"
             ref={cameraInputRef}
             className="photo-input"
             type="file"
