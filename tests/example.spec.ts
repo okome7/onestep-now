@@ -969,6 +969,7 @@ test("ホーム画面でやることを始めるとタイマーが表示され�
 test("集中画面でやめるを押すと確認モーダルが表示され、確定するとホーム画面に戻る", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
   await mockTaskAndFeedApi(page);
   await gotoHome(page);
 
@@ -983,6 +984,8 @@ test("集中画面でやめるを押すと確認モーダルが表示され、�
   });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("投稿は削除されます")).toBeVisible();
+  const cancelButton = dialog.getByRole("button", { name: "キャンセル" });
+  await expect(cancelButton).toHaveCSS("white-space", "nowrap");
 
   await dialog.getByRole("button", { name: "やめる" }).click();
 
