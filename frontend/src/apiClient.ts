@@ -27,20 +27,27 @@ export function buildApiUrl(
   return `${apiBasePath}${path}`
 }
 
-export function apiErrorMessage(result: ApiErrorResponse, fallback: string) {
+export function apiErrorMessage(
+  result: ApiErrorResponse,
+  fallback: string,
+  translate: (message: string) => string = (message) => message,
+) {
   const messages = [result.error, result.message].filter(
     (message): message is string => Boolean(message),
   )
   const errors = result.errors ?? messages
 
-  return errors.length ? errors.join('\n') : fallback
+  return errors.length ? errors.map(translate).join('\n') : fallback
 }
 
-export async function readJsonResponse<T>(response: Response): Promise<T> {
+export async function readJsonResponse<T>(
+  response: Response,
+  unexpectedResponseMessage = 'APIから想定外の応答が返りました。',
+): Promise<T> {
   const contentType = response.headers.get('content-type') ?? ''
 
   if (!contentType.includes('application/json')) {
-    throw new Error('APIから想定外の応答が返りました。')
+    throw new Error(unexpectedResponseMessage)
   }
 
   return (await response.json()) as T

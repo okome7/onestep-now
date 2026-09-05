@@ -1,4 +1,9 @@
-import { apiFetch } from './apiClient'
+import {
+  apiFetch,
+  buildApiUrl,
+  defaultApiBaseUrl,
+  readJsonResponse,
+} from './apiClient'
 
 export type SessionUser = {
   id: number
@@ -12,24 +17,18 @@ type SessionResponse = {
   data: SessionUser | null
 }
 
-const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
-
-function apiUrl(path: string, apiBaseUrl = defaultApiBaseUrl) {
-  return `${apiBaseUrl.trim().replace(/\/$/, '') || '/api'}${path}`
-}
-
 export async function fetchSession(apiBaseUrl = defaultApiBaseUrl) {
-  const response = await apiFetch(apiUrl('/session', apiBaseUrl))
+  const response = await apiFetch(buildApiUrl(apiBaseUrl, '/session'))
   if (!response.ok) {
     throw new Error('セッションの確認に失敗しました。')
   }
 
-  const result = (await response.json()) as SessionResponse
+  const result = await readJsonResponse<SessionResponse>(response)
   return result.data
 }
 
 export async function logoutSession(apiBaseUrl = defaultApiBaseUrl) {
-  const response = await apiFetch(apiUrl('/logout', apiBaseUrl), {
+  const response = await apiFetch(buildApiUrl(apiBaseUrl, '/logout'), {
     method: 'DELETE',
   })
 
@@ -39,16 +38,16 @@ export async function logoutSession(apiBaseUrl = defaultApiBaseUrl) {
 }
 
 export async function fetchCableToken(apiBaseUrl = defaultApiBaseUrl) {
-  const response = await apiFetch(apiUrl('/cable_token', apiBaseUrl), {
+  const response = await apiFetch(buildApiUrl(apiBaseUrl, '/cable_token'), {
     method: 'POST',
   })
   if (!response.ok) {
     throw new Error('リアルタイム接続の認証に失敗しました。')
   }
 
-  const result = (await response.json()) as {
+  const result = await readJsonResponse<{
     status: 'success'
     data: { token: string }
-  }
+  }>(response)
   return result.data.token
 }

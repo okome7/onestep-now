@@ -16,18 +16,11 @@ type PasswordResetSuccessResponse = {
   message?: string
 }
 
-type PasswordResetErrorResponse = {
-  status: 'error'
-  errors?: string[]
-  error?: string
-  message?: string
-}
+type PasswordResetErrorResponse = ApiErrorResponse
 
 type PasswordResetResponse =
   | PasswordResetSuccessResponse
   | PasswordResetErrorResponse
-
-const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 const japaneseErrorMessages: Record<string, string> = {
   NotFound: '再設定用APIが見つかりませんでした。',
@@ -51,27 +44,6 @@ function translatePasswordResetError(message: string) {
   return japaneseErrorMessages[message] ?? message
 }
 
-function isPresentString(message: string | undefined): message is string {
-  return Boolean(message)
-}
-
-function apiUrl(apiBaseUrl: string, path: string) {
-  const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-  return `${trimmedApiBaseUrl.replace(/\/$/, '')}${path}`
-}
-
-function errorMessageFromResult(
-  result: PasswordResetErrorResponse,
-  fallbackMessage: string,
-) {
-  const errors =
-    result.errors ?? [result.error, result.message].filter(isPresentString)
-
-  return errors.length
-    ? errors.map(translatePasswordResetError).join('\n')
-    : fallbackMessage
-}
-
 async function requestPasswordReset(
   path: string,
   method: 'POST' | 'PATCH',
@@ -82,7 +54,7 @@ async function requestPasswordReset(
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl, path), {
+    response = await apiFetch(buildApiUrl(apiBaseUrl, path), {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -95,21 +67,17 @@ async function requestPasswordReset(
     )
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
-
-  if (!contentType.includes('application/json')) {
-    throw new Error(
-      'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
-    )
-  }
-
-  const result = (await response.json()) as PasswordResetResponse
+  const result = await readJsonResponse<PasswordResetResponse>(
+    response,
+    'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessageFromResult(
+      apiErrorMessage(
         result as PasswordResetErrorResponse,
         fallbackMessage,
+        translatePasswordResetError,
       ),
     )
   }
@@ -163,4 +131,11 @@ export function resetPassword(
     apiBaseUrl,
   )
 }
-import { apiFetch } from './apiClient'
+import {
+  apiErrorMessage,
+  apiFetch,
+  buildApiUrl,
+  defaultApiBaseUrl,
+  readJsonResponse,
+  type ApiErrorResponse,
+} from './apiClient'
