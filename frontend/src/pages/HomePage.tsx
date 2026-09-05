@@ -83,9 +83,14 @@ import { updateProfile } from '../profileApi'
 
 const feedIntroStorageKey = 'onestep-feed-intro-seen'
 const activeHomeViewStorageKey = 'onestep-active-home-view'
+const taskDraftStorageKey = 'onestep-task-draft'
 
 function getInitialHomeView() {
   return window.sessionStorage.getItem(activeHomeViewStorageKey)
+}
+
+function getInitialTaskDraft() {
+  return window.sessionStorage.getItem(taskDraftStorageKey) ?? ''
 }
 
 export function HomePage() {
@@ -94,7 +99,7 @@ export function HomePage() {
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
   const deletedFeedPostIdsRef = useRef(new Set<string>())
   const latestLikeEventTimesRef = useRef(new Map<string, number>())
-  const [taskText, setTaskText] = useState('')
+  const [taskText, setTaskText] = useState(getInitialTaskDraft)
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null)
@@ -605,6 +610,7 @@ export function HomePage() {
     clearAuthSession()
     window.localStorage.removeItem(signupCompleteStorageKey)
     window.sessionStorage.removeItem(activeHomeViewStorageKey)
+    window.sessionStorage.removeItem(taskDraftStorageKey)
     window.sessionStorage.removeItem(signupScreenStorageKey)
     window.sessionStorage.removeItem(signupDraftStorageKey)
     window.location.assign('/login')
@@ -1124,6 +1130,7 @@ export function HomePage() {
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
       window.sessionStorage.removeItem(activeHomeViewStorageKey)
+      window.sessionStorage.removeItem(taskDraftStorageKey)
       window.location.href = '/login'
     } catch {
       setIsLogoutConfirmOpen(false)
@@ -1170,6 +1177,7 @@ export function HomePage() {
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
       window.sessionStorage.removeItem(activeHomeViewStorageKey)
+      window.sessionStorage.removeItem(taskDraftStorageKey)
       window.sessionStorage.removeItem(signupScreenStorageKey)
       window.sessionStorage.removeItem(signupDraftStorageKey)
       setIsAccountDeleteConfirmOpen(false)
@@ -1436,6 +1444,8 @@ export function HomePage() {
         : Date.now()
       setActiveTaskId(startedTask.id)
       setActiveTask(startedTask.title)
+      setTaskText('')
+      window.sessionStorage.removeItem(taskDraftStorageKey)
       setActiveTaskStartedAt(startedAt)
       setElapsedSeconds(0)
       setIsTaskComplete(false)
@@ -1494,6 +1504,7 @@ export function HomePage() {
     }
 
     setTaskText('')
+    window.sessionStorage.removeItem(taskDraftStorageKey)
     setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
@@ -1569,6 +1580,7 @@ export function HomePage() {
 
   function handleNextTask() {
     setTaskText('')
+    window.sessionStorage.removeItem(taskDraftStorageKey)
     setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
@@ -2666,6 +2678,11 @@ export function HomePage() {
           isSubmitting={isTaskSubmitting}
           onTaskTextChange={(value) => {
             setTaskText(value)
+            if (value) {
+              window.sessionStorage.setItem(taskDraftStorageKey, value)
+            } else {
+              window.sessionStorage.removeItem(taskDraftStorageKey)
+            }
             if (taskError) {
               setTaskError('')
             }
