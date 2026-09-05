@@ -1557,7 +1557,8 @@ test("マイページから自分の投稿を削除して実績を再取得す�
   let deleted = false;
   let deleteRequests = 0;
 
-  await page.route(/.*\/(?:api\/)?mypage$/, async (route) => {
+  await page.unroute(myPageRoute);
+  await page.route(myPageRoute, async (route) => {
     const achievements = deleted
       ? []
       : [
