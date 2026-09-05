@@ -143,6 +143,7 @@ RSpec.describe "Feed posts", type: :request do
       expect(completion_post.reload).to be_completed
       expect(completion_post.completed_at.to_i).to eq(task.completed_at.to_i)
       expect(user.reload.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
+      expect(user.feed_access_pending).to be(false)
       body = JSON.parse(response.body)
       expect(body.dig("data", "completion_post")).to include(
         "id" => completion_post.id,
@@ -314,6 +315,29 @@ RSpec.describe "Feed posts", type: :request do
       # Cookie session validation adds the session and current-user lookups.
       expect(initial_count).to be <= 10
       expect(increased_count).to eq(initial_count)
+    end
+  end
+
+  describe "POST /api/feed/access" do
+    it "初回説明の開始待ちを消費して3分の閲覧時間を開始する" do
+      user.update!(feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+
+      post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.feed_access_pending).to be(false)
+      expect(user.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
+      expect(JSON.parse(response.body)).to include("remaining_seconds" => 180)
+    end
+
+    it "開始待ちでなければ現在の閲覧時間を延長しない" do
+      original_expiration = 1.minute.from_now
+      user.update!(feed_access_pending: false, feed_access_expires_at: original_expiration)
+
+      post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.feed_access_expires_at).to be_within(1.second).of(original_expiration)
     end
   end
 

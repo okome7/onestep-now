@@ -355,12 +355,17 @@ export async function startTask(taskId: number, userId?: number) {
   return (result as TaskResponse).data
 }
 
-export async function completeTask(taskId: number, userId?: number) {
+export async function completeTask(
+  taskId: number,
+  userId?: number,
+  deferFeedAccess = false,
+) {
   const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/tasks/${taskId}/complete`),
     {
       method: 'PATCH',
       headers: userHeaders(userId),
+      body: JSON.stringify({ defer_feed_access: deferFeedAccess }),
     },
   )
 
@@ -377,6 +382,19 @@ export async function completeTask(taskId: number, userId?: number) {
   }
 
   return (result as TaskResponse).data
+}
+
+export async function startFeedAccess(userId?: number) {
+  const response = await apiFetch(apiUrl(defaultApiBaseUrl, '/feed/access'), {
+    method: 'POST',
+    headers: userHeaders(userId),
+  })
+  if (response.status === 401) throw new AuthRequiredError()
+  const result = await readJson<FeedSuccessResponse | ErrorResponse>(response)
+  if (!response.ok || result.status === 'error') {
+    throw new Error(errorMessage(result as ErrorResponse, 'フィードを開始できませんでした。'))
+  }
+  return result as FeedSuccessResponse
 }
 
 export async function cancelTask(taskId: number, userId?: number) {

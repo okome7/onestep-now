@@ -6,10 +6,29 @@ import {
   fetchActiveTask,
   fetchComments,
   fetchFeed,
+  startFeedAccess,
 } from './feedApi'
 
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+test('初回説明を閉じるとフィード閲覧時間を開始する', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+    json: () => Promise.resolve({ status: 'success', remaining_seconds: 180 }),
+  })
+  vi.stubGlobal('fetch', fetchMock)
+
+  const result = await startFeedAccess(1)
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/feed/access',
+    expect.objectContaining({ method: 'POST' }),
+  )
+  expect(result.remaining_seconds).toBe(180)
 })
 
 test('コメントを20件ずつ取得する', async () => {

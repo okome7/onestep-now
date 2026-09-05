@@ -331,6 +331,19 @@ async function mockTaskAndFeedApi(page: Page) {
       }),
     });
   });
+
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 3 * 60,
+        feed_access_expires_at: new Date(
+          Date.now() + 3 * 60 * 1000,
+        ).toISOString(),
+      }),
+    });
+  });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -1452,6 +1465,9 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   await mockTaskAndFeedApi(page);
   await page.clock.install();
   await gotoHome(page);
+  await page.evaluate(() => {
+    localStorage.setItem("onestep-feed-intro-seen", "true");
+  });
 
   await page
     .getByRole("textbox", { name: "今できること" })
