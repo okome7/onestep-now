@@ -13,7 +13,7 @@ class FeedPostPayload
       id: post.id,
       user_name: post.user.name,
       avatar_key: post.user.avatar_key,
-      level: level_for(completed_count),
+      level: LevelProgress.new(completed_count).level,
       task_title: post.task.title,
       status: post.status,
       status_label: post.status_label,
@@ -44,11 +44,5 @@ class FeedPostPayload
 
   def comment_count
     @comment_count || post.comments.count
-  end
-
-  def level_for(count)
-    return 0 if count.zero?
-
-    (count / User::COMPLETIONS_PER_LEVEL).floor + 1
   end
 end
