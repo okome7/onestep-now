@@ -18,17 +18,10 @@ type SignupSuccessResponse = {
   data: SignupUser
 }
 
-type SignupErrorResponse = {
-  status: 'error'
-  errors?: string[]
-  error?: string
-  message?: string
-}
+type SignupErrorResponse = ApiErrorResponse
 
 type SignupResponse = SignupSuccessResponse | SignupErrorResponse
 type SignupEmailCheckResponse = { status: 'success' } | SignupErrorResponse
-
-const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 const japaneseErrorMessages: Record<string, string> = {
   "Name can't be blank": '名前を入力してください。',
@@ -53,27 +46,6 @@ function translateSignupError(message: string) {
   return japaneseErrorMessages[message] ?? message
 }
 
-function isPresentString(message: string | undefined): message is string {
-  return Boolean(message)
-}
-
-function apiUrl(apiBaseUrl: string, path: string) {
-  const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-  return `${trimmedApiBaseUrl.replace(/\/$/, '')}${path}`
-}
-
-function errorMessageFromResult(
-  result: SignupErrorResponse,
-  fallbackMessage: string,
-) {
-  const errors =
-    result.errors ?? [result.error, result.message].filter(isPresentString)
-
-  return errors.length
-    ? errors.map(translateSignupError).join('\n')
-    : fallbackMessage
-}
-
 export async function checkSignupEmail(
   email: string,
   apiBaseUrl = defaultApiBaseUrl,
@@ -81,7 +53,7 @@ export async function checkSignupEmail(
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl, '/signup/email_check'), {
+    response = await apiFetch(buildApiUrl(apiBaseUrl, '/signup/email_check'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -98,21 +70,17 @@ export async function checkSignupEmail(
     )
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
-
-  if (!contentType.includes('application/json')) {
-    throw new Error(
-      'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
-    )
-  }
-
-  const result = (await response.json()) as SignupEmailCheckResponse
+  const result = await readJsonResponse<SignupEmailCheckResponse>(
+    response,
+    'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessageFromResult(
+      apiErrorMessage(
         result as SignupErrorResponse,
         '登録に失敗しました。',
+        translateSignupError,
       ),
     )
   }
@@ -125,7 +93,7 @@ export async function signup(
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl, '/signup'), {
+    response = await apiFetch(buildApiUrl(apiBaseUrl, '/signup'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -146,24 +114,26 @@ export async function signup(
     )
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
-
-  if (!contentType.includes('application/json')) {
-    throw new Error(
-      'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
-    )
-  }
-
-  const result = (await response.json()) as SignupResponse
+  const result = await readJsonResponse<SignupResponse>(
+    response,
+    'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
       result.status === 'error'
-        ? errorMessageFromResult(result, '登録に失敗しました。')
+        ? apiErrorMessage(result, '登録に失敗しました。', translateSignupError)
         : '登録に失敗しました。',
     )
   }
 
   return result.data
 }
-import { apiFetch } from './apiClient'
+import {
+  apiErrorMessage,
+  apiFetch,
+  buildApiUrl,
+  defaultApiBaseUrl,
+  readJsonResponse,
+  type ApiErrorResponse,
+} from './apiClient'
