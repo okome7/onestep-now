@@ -38,6 +38,30 @@ RSpec.describe "Mypage", type: :request do
   let(:fan) { create_user(email: "fan@example.com") }
 
   describe "GET /api/mypage" do
+    it "指定したユーザーのマイページを本人専用操作なしで返す" do
+      post = create_completed_post(user: other_user, title: "他の人の達成", completed_at: Time.current)
+      create_completed_post(user: user, title: "自分の達成", completed_at: 1.hour.ago)
+
+      get "/api/mypage?user_id=#{other_user.id}", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body).fetch("data")
+      expect(data.fetch("user")).to include(
+        "id" => other_user.id,
+        "name" => "other",
+        "avatar_key" => other_user.avatar_key
+      )
+      expect(data.fetch("all_achievements")).to contain_exactly(
+        include("id" => post.id, "task_title" => "他の人の達成", "can_delete" => false)
+      )
+    end
+
+    it "存在しないユーザーには404を返す" do
+      get "/api/mypage?user_id=999999", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:not_found)
+    end
+
     it "ログイン中ユーザーの達成だけを集計して新しい順で返す" do
       travel_to Time.zone.local(2026, 7, 9, 12, 0, 0) do
         older_post = create_completed_post(user: user, title: "古い達成", completed_at: 2.days.ago)

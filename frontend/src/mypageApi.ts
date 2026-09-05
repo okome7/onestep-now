@@ -36,6 +36,11 @@ type ApiAchievement = {
 type MyPageSuccessResponse = {
   status: 'success'
   data: {
+    user?: {
+      id: number
+      name: string
+      avatar_key?: string
+    }
     level: number
     next_level: number
     remaining_to_next_level: number
@@ -134,7 +139,7 @@ export async function fetchMyPage(
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl, '/mypage'), {
+    response = await apiFetch(apiUrl(apiBaseUrl, `/mypage?user_id=${userId}`), {
       headers: userHeaders(userId),
       signal,
     })
@@ -161,6 +166,11 @@ export async function fetchMyPage(
   const data = (result as MyPageSuccessResponse).data
 
   return {
+    user: {
+      id: data.user?.id ?? userId ?? 0,
+      name: data.user?.name ?? '',
+      avatarId: data.user?.avatar_key ?? 'avatar-1',
+    },
     level: data.level,
     nextLevel: data.next_level,
     remainingToNextLevel: data.remaining_to_next_level,

@@ -157,6 +157,7 @@ export function HomePage() {
   const [completeProfile, setCompleteProfile] = useState(() =>
     getInitialCompleteProfile(),
   )
+  const [profileUserId, setProfileUserId] = useState(completeProfile.id)
   const currentMyPageUserIdRef = useRef<number | undefined>(completeProfile.id)
   const loadedMyPageUserIdRef = useRef<number | null>(null)
   const myPageAbortControllerRef = useRef<AbortController | null>(null)
@@ -220,8 +221,14 @@ export function HomePage() {
   const feedCountdownHandAngle =
     (feedCountdownElapsedSeconds / feedViewDurationSeconds) * 360
   const visibleFeedPosts = feedPosts
-  const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
-  const profileName = completeProfile.name || 'おこめ'
+  const isViewingOwnProfile = profileUserId === completeProfile.id
+  const visibleMyPageData =
+    myPageDataUserId === profileUserId ? myPageData : null
+  const profileAvatarSrc = visibleMyPageData
+    ? getAvatarSrc(visibleMyPageData.user.avatarId)
+    : getCompleteAvatarSrc(completeProfile)
+  const profileName =
+    visibleMyPageData?.user.name || completeProfile.name || 'おこめ'
   const trimmedDisplayNameDraft = displayNameDraft.trim()
   const hasDisplayNameDraftChanged = displayNameDraft !== profileName
   const canSaveDisplayName =
@@ -230,8 +237,6 @@ export function HomePage() {
   const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
   const canSaveSettingsIcon =
     selectedSettingsIconId !== completeProfile.avatarId
-  const visibleMyPageData =
-    myPageDataUserId === completeProfile.id ? myPageData : null
   const level = visibleMyPageData?.level ?? 0
   const nextLevel = visibleMyPageData?.nextLevel ?? 1
   const remainingToNextLevel = visibleMyPageData?.remainingToNextLevel ?? 10
@@ -890,7 +895,12 @@ export function HomePage() {
   }, [abortMyPageRequest, clearMyPageCache, completeProfile.id, loadMyPage])
 
   useEffect(() => {
-    if (!isProfileOpen || !visibleMyPageData || !completeProfile.id) return
+    if (
+      !isProfileOpen ||
+      !visibleMyPageData ||
+      !completeProfile.id ||
+      !isViewingOwnProfile
+    ) return
 
     const storageKey = getLastDisplayedLevelStorageKey(completeProfile.id)
     const storedLevel = Number.parseInt(
@@ -910,7 +920,7 @@ export function HomePage() {
       setLevelUpNotificationLevel(visibleMyPageData.level)
     }, 0)
     return () => window.clearTimeout(showTimerId)
-  }, [completeProfile.id, isProfileOpen, visibleMyPageData])
+  }, [completeProfile.id, isProfileOpen, isViewingOwnProfile, visibleMyPageData])
 
   useEffect(() => {
     if (levelUpNotificationLevel === null) return
@@ -1024,6 +1034,8 @@ export function HomePage() {
 
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
+    currentMyPageUserIdRef.current = completeProfile.id
+    setProfileUserId(completeProfile.id)
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
     setIsFeedOpen(false)
     setIsProfileOpen(true)
@@ -1038,6 +1050,26 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     void loadMyPage(isProfileOpen)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openFeedUserProfile(userId: number) {
+    currentMyPageUserIdRef.current = userId
+    setProfileUserId(userId)
+    setLevelUpNotificationLevel(null)
+    setIsLevelUpNotificationClosing(false)
+    setIsFeedOpen(false)
+    setIsProfileOpen(true)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
+    setMyPageError('')
+    void loadMyPage()
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function returnToFeedFromProfile() {
+    setIsProfileOpen(false)
+    setIsFeedOpen(true)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -2508,15 +2540,43 @@ export function HomePage() {
       <main className="home-page profile-page">
         <AppHeader
           title="マイページ"
+          leftAction={
+            isViewingOwnProfile ? null : (
+              <button
+                className="profile-back-button"
+                type="button"
+                aria-label="フィードに戻る"
+                onClick={returnToFeedFromProfile}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M15 5L8 12L15 19"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )
+          }
           rightAction={
-            <button
-              className="profile-settings-button"
-              type="button"
-              aria-label="設定"
-              onClick={openSettings}
-            >
-              <img src={settingsIcon} alt="" aria-hidden="true" />
-            </button>
+            isViewingOwnProfile ? (
+              <button
+                className="profile-settings-button"
+                type="button"
+                aria-label="設定"
+                onClick={openSettings}
+              >
+                <img src={settingsIcon} alt="" aria-hidden="true" />
+              </button>
+            ) : null
           }
         />
 
@@ -2619,8 +2679,12 @@ export function HomePage() {
                 />
               </section>
             </>
-          ) : (
+          ) : isViewingOwnProfile ? (
             <ProfileEmptyState onStart={openHome} />
+          ) : (
+            <section className="profile-empty-state" aria-label="記録なし">
+              <h2>まだ記録はありません</h2>
+            </section>
           )}
         </section>
 
@@ -2688,6 +2752,7 @@ export function HomePage() {
                   now={feedNow}
                   onLike={(postId) => void togglePostLike(postId)}
                   onOpenComments={openCommentPanel}
+                  onOpenProfile={openFeedUserProfile}
                 />
               ))}
               {hasMoreFeedPosts ? (

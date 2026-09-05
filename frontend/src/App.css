@@ -2918,6 +2918,49 @@ body {
   color: #111827;
   cursor: pointer;
 }
+.profile-back-button,
+.feed-profile-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.profile-back-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgb(111 143 176 / 32%);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 64%);
+  box-shadow: 0 2px 8px rgb(53 91 132 / 8%);
+  color: #52667c;
+}
+.profile-back-button svg { display: block; }
+.profile-back-button:hover,
+.profile-back-button:focus-visible {
+  border-color: rgb(77 149 229 / 48%);
+  background: rgb(255 255 255 / 90%);
+}
+.feed-profile-button {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  border-radius: 50%;
+}
+.feed-profile-button:hover .feed-avatar,
+.feed-profile-button:focus-visible .feed-avatar {
+  outline: 3px solid rgb(77 149 229 / 22%);
+  outline-offset: 2px;
+}
+.feed-profile-button:hover .feed-user-name,
+.feed-profile-button:focus-visible .feed-user-name {
+  color: #2f80cf;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 .profile-settings-button img {
   width: 31px;

@@ -175,6 +175,7 @@ export function mapFeedPost(
 
   return {
     id: String(post.id),
+    userId: post.user_id,
     userName:
       post.is_mine || post.user_id === currentUserId
         ? 'あなた'
