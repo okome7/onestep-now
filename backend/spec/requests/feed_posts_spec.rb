@@ -216,7 +216,7 @@ RSpec.describe "Feed posts", type: :request do
         "status" => "completed",
         "status_label" => "できた",
         "card_variant" => "completed",
-        "level" => 2,
+        "level" => 3,
         "is_mine" => true,
         "can_like" => true,
         "can_comment" => true,
@@ -230,7 +230,7 @@ RSpec.describe "Feed posts", type: :request do
         "can_comment" => true,
         "liked_by_me" => true,
         "commented_by_me" => true,
-        "level" => 3,
+        "level" => 5,
         "likes_count" => 1,
         "comments_count" => 1
       )
@@ -243,7 +243,7 @@ RSpec.describe "Feed posts", type: :request do
       comment_payload = JSON.parse(response.body).fetch("data").first
       expect(comment_payload).to include(
         "body" => "応援しています",
-        "level" => 2,
+        "level" => 3,
         "avatar_key" => user.avatar_key,
         "post_status_when_commented" => "doing"
       )

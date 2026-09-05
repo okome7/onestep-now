@@ -58,8 +58,8 @@ RSpec.describe "Mypage", type: :request do
         expect(data).to include(
           "level" => 1,
           "next_level" => 2,
-          "remaining_to_next_level" => 8,
-          "progress_percent" => 20,
+          "remaining_to_next_level" => 3,
+          "progress_percent" => 40,
           "achievements_count" => 2,
           "streak_days" => 1,
           "likes_count" => 3,
@@ -77,7 +77,7 @@ RSpec.describe "Mypage", type: :request do
       end
     end
 
-    it "レベルを10達成ごとに計算する" do
+    it "レベルを5達成ごとに計算する" do
       travel_to Time.zone.local(2026, 7, 9, 12, 0, 0) do
         128.times do |index|
           create_completed_post(
@@ -91,10 +91,10 @@ RSpec.describe "Mypage", type: :request do
 
         data = JSON.parse(response.body).fetch("data")
         expect(data).to include(
-          "level" => 13,
-          "next_level" => 14,
+          "level" => 26,
+          "next_level" => 27,
           "remaining_to_next_level" => 2,
-          "progress_percent" => 80,
+          "progress_percent" => 60,
           "achievements_count" => 128
         )
       end
@@ -107,7 +107,7 @@ RSpec.describe "Mypage", type: :request do
       expect(data).to include(
         "level" => 0,
         "next_level" => 1,
-        "remaining_to_next_level" => 10,
+        "remaining_to_next_level" => 5,
         "progress_percent" => 0,
         "achievements_count" => 0,
         "streak_days" => 0,
@@ -206,8 +206,8 @@ RSpec.describe "Mypage", type: :request do
         data = JSON.parse(response.body).fetch("data")
         expect(data).to include(
           "level" => 1,
-          "remaining_to_next_level" => 9,
-          "progress_percent" => 10,
+          "remaining_to_next_level" => 4,
+          "progress_percent" => 20,
           "achievements_count" => 1,
           "streak_days" => 1,
           "likes_count" => 1,

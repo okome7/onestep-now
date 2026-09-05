@@ -26,6 +26,6 @@ class CommentPayload
   def level_for(count)
     return 0 if count.zero?
 
-    (count / 10).floor + 1
+    (count / User::COMPLETIONS_PER_LEVEL).floor + 1
   end
 end
