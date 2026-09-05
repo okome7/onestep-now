@@ -53,6 +53,7 @@ import {
 import { resetBottomSheetScrollLock } from '../components/home/useBottomSheet'
 import {
   AppHeader,
+  BackIcon,
   HomeBottomNav,
   UnsavedChangesModal,
 } from '../sharedComponents'
@@ -1876,7 +1877,7 @@ export function HomePage() {
               aria-label="設定に戻る"
               onClick={closeNameEdit}
             >
-              &lt;
+              <BackIcon />
             </button>
           }
           rightAction={
@@ -1934,7 +1935,7 @@ export function HomePage() {
               aria-label="設定に戻る"
               onClick={closeIconEdit}
             >
-              &lt;
+              <BackIcon />
             </button>
           }
           rightAction={
@@ -2128,7 +2129,7 @@ export function HomePage() {
               aria-label="マイページに戻る"
               onClick={closeSettings}
             >
-              &lt;
+              <BackIcon />
             </button>
           }
         />
@@ -2485,7 +2486,7 @@ export function HomePage() {
               aria-label="マイページに戻る"
               onClick={closeAchievements}
             >
-              &lt;
+              <BackIcon />
             </button>
           }
         />
@@ -2548,21 +2549,7 @@ export function HomePage() {
                 aria-label="フィードに戻る"
                 onClick={returnToFeedFromProfile}
               >
-                <svg
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M15 5L8 12L15 19"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                <BackIcon />
               </button>
             )
           }

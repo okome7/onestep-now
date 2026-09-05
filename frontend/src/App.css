@@ -2918,6 +2918,8 @@ body {
   color: #111827;
   cursor: pointer;
 }
+.back-button,
+.settings-back-button,
 .profile-back-button,
 .feed-profile-button {
   border: 0;
@@ -2926,6 +2928,8 @@ body {
   font: inherit;
   cursor: pointer;
 }
+.back-button,
+.settings-back-button,
 .profile-back-button {
   display: grid;
   width: 40px;
@@ -2937,7 +2941,16 @@ body {
   box-shadow: 0 2px 8px rgb(53 91 132 / 8%);
   color: #52667c;
 }
-.profile-back-button svg { display: block; }
+.back-button svg,
+.settings-back-button svg,
+.profile-back-button svg {
+  display: block;
+}
+
+.back-button:hover,
+.back-button:focus-visible,
+.settings-back-button:hover,
+.settings-back-button:focus-visible,
 .profile-back-button:hover,
 .profile-back-button:focus-visible {
   border-color: rgb(77 149 229 / 48%);
@@ -2973,17 +2986,8 @@ body {
 }
 
 .settings-back-button {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #111827;
+  flex: 0 0 auto;
   font-size: 28px;
-  line-height: 1;
-  cursor: pointer;
 }
 
 .settings-content {
