@@ -42,7 +42,7 @@ RSpec.describe "Mypage", type: :request do
       post = create_completed_post(user: other_user, title: "他の人の達成", completed_at: Time.current)
       create_completed_post(user: user, title: "自分の達成", completed_at: 1.hour.ago)
 
-      get "/api/users/#{other_user.id}/mypage", headers: authenticated_headers(user), as: :json
+      get "/api/mypage?user_id=#{other_user.id}", headers: authenticated_headers(user), as: :json
 
       expect(response).to have_http_status(:ok)
       data = JSON.parse(response.body).fetch("data")
@@ -57,7 +57,7 @@ RSpec.describe "Mypage", type: :request do
     end
 
     it "存在しないユーザーには404を返す" do
-      get "/api/users/999999/mypage", headers: authenticated_headers(user), as: :json
+      get "/api/mypage?user_id=999999", headers: authenticated_headers(user), as: :json
 
       expect(response).to have_http_status(:not_found)
     end

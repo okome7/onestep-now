@@ -139,7 +139,7 @@ export async function fetchMyPage(
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl, `/users/${userId}/mypage`), {
+    response = await apiFetch(apiUrl(apiBaseUrl, `/mypage?user_id=${userId}`), {
       headers: userHeaders(userId),
       signal,
     })

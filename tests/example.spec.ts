@@ -12,7 +12,7 @@ const backendURL =
 const authSessionStorageKey = "onestep-auth-session";
 const signupCompleteStorageKey = "onestep-signup-complete";
 const sessionRoute = /.*\/(?:api\/)?session$/;
-const myPageRoute = /.*\/(?:api\/)?mypage$/;
+const myPageRoute = /.*\/(?:api\/)?mypage(?:\?[^#]*)?$/;
 const cableTokenRoute = /.*\/(?:api\/)?cable_token$/;
 const activeTaskRoute = /.*\/(?:api\/)?tasks\/active$/;
 
@@ -1403,9 +1403,8 @@ test("フィードのアイコンから他のユーザーのマイページを�
   const createdAt = new Date().toISOString();
   await page.unroute(myPageRoute);
   await page.route(myPageRoute, async (route) => {
-    const isOtherUser = new URL(route.request().url()).pathname.includes(
-      "/users/2/",
-    );
+    const isOtherUser =
+      new URL(route.request().url()).searchParams.get("user_id") === "2";
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({

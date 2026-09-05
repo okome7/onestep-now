@@ -67,7 +67,7 @@ test('マイページ取得にAbortSignalを渡す', async () => {
   )
 
   expect(fetchMock).toHaveBeenCalledWith(
-    'https://api.example.com/api/users/7/mypage',
+    'https://api.example.com/api/mypage?user_id=7',
     expect.objectContaining({ signal: controller.signal }),
   )
   expect(result.user).toEqual({ id: 7, name: 'みき', avatarId: 'avatar-2' })
