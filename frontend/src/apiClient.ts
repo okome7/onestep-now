@@ -1,5 +1,51 @@
 const csrfCookieName = 'onestep_csrf'
 
+export const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
+
+export type ApiErrorResponse = {
+  status: 'error'
+  errors?: string[]
+  error?: string
+  message?: string
+}
+
+type ApiUrlOptions = {
+  ensureApiPath?: boolean
+}
+
+export function buildApiUrl(
+  apiBaseUrl: string,
+  path: string,
+  { ensureApiPath = false }: ApiUrlOptions = {},
+) {
+  const normalizedBaseUrl = (apiBaseUrl.trim() || '/api').replace(/\/$/, '')
+  const apiBasePath =
+    ensureApiPath && !normalizedBaseUrl.endsWith('/api')
+      ? `${normalizedBaseUrl}/api`
+      : normalizedBaseUrl
+
+  return `${apiBasePath}${path}`
+}
+
+export function apiErrorMessage(result: ApiErrorResponse, fallback: string) {
+  const messages = [result.error, result.message].filter(
+    (message): message is string => Boolean(message),
+  )
+  const errors = result.errors ?? messages
+
+  return errors.length ? errors.join('\n') : fallback
+}
+
+export async function readJsonResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get('content-type') ?? ''
+
+  if (!contentType.includes('application/json')) {
+    throw new Error('APIから想定外の応答が返りました。')
+  }
+
+  return (await response.json()) as T
+}
+
 function csrfToken() {
   if (typeof document === 'undefined') {
     return undefined
@@ -18,7 +64,10 @@ function isSafeMethod(method: string) {
   return ['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())
 }
 
-export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+) {
   const method = init.method ?? 'GET'
   const token = csrfToken()
   let headers = init.headers
