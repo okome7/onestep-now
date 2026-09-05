@@ -779,6 +779,11 @@ test("ログイン画面からパスワードを再設定できる", async ({ pa
   await expect(
     page.getByRole("heading", { name: "パスワード再設定" }),
   ).toBeVisible();
+  const backButton = page.getByRole("button", { name: "戻る" });
+  await expect(backButton).toHaveCSS("width", "40px");
+  await expect(backButton).toHaveCSS("height", "40px");
+  await expect(backButton).toHaveCSS("border-radius", "50%");
+  await expect(backButton.locator("svg")).toHaveCount(1);
 
   await page.getByLabel("メールアドレス").fill("reset@example.com");
   await page.getByRole("button", { name: "コードを送信" }).click();
@@ -1558,7 +1563,12 @@ test("フィードのアイコンから他のユーザーのマイページを�
   await expect(page.getByRole("button", { name: "設定" })).toHaveCount(0);
   await expect(page.locator(".profile-achievement-menu-button")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "フィードに戻る" }).click();
+  const backButton = page.getByRole("button", { name: "フィードに戻る" });
+  await expect(backButton).toHaveCSS("width", "40px");
+  await expect(backButton).toHaveCSS("height", "40px");
+  await expect(backButton).toHaveCSS("border-radius", "50%");
+  await expect(backButton.locator("svg")).toHaveCount(1);
+  await backButton.click();
   await expect(page.getByRole("heading", { name: "フィード" })).toBeVisible();
   await expect(page.getByText("みきさんの達成")).toBeVisible();
 });
