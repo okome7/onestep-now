@@ -949,6 +949,16 @@ test("ホーム画面は末尾スラッシュ付きでも表示される", async
   ).toBeVisible();
 });
 
+test("入力途中のタスクはリロード後も保持される", async ({ page }) => {
+  await gotoHome(page);
+
+  const taskInput = page.getByRole("textbox", { name: "今できること" });
+  await taskInput.fill("あとで始めるタスク");
+  await page.reload();
+
+  await expect(taskInput).toHaveValue("あとで始めるタスク");
+});
+
 test("ホーム画面でやることを入力せずに始めるとエラーが表示される", async ({
   page,
 }) => {
@@ -972,6 +982,12 @@ test("ホーム画面でやることを始めるとタイマーが表示され�
     .getByRole("textbox", { name: "今できること" })
     .fill("スライド1枚作る");
   await page.getByRole("button", { name: "始める" }).click();
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => sessionStorage.getItem("onestep-task-draft")),
+    )
+    .toBeNull();
 
   await expect(
     page.getByRole("heading", { name: "スライド1枚作る" }),
