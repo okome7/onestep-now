@@ -1470,6 +1470,23 @@ test("フィードのアイコンから他のユーザーのマイページを�
             liked_by_me: false,
             created_at: createdAt,
           },
+          {
+            id: 83,
+            user_id: 1,
+            user_name: "おこめ",
+            avatar_key: "avatar-1",
+            level: 1,
+            task_title: "自分の投稿",
+            status_label: "できた",
+            card_variant: "completed",
+            is_mine: true,
+            can_like: true,
+            can_comment: true,
+            likes_count: 0,
+            comments_count: 0,
+            liked_by_me: false,
+            created_at: createdAt,
+          },
         ],
       }),
     });
@@ -1481,9 +1498,10 @@ test("フィードのアイコンから他のユーザーのマイページを�
     localStorage.setItem("onestep-feed-intro-seen", "true");
   });
   await page.goto("/home");
-  await page
-    .getByRole("button", { name: "みきさんのマイページを見る" })
-    .click();
+  await expect(
+    page.getByRole("button", { name: "あなたさんのマイページを見る" }),
+  ).toHaveCount(0);
+  await page.getByText("みき", { exact: true }).click();
 
   await expect(page.getByText("みき", { exact: true })).toBeVisible();
   await expect(page.getByText("みきさんの達成")).toBeVisible();

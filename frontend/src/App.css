@@ -2919,7 +2919,7 @@ body {
   cursor: pointer;
 }
 .profile-back-button,
-.feed-avatar-button {
+.feed-profile-button {
   border: 0;
   padding: 0;
   background: transparent;
@@ -2940,18 +2940,23 @@ body {
 .profile-back-button:focus-visible {
   background: rgb(255 255 255 / 70%);
 }
-.feed-avatar-button {
+.feed-profile-button {
   display: flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
   border-radius: 50%;
 }
-.feed-avatar-button:not(:disabled):hover,
-.feed-avatar-button:not(:disabled):focus-visible {
+.feed-profile-button:hover .feed-avatar,
+.feed-profile-button:focus-visible .feed-avatar {
   outline: 3px solid rgb(77 149 229 / 22%);
   outline-offset: 2px;
 }
-.feed-avatar-button:disabled {
-  cursor: default;
+.feed-profile-button:hover .feed-user-name,
+.feed-profile-button:focus-visible .feed-user-name {
+  color: #2f80cf;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .profile-settings-button img {

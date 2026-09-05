@@ -24,21 +24,32 @@ export function FeedPostCard({
     <article className={`feed-card feed-card-${post.status}`}>
       <div className="feed-card-header">
         <div className="feed-user">
-          <button
-            className="feed-avatar-button"
-            type="button"
-            aria-label={`${post.userName}さんのマイページを見る`}
-            onClick={() => post.userId && onOpenProfile(post.userId)}
-            disabled={!post.userId}
-          >
-            <img
-              className="feed-avatar"
-              src={getAvatarSrc(post.avatarId)}
-              alt=""
-              aria-hidden="true"
-            />
-          </button>
-          <span className="feed-user-name">{post.userName}</span>
+          {!post.isOwnPost && post.userId ? (
+            <button
+              className="feed-profile-button"
+              type="button"
+              aria-label={`${post.userName}さんのマイページを見る`}
+              onClick={() => onOpenProfile(post.userId!)}
+            >
+              <img
+                className="feed-avatar"
+                src={getAvatarSrc(post.avatarId)}
+                alt=""
+                aria-hidden="true"
+              />
+              <span className="feed-user-name">{post.userName}</span>
+            </button>
+          ) : (
+            <>
+              <img
+                className="feed-avatar"
+                src={getAvatarSrc(post.avatarId)}
+                alt=""
+                aria-hidden="true"
+              />
+              <span className="feed-user-name">{post.userName}</span>
+            </>
+          )}
           <span className="feed-user-level">Lv.{post.level}</span>
         </div>
         <span className={`feed-status feed-status-${post.status}`}>
