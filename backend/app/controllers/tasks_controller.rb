@@ -43,7 +43,10 @@ class TasksController < ApplicationController
       @task.update!(status: :completed, completed_at: completed_at)
       post = @task.completion_post || @task.create_completion_post!(user: current_user, status: :doing, content: @task.title)
       post.update!(status: :completed, completed_at: completed_at)
-      current_user.update!(feed_access_expires_at: 3.minutes.from_now)
+      current_user.update!(
+        feed_access_expires_at: 3.minutes.from_now,
+        feed_access_pending: ActiveModel::Type::Boolean.new.cast(params[:defer_feed_access])
+      )
     end
 
     render json: { status: "success", data: task_payload(task_with_associations(@task)) }, status: :ok

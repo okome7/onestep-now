@@ -317,6 +317,29 @@ RSpec.describe "Feed posts", type: :request do
     end
   end
 
+  describe "POST /api/feed/access" do
+    it "初回説明の開始待ちを消費して3分の閲覧時間を開始する" do
+      user.update!(feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+
+      post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.feed_access_pending).to be(false)
+      expect(user.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
+      expect(JSON.parse(response.body)).to include("remaining_seconds" => 180)
+    end
+
+    it "開始待ちでなければ現在の閲覧時間を延長しない" do
+      original_expiration = 1.minute.from_now
+      user.update!(feed_access_pending: false, feed_access_expires_at: original_expiration)
+
+      post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.feed_access_expires_at).to be_within(1.second).of(original_expiration)
+    end
+  end
+
   describe "GET /api/completion_posts/:id/comments" do
     it "最新側から20件ずつ取得し、各ページ内は古い順で返す" do
       task = other_user.tasks.create!(title: "コメントが多い投稿")

@@ -331,6 +331,19 @@ async function mockTaskAndFeedApi(page: Page) {
       }),
     });
   });
+
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 3 * 60,
+        feed_access_expires_at: new Date(
+          Date.now() + 3 * 60 * 1000,
+        ).toISOString(),
+      }),
+    });
+  });
 }
 
 test.beforeEach(async ({ page }) => {

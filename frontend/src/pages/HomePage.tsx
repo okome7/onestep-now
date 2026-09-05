@@ -66,6 +66,7 @@ import {
   fetchActiveTask,
   fetchComments,
   fetchFeed,
+  startFeedAccess,
   likePost,
   startTask,
   unlikePost,
@@ -413,7 +414,7 @@ export function HomePage() {
   }, [isFeedExpired])
 
   useEffect(() => {
-    if (!isFeedOpen || isFeedAccessDenied || isFeedLoading || isFeedExpired) {
+    if (!isFeedOpen || isFeedAccessDenied || isFeedLoading || isFeedExpired || isFeedIntroOpen) {
       return undefined
     }
 
@@ -453,6 +454,7 @@ export function HomePage() {
     isFeedExpired,
     isFeedLoading,
     isFeedOpen,
+    isFeedIntroOpen,
   ])
 
   const loadFeed = useCallback(async () => {
@@ -871,9 +873,21 @@ export function HomePage() {
     }
   }, [abortMyPageRequest, clearMyPageCache, completeProfile.id, loadMyPage])
 
-  function closeFeedIntro() {
-    window.localStorage.setItem(feedIntroStorageKey, 'true')
-    setIsFeedIntroOpen(false)
+  async function closeFeedIntro() {
+    try {
+      const result = await startFeedAccess(completeProfile.id)
+      const remainingSeconds = result.remaining_seconds ?? feedViewDurationSeconds
+      setFeedRemainingSeconds(remainingSeconds)
+      setFeedAccessExpiresAt(
+        result.feed_access_expires_at
+          ? new Date(result.feed_access_expires_at).getTime()
+          : Date.now() + remainingSeconds * 1000,
+      )
+      window.localStorage.setItem(feedIntroStorageKey, 'true')
+      setIsFeedIntroOpen(false)
+    } catch (caughtError) {
+      setFeedError(caughtError instanceof Error ? caughtError.message : 'フィードを開始できませんでした。')
+    }
   }
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
@@ -1512,7 +1526,11 @@ export function HomePage() {
     setIsTaskSubmitting(true)
 
     try {
-      const completedTask = await completeTask(activeTaskId, completeProfile.id)
+      const completedTask = await completeTask(
+        activeTaskId,
+        completeProfile.id,
+        !window.localStorage.getItem(feedIntroStorageKey),
+      )
       upsertOwnTaskPost(completedTask)
       setCompletedTaskReactions({
         likes: completedTask.completion_post?.likes_count ?? 0,
