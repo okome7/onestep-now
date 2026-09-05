@@ -938,6 +938,51 @@ test("ホーム画面が表示される", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("スマホの主要コンテンツに左右の余白を表示する", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await gotoHome(page);
+
+  const homeStart = page.locator(".home-start");
+  await expect(homeStart).toHaveCSS("padding-left", "24px");
+  await expect(homeStart).toHaveCSS("padding-right", "24px");
+  const taskInput = page.getByRole("textbox", { name: "今できること" });
+  const taskInputBox = await taskInput.boundingBox();
+  expect(taskInputBox).not.toBeNull();
+
+  await page.getByRole("link", { name: "投稿" }).click();
+  const feedList = page.locator(".feed-list");
+  await expect(feedList).toBeVisible();
+  await expect
+    .poll(async () => {
+      const box = await feedList.boundingBox();
+      return box?.width;
+    })
+    .toBeCloseTo(taskInputBox?.width ?? 0, 0);
+
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  const profileContent = page.locator(".profile-content");
+  await expect(profileContent).toBeVisible();
+  await expect
+    .poll(async () => {
+      const box = await profileContent.boundingBox();
+      return box?.width;
+    })
+    .toBeCloseTo(taskInputBox?.width ?? 0, 0);
+
+  await mockSession(page, false);
+  await page.evaluate(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+  await page.goto("/login");
+  const loginEmailBox = await page.getByLabel("メールアドレス").boundingBox();
+  expect(loginEmailBox?.width).toBeCloseTo(taskInputBox?.width ?? 0, 0);
+
+  await page.getByRole("link", { name: "新規登録" }).click();
+  const signupNameBox = await page.getByLabel("表示名").boundingBox();
+  expect(signupNameBox?.width).toBeCloseTo(taskInputBox?.width ?? 0, 0);
+});
+
 test("ホーム画面は末尾スラッシュ付きでも表示される", async ({ page }) => {
   await gotoHome(page, "/home/");
 

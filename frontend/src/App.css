@@ -4779,7 +4779,7 @@ body,
 
 @media (max-width: 600px) {
   .achievements-page .all-achievements-content {
-    width: min(calc(100% - 20px), 420px);
+    width: min(calc(100% - 48px), 360px);
     padding-right: 0;
     padding-left: 0;
   }
@@ -5610,7 +5610,7 @@ body,
 
 @media (max-width: 600px) {
   .feed-list:has(.feed-start-gate) {
-    width: min(calc(100% - 28px), 480px);
+    width: min(calc(100% - 48px), 360px);
   }
 
   .feed-start-gate-card {
@@ -6083,7 +6083,7 @@ body,
 @media (max-width: 600px) {
   .feed-list:not(:has(.feed-start-gate)),
   .profile-page:not(.achievements-page) .profile-content {
-    width: min(calc(100% - 20px), 420px);
+    width: min(calc(100% - 48px), 360px);
   }
 
   .feed-card {
@@ -6214,10 +6214,16 @@ body,
 }
 
 @media (max-width: 600px) {
+  .signup-content {
+    width: min(calc(100% - 48px), 360px);
+    padding-right: 0;
+    padding-left: 0;
+  }
+
   .feed-card,
   .profile-page:not(.achievements-page) .profile-achievement-card,
   .achievements-page .profile-achievement-card {
-    padding: 14px 12px;
+    padding: 14px 16px;
   }
 }
 
