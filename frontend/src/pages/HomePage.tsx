@@ -2548,7 +2548,21 @@ export function HomePage() {
                 aria-label="フィードに戻る"
                 onClick={returnToFeedFromProfile}
               >
-                &lt;
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M15 5L8 12L15 19"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
             )
           }

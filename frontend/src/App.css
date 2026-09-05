@@ -2933,9 +2933,8 @@ body {
   place-items: center;
   border-radius: 50%;
   color: #52667c;
-  font-size: 26px;
-  line-height: 1;
 }
+.profile-back-button svg { display: block; }
 .profile-back-button:hover,
 .profile-back-button:focus-visible {
   background: rgb(255 255 255 / 70%);
