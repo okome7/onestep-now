@@ -2918,6 +2918,41 @@ body {
   color: #111827;
   cursor: pointer;
 }
+.profile-back-button,
+.feed-avatar-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.profile-back-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  color: #52667c;
+  font-size: 26px;
+  line-height: 1;
+}
+.profile-back-button:hover,
+.profile-back-button:focus-visible {
+  background: rgb(255 255 255 / 70%);
+}
+.feed-avatar-button {
+  display: flex;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+.feed-avatar-button:not(:disabled):hover,
+.feed-avatar-button:not(:disabled):focus-visible {
+  outline: 3px solid rgb(77 149 229 / 22%);
+  outline-offset: 2px;
+}
+.feed-avatar-button:disabled {
+  cursor: default;
+}
 
 .profile-settings-button img {
   width: 31px;

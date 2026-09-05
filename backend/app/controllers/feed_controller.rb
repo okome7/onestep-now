@@ -72,7 +72,8 @@ class FeedController < ApplicationController
       viewer: current_user,
       completed_count: @completed_post_counts.fetch(post.user_id, 0),
       comment_count: @comment_counts.fetch(post.id, 0),
-      commented_by_viewer: @commented_post_ids.include?(post.id)
+      commented_by_viewer: @commented_post_ids.include?(post.id),
+      include_user_id: true
     ).as_json
   end
 

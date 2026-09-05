@@ -4,7 +4,10 @@ class MypageController < ApplicationController
   before_action :require_current_user
 
   def show
-    completed_posts = current_user.completion_posts.completed
+    profile_user = params[:user_id].present? ? User.find_by(id: params[:user_id]) : current_user
+    return render json: { status: "error", errors: [ "ユーザーが見つかりません。" ] }, status: :not_found unless profile_user
+
+    completed_posts = profile_user.completion_posts.completed
     completed_count = completed_posts.count
     likes_count = CompletionPostLike.where(completion_post_id: completed_posts.select(:id)).count
     comments_count = Comment.where(completion_post_id: completed_posts.select(:id)).count
@@ -22,6 +25,11 @@ class MypageController < ApplicationController
     render json: {
       status: "success",
       data: {
+        user: {
+          id: profile_user.id,
+          name: profile_user.name,
+          avatar_key: profile_user.avatar_key
+        },
         level: level_for(completed_count),
         next_level: next_level_for(completed_count),
         remaining_to_next_level: remaining_to_next_level_for(completed_count),

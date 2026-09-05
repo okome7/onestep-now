@@ -1397,6 +1397,106 @@ test("フィードのいいねとコメント後にマイページを再取得�
   ).toContainText("1");
 });
 
+test("フィードのアイコンから他のユーザーのマイページを表示する", async ({
+  page,
+}) => {
+  const createdAt = new Date().toISOString();
+  await page.unroute(myPageRoute);
+  await page.route(myPageRoute, async (route) => {
+    const isOtherUser = new URL(route.request().url()).pathname.includes(
+      "/users/2/",
+    );
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          user: isOtherUser
+            ? { id: 2, name: "みき", avatar_key: "avatar-2" }
+            : { id: 1, name: "おこめ", avatar_key: "avatar-1" },
+          level: isOtherUser ? 3 : 1,
+          next_level: isOtherUser ? 4 : 2,
+          remaining_to_next_level: 4,
+          progress_percent: 20,
+          achievements_count: 1,
+          streak_days: 1,
+          likes_count: 2,
+          comments_count: 1,
+          recent_achievements: [
+            {
+              id: isOtherUser ? 82 : 81,
+              can_delete: !isOtherUser,
+              task_title: isOtherUser ? "みきさんの達成" : "自分の達成",
+              likes_count: 2,
+              comments_count: 1,
+              created_at: createdAt,
+            },
+          ],
+          all_achievements: [
+            {
+              id: isOtherUser ? 82 : 81,
+              can_delete: !isOtherUser,
+              task_title: isOtherUser ? "みきさんの達成" : "自分の達成",
+              likes_count: 2,
+              comments_count: 1,
+              created_at: createdAt,
+            },
+          ],
+        },
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_access_expires_at: new Date(Date.now() + 180_000).toISOString(),
+        data: [
+          {
+            id: 82,
+            user_id: 2,
+            user_name: "みき",
+            avatar_key: "avatar-2",
+            level: 3,
+            task_title: "みきさんの達成",
+            status_label: "できた",
+            card_variant: "completed",
+            is_mine: false,
+            can_like: true,
+            can_comment: true,
+            likes_count: 2,
+            comments_count: 1,
+            liked_by_me: false,
+            created_at: createdAt,
+          },
+        ],
+      }),
+    });
+  });
+
+  await markLoggedIn(page);
+  await page.evaluate(() => {
+    sessionStorage.setItem("onestep-active-home-view", "feed");
+    localStorage.setItem("onestep-feed-intro-seen", "true");
+  });
+  await page.goto("/home");
+  await page
+    .getByRole("button", { name: "みきさんのマイページを見る" })
+    .click();
+
+  await expect(page.getByText("みき", { exact: true })).toBeVisible();
+  await expect(page.getByText("みきさんの達成")).toBeVisible();
+  await expect(page.getByText("Lv.3", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "設定" })).toHaveCount(0);
+  await expect(page.locator(".profile-achievement-menu-button")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "フィードに戻る" }).click();
+  await expect(page.getByRole("heading", { name: "フィード" })).toBeVisible();
+  await expect(page.getByText("みきさんの達成")).toBeVisible();
+});
+
 test("フィード閲覧時間外は案内画面からホームへ戻れる", async ({ page }) => {
   await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
     await route.fulfill({

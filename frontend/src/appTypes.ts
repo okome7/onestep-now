@@ -24,6 +24,7 @@ export type FeedComment = {
 
 export type FeedPost = {
   id: string
+  userId?: number
   userName: string
   avatarId: string
   level: number
@@ -73,6 +74,11 @@ export type CompleteProfile = {
 }
 
 export type MyPageData = {
+  user: {
+    id: number
+    name: string
+    avatarId: string
+  }
   level: number
   nextLevel: number
   remainingToNextLevel: number

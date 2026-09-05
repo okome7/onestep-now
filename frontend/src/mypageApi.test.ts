@@ -44,6 +44,7 @@ test('マイページ取得にAbortSignalを渡す', async () => {
       Promise.resolve({
         status: 'success',
         data: {
+          user: { id: 7, name: 'みき', avatar_key: 'avatar-2' },
           level: 0,
           next_level: 1,
           remaining_to_next_level: 10,
@@ -59,12 +60,17 @@ test('マイページ取得にAbortSignalを渡す', async () => {
   })
   vi.stubGlobal('fetch', fetchMock)
 
-  await fetchMyPage(7, 'https://api.example.com', controller.signal)
+  const result = await fetchMyPage(
+    7,
+    'https://api.example.com',
+    controller.signal,
+  )
 
   expect(fetchMock).toHaveBeenCalledWith(
-    'https://api.example.com/api/mypage',
+    'https://api.example.com/api/users/7/mypage',
     expect.objectContaining({ signal: controller.signal }),
   )
+  expect(result.user).toEqual({ id: 7, name: 'みき', avatarId: 'avatar-2' })
 })
 
 test('AbortErrorは接続エラーへ変換しない', async () => {
