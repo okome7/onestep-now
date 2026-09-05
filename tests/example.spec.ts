@@ -1202,6 +1202,37 @@ test("タスク完了後にマイページの達成と集計を再取得して�
   expect(myPageRequests).toBe(requestsAfterPrefetch + 1);
 });
 
+test("マイページで新しいレベルだけを通知し自動または手動で閉じられる", async ({
+  page,
+}) => {
+  await gotoHome(page);
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  await expect(page.getByText("Lv.1", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveCount(0);
+
+  await page.evaluate(() => {
+    localStorage.setItem("onestep-last-displayed-level:1", "0");
+  });
+  await page.reload();
+
+  const notification = page.getByRole("status");
+  await expect(notification).toContainText("Lv.1にレベルアップしました！");
+  await expect(notification).toContainText("一歩ずつ前に進んでいます！");
+  await expect(page.locator(".level-up-sparkles i")).toHaveCount(9);
+  await page.getByRole("button", { name: "レベルアップ通知を閉じる" }).click();
+  await expect(notification).toHaveCount(0);
+
+  await page.evaluate(() => {
+    localStorage.setItem("onestep-last-displayed-level:1", "0");
+  });
+  await page.reload();
+  await expect(notification).toBeVisible();
+  await expect(notification).toHaveCount(0, { timeout: 5000 });
+
+  await page.reload();
+  await expect(notification).toHaveCount(0);
+});
+
 test("フィードのいいねとコメント後にマイページを再取得する", async ({
   page,
 }) => {

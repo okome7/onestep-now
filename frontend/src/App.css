@@ -3453,12 +3453,94 @@ body {
   align-items: center;
   padding: 16px 20px 18px;
 }
+.profile-avatar-celebration {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
 .profile-avatar-large {
   width: 96px;
   height: 96px;
   border-radius: 50%;
   object-fit: cover;
   background: #d9d9d9;
+}
+.level-up-toast {
+  position: fixed;
+  z-index: 40;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  display: flex;
+  width: min(calc(100% - 32px), 390px);
+  min-height: 72px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #d9e9fb;
+  border-radius: 14px;
+  padding: 14px 12px 14px 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgb(36 91 147 / 18%);
+  color: #1f4f82;
+  transform: translateX(-50%);
+  animation: level-up-toast-enter 360ms ease-out both;
+}
+.level-up-toast.is-closing { animation: level-up-toast-exit 350ms ease-in both; }
+.level-up-toast-copy { display: flex; min-width: 0; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.45; }
+.level-up-toast-copy strong { color: #2679c9; font-size: 16px; }
+.level-up-toast-close {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: #6b7f93;
+  font: inherit;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.level-up-toast-close:hover,
+.level-up-toast-close:focus-visible { background: #eff7ff; color: #2679c9; }
+.level-up-sparkles { position: absolute; inset: -19px; pointer-events: none; }
+.level-up-sparkles i {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #4d95e5;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: level-up-sparkle 1.6s ease-out both;
+}
+.level-up-sparkles i:nth-child(1) { top: 8%; left: 14%; }
+.level-up-sparkles i:nth-child(2) { top: 0; left: 58%; background: #75d9f3; animation-delay: 80ms; }
+.level-up-sparkles i:nth-child(3) { top: 19%; right: 2%; background: #ffd65a; animation-delay: 160ms; }
+.level-up-sparkles i:nth-child(4) { top: 51%; right: 0; animation-delay: 240ms; }
+.level-up-sparkles i:nth-child(5) { right: 15%; bottom: 4%; background: #75d9f3; animation-delay: 320ms; }
+.level-up-sparkles i:nth-child(6) { bottom: 0; left: 42%; background: #ffd65a; animation-delay: 200ms; }
+.level-up-sparkles i:nth-child(7) { bottom: 14%; left: 3%; animation-delay: 280ms; }
+.level-up-sparkles i:nth-child(8) { top: 43%; left: 0; background: #75d9f3; animation-delay: 120ms; }
+.level-up-sparkles i:nth-child(9) { top: 25%; left: 32%; background: #ffd65a; animation-delay: 360ms; }
+@keyframes level-up-toast-enter {
+  from { opacity: 0; transform: translate(-50%, -18px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes level-up-toast-exit {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to { opacity: 0; transform: translate(-50%, -10px); }
+}
+@keyframes level-up-sparkle {
+  0% { opacity: 0; transform: scale(0.25) rotate(0deg); }
+  28% { opacity: 1; transform: scale(1.15) rotate(45deg); }
+  100% { opacity: 0; transform: scale(0.55) rotate(90deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-up-toast,
+  .level-up-toast.is-closing,
+  .level-up-sparkles i { animation-duration: 1ms; }
 }
 .profile-name {
   margin: 8px 0 10px;
