@@ -73,6 +73,14 @@ import {
   unlikePost,
 } from '../feedApi'
 import { applyFeedCableEvent, subscribeToFeedUpdates } from '../feedCable'
+import {
+  activeHomeViewStorageKey,
+  feedIntroStorageKey,
+  getInitialHomeView,
+  getInitialTaskDraft,
+  getLastDisplayedLevelStorageKey,
+  taskDraftStorageKey,
+} from '../homePageStorage'
 import { fetchCableToken, logoutSession } from '../sessionApi'
 import {
   deleteCompletionPost,
@@ -81,23 +89,6 @@ import {
   isCurrentMyPageResponse,
 } from '../mypageApi'
 import { updateProfile } from '../profileApi'
-
-const feedIntroStorageKey = 'onestep-feed-intro-seen'
-const activeHomeViewStorageKey = 'onestep-active-home-view'
-const taskDraftStorageKey = 'onestep-task-draft'
-const lastDisplayedLevelStorageKeyPrefix = 'onestep-last-displayed-level'
-
-function getLastDisplayedLevelStorageKey(userId: number) {
-  return `${lastDisplayedLevelStorageKeyPrefix}:${userId}`
-}
-
-function getInitialHomeView() {
-  return window.sessionStorage.getItem(activeHomeViewStorageKey)
-}
-
-function getInitialTaskDraft() {
-  return window.sessionStorage.getItem(taskDraftStorageKey) ?? ''
-}
 
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
@@ -435,7 +426,13 @@ export function HomePage() {
   }, [isFeedExpired])
 
   useEffect(() => {
-    if (!isFeedOpen || isFeedAccessDenied || isFeedLoading || isFeedExpired || isFeedIntroOpen) {
+    if (
+      !isFeedOpen ||
+      isFeedAccessDenied ||
+      isFeedLoading ||
+      isFeedExpired ||
+      isFeedIntroOpen
+    ) {
       return undefined
     }
 
@@ -901,7 +898,8 @@ export function HomePage() {
       !visibleMyPageData ||
       !completeProfile.id ||
       !isViewingOwnProfile
-    ) return
+    )
+      return
 
     const storageKey = getLastDisplayedLevelStorageKey(completeProfile.id)
     const storedLevel = Number.parseInt(
@@ -921,7 +919,12 @@ export function HomePage() {
       setLevelUpNotificationLevel(visibleMyPageData.level)
     }, 0)
     return () => window.clearTimeout(showTimerId)
-  }, [completeProfile.id, isProfileOpen, isViewingOwnProfile, visibleMyPageData])
+  }, [
+    completeProfile.id,
+    isProfileOpen,
+    isViewingOwnProfile,
+    visibleMyPageData,
+  ])
 
   useEffect(() => {
     if (levelUpNotificationLevel === null) return
@@ -944,7 +947,8 @@ export function HomePage() {
   async function closeFeedIntro() {
     try {
       const result = await startFeedAccess(completeProfile.id)
-      const remainingSeconds = result.remaining_seconds ?? feedViewDurationSeconds
+      const remainingSeconds =
+        result.remaining_seconds ?? feedViewDurationSeconds
       setFeedRemainingSeconds(remainingSeconds)
       setFeedAccessExpiresAt(
         result.feed_access_expires_at
@@ -954,7 +958,11 @@ export function HomePage() {
       window.localStorage.setItem(feedIntroStorageKey, 'true')
       setIsFeedIntroOpen(false)
     } catch (caughtError) {
-      setFeedError(caughtError instanceof Error ? caughtError.message : 'フィードを開始できませんでした。')
+      setFeedError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'フィードを開始できませんでした。',
+      )
     }
   }
 
@@ -2612,7 +2620,9 @@ export function HomePage() {
             />
             {levelUpNotificationLevel !== null ? (
               <span className="level-up-sparkles" aria-hidden="true">
-                {Array.from({ length: 9 }, (_, index) => <i key={index} />)}
+                {Array.from({ length: 9 }, (_, index) => (
+                  <i key={index} />
+                ))}
               </span>
             ) : null}
           </div>

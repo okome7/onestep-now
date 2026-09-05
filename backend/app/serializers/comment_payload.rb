@@ -9,7 +9,7 @@ class CommentPayload
       id: comment.id,
       user_id: comment.user_id,
       user_name: comment.user.name,
-      level: level_for(completed_count),
+      level: LevelProgress.new(completed_count).level,
       avatar_key: comment.user.avatar_key,
       completion_post_id: comment.completion_post_id,
       body: comment.body,
@@ -22,10 +22,4 @@ class CommentPayload
   private
 
   attr_reader :comment, :completed_count
-
-  def level_for(count)
-    return 0 if count.zero?
-
-    (count / User::COMPLETIONS_PER_LEVEL).floor + 1
-  end
 end
