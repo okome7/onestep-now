@@ -41,7 +41,7 @@ class MypageController < ApplicationController
   def level_for(completed_count)
     return 0 if completed_count.zero?
 
-    (completed_count / 10).floor + 1
+    (completed_count / User::COMPLETIONS_PER_LEVEL).floor + 1
   end
 
   def next_level_for(completed_count)
@@ -49,13 +49,13 @@ class MypageController < ApplicationController
   end
 
   def remaining_to_next_level_for(completed_count)
-    completed_in_current_level = completed_count % 10
-    remaining = 10 - completed_in_current_level
-    remaining.zero? ? 10 : remaining
+    completed_in_current_level = completed_count % User::COMPLETIONS_PER_LEVEL
+    remaining = User::COMPLETIONS_PER_LEVEL - completed_in_current_level
+    remaining.zero? ? User::COMPLETIONS_PER_LEVEL : remaining
   end
 
   def progress_percent_for(completed_count)
-    (completed_count % 10) * 10
+    (completed_count % User::COMPLETIONS_PER_LEVEL) * 100 / User::COMPLETIONS_PER_LEVEL
   end
 
   def streak_days(achieved_dates)
