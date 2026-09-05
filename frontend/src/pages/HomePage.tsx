@@ -24,10 +24,7 @@ import {
   saveCompleteProfile,
 } from '../appHelpers'
 import type { AchievementDetailTab, FeedComment, FeedPost } from '../appTypes'
-import settingsIcon from '../assets/icons/settings.svg'
 import {
-  AchievementDetailPanel,
-  AchievementList,
   AchievementsPage,
   FeedCommentPanel,
   FeedCountdown,
@@ -37,22 +34,17 @@ import {
   FeedStartGate,
   FocusSession,
   HomeStartForm,
-  LevelUpAvatar,
-  LevelUpToast,
-  ProfileEmptyState,
   ProfileIconEditPage,
-  ProfileLevelCard,
   ProfileNameEditPage,
-  ProfileStatsGrid,
+  ProfilePage,
   SettingsPage,
-  PostDeleteModal,
   TaskCompleteScreen,
   useLevelUpNotification,
   useFeedTimer,
   useMyPageData,
 } from '../components/home'
 import { resetBottomSheetScrollLock } from '../components/home/useBottomSheet'
-import { AppHeader, BackIcon, HomeBottomNav } from '../sharedComponents'
+import { AppHeader, HomeBottomNav } from '../sharedComponents'
 import {
   AuthRequiredError,
   FeedAccessDeniedError,
@@ -245,7 +237,6 @@ export function HomePage() {
     level: visibleMyPageData?.level,
   })
   const achievementsCount = visibleMyPageData?.achievementsCount ?? 0
-  const hasProfileAchievements = achievementsCount > 0
   const allProfileAchievements = visibleMyPageData?.allAchievements ?? []
   const recentAchievements = visibleMyPageData?.recentAchievements ?? []
   const activeAchievement = activeAchievementId
@@ -1715,134 +1706,48 @@ export function HomePage() {
   }
   if (isProfileOpen) {
     return (
-      <main className="home-page profile-page">
-        <AppHeader
-          title="マイページ"
-          leftAction={
-            isViewingOwnProfile ? null : (
-              <button
-                className="profile-back-button"
-                type="button"
-                aria-label="フィードに戻る"
-                onClick={returnToFeedFromProfile}
-              >
-                <BackIcon />
-              </button>
-            )
-          }
-          rightAction={
-            isViewingOwnProfile ? (
-              <button
-                className="profile-settings-button"
-                type="button"
-                aria-label="設定"
-                onClick={openSettings}
-              >
-                <img src={settingsIcon} alt="" aria-hidden="true" />
-              </button>
-            ) : null
-          }
-        />
-
-        <LevelUpToast
-          isClosing={isLevelUpNotificationClosing}
-          level={levelUpNotificationLevel}
-          onDismiss={dismissLevelUpNotification}
-        />
-
-        <section className="profile-content" aria-label="マイページ">
-          <LevelUpAvatar
-            avatarSrc={profileAvatarSrc}
-            isLevelingUp={levelUpNotificationLevel !== null}
-          />
-          <p className="profile-name">{profileName}</p>
-
-          <ProfileLevelCard
-            level={level}
-            nextLevel={nextLevel}
-            remainingToNextLevel={remainingToNextLevel}
-            progressPercent={progressPercent}
-          />
-
-          {myPageError ? (
-            <p className="profile-state-message" role="alert">
-              {myPageError}
-            </p>
-          ) : isMyPageLoading && !visibleMyPageData ? (
-            <p className="profile-state-message">読み込み中...</p>
-          ) : hasProfileAchievements ? (
-            <>
-              <section
-                className="profile-section"
-                aria-labelledby="profile-stats-title"
-              >
-                <h2 id="profile-stats-title">実績</h2>
-                <ProfileStatsGrid
-                  achievementsCount={achievementsCount}
-                  streakDays={visibleMyPageData?.streakDays ?? 0}
-                  likesCount={visibleMyPageData?.likesCount ?? 0}
-                  commentsCount={visibleMyPageData?.commentsCount ?? 0}
-                />
-              </section>
-
-              <section
-                className="profile-section"
-                aria-labelledby="profile-recent-title"
-              >
-                <div className="profile-section-heading">
-                  <h2 id="profile-recent-title">最近の達成</h2>
-                  <a href="/home" onClick={openAchievements}>
-                    すべて見る&gt;
-                  </a>
-                </div>
-                <AchievementList
-                  achievements={recentAchievements}
-                  now={feedNow}
-                  onOpenDetail={openAchievementDetail}
-                  openMenuId={openAchievementMenuId}
-                  onToggleMenu={toggleAchievementMenu}
-                  onRequestDelete={requestPostDeletion}
-                />
-              </section>
-            </>
-          ) : isViewingOwnProfile ? (
-            <ProfileEmptyState onStart={openHome} />
-          ) : (
-            <section className="profile-empty-state" aria-label="記録なし">
-              <h2>まだ記録はありません</h2>
-            </section>
-          )}
-        </section>
-
-        {activeAchievement ? (
-          <AchievementDetailPanel
-            achievement={activeAchievement}
-            activeTab={activeAchievementTab}
-            now={feedNow}
-            onClose={closeAchievementDetail}
-            onTabChange={setActiveAchievementTab}
-          />
-        ) : null}
-
-        {postPendingDeletionId ? (
-          <PostDeleteModal
-            isDeleting={isDeletingPost}
-            error={postDeleteError}
-            onCancel={cancelPostDeletion}
-            onConfirm={() => void confirmPostDeletion()}
-          />
-        ) : null}
-
-        <HomeBottomNav
-          activeItem="profile"
-          onHomeClick={openHome}
-          onFeedClick={openFeed}
-          onProfileClick={openProfile}
-        />
-      </main>
+      <ProfilePage
+        isViewingOwnProfile={isViewingOwnProfile}
+        avatarSrc={profileAvatarSrc}
+        profileName={profileName}
+        level={level}
+        nextLevel={nextLevel}
+        remainingToNextLevel={remainingToNextLevel}
+        progressPercent={progressPercent}
+        achievementsCount={achievementsCount}
+        streakDays={visibleMyPageData?.streakDays ?? 0}
+        likesCount={visibleMyPageData?.likesCount ?? 0}
+        commentsCount={visibleMyPageData?.commentsCount ?? 0}
+        recentAchievements={recentAchievements}
+        now={feedNow}
+        error={myPageError}
+        isLoading={isMyPageLoading}
+        hasLoadedData={Boolean(visibleMyPageData)}
+        activeAchievement={activeAchievement}
+        activeAchievementTab={activeAchievementTab}
+        openAchievementMenuId={openAchievementMenuId}
+        isDeletingPost={isDeletingPost}
+        postDeleteError={postDeleteError}
+        isPostDeleteModalOpen={Boolean(postPendingDeletionId)}
+        levelUpNotificationLevel={levelUpNotificationLevel}
+        isLevelUpNotificationClosing={isLevelUpNotificationClosing}
+        onBackToFeed={returnToFeedFromProfile}
+        onOpenSettings={openSettings}
+        onDismissLevelUp={dismissLevelUpNotification}
+        onOpenAchievements={openAchievements}
+        onOpenAchievementDetail={openAchievementDetail}
+        onCloseAchievementDetail={closeAchievementDetail}
+        onAchievementTabChange={setActiveAchievementTab}
+        onToggleAchievementMenu={toggleAchievementMenu}
+        onRequestPostDeletion={requestPostDeletion}
+        onCancelPostDeletion={cancelPostDeletion}
+        onConfirmPostDeletion={() => void confirmPostDeletion()}
+        onHomeClick={openHome}
+        onFeedClick={openFeed}
+        onProfileClick={openProfile}
+      />
     )
   }
-
   if (isFeedOpen) {
     return (
       <main className="home-page feed-page">
