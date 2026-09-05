@@ -2528,8 +2528,16 @@ export function HomePage() {
             role="status"
             aria-live="polite"
           >
+            <span className="level-up-toast-sparkle-icon" aria-hidden="true">
+              ✦
+            </span>
             <div className="level-up-toast-copy">
-              <strong>Lv.{levelUpNotificationLevel}にレベルアップしました！</strong>
+              <strong>
+                <span className="level-up-toast-level">
+                  Lv.{levelUpNotificationLevel}
+                </span>
+                にレベルアップしました！
+              </strong>
               <span>一歩ずつ前に進んでいます！</span>
             </div>
             <button
@@ -2544,7 +2552,11 @@ export function HomePage() {
         ) : null}
 
         <section className="profile-content" aria-label="マイページ">
-          <div className="profile-avatar-celebration">
+          <div
+            className={`profile-avatar-celebration${
+              levelUpNotificationLevel !== null ? ' is-leveling-up' : ''
+            }`}
+          >
             <img
               className="profile-avatar-large"
               src={profileAvatarSrc}
