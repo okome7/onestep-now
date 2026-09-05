@@ -8,7 +8,6 @@ import {
 import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { deleteAccount } from '../accountApi'
 import {
-  avatarOptions,
   customPhotoIconId,
   feedViewDurationSeconds,
   signupCompleteStorageKey,
@@ -25,8 +24,6 @@ import {
   saveCompleteProfile,
 } from '../appHelpers'
 import type { AchievementDetailTab, FeedComment, FeedPost } from '../appTypes'
-import cameraIcon from '../assets/icons/camera.svg'
-import iconGridIcon from '../assets/icons/icon-grid.svg'
 import settingsIcon from '../assets/icons/settings.svg'
 import {
   AchievementDetailPanel,
@@ -42,7 +39,9 @@ import {
   LevelUpAvatar,
   LevelUpToast,
   ProfileEmptyState,
+  ProfileIconEditPage,
   ProfileLevelCard,
+  ProfileNameEditPage,
   ProfileStatsGrid,
   PostDeleteModal,
   TaskCompleteScreen,
@@ -55,7 +54,6 @@ import {
   AppHeader,
   BackIcon,
   HomeBottomNav,
-  UnsavedChangesModal,
 } from '../sharedComponents'
 import {
   AuthRequiredError,
@@ -1628,256 +1626,48 @@ export function HomePage() {
 
   if (isSettingsOpen && isNameEditOpen) {
     return (
-      <main className="home-page name-edit-page">
-        <AppHeader
-          title="名前"
-          leftAction={
-            <button
-              className="settings-back-button"
-              type="button"
-              aria-label="設定に戻る"
-              onClick={closeNameEdit}
-            >
-              <BackIcon />
-            </button>
-          }
-          rightAction={
-            <button
-              className="name-edit-done-button"
-              type="submit"
-              form="display-name-form"
-              disabled={!canSaveDisplayName || isProfileSaving}
-            >
-              完了
-            </button>
-          }
-        />
-
-        <section className="name-edit-content" aria-label="表示名変更">
-          <form
-            id="display-name-form"
-            className="name-edit-form"
-            onSubmit={saveDisplayName}
-          >
-            <label htmlFor="display-name-input">表示名</label>
-            <input
-              id="display-name-input"
-              type="text"
-              value={displayNameDraft}
-              onChange={(event) => setDisplayNameDraft(event.target.value)}
-            />
-          </form>
-          {profileSaveError ? (
-            <p className="notice error" role="alert">
-              {profileSaveError}
-            </p>
-          ) : null}
-        </section>
-
-        {isNameDiscardConfirmOpen ? (
-          <UnsavedChangesModal
-            onContinue={continueNameEdit}
-            onDiscard={discardNameEdit}
-          />
-        ) : null}
-      </main>
+      <ProfileNameEditPage
+        displayNameDraft={displayNameDraft}
+        canSave={canSaveDisplayName}
+        isSaving={isProfileSaving}
+        saveError={profileSaveError}
+        isDiscardConfirmOpen={isNameDiscardConfirmOpen}
+        onBack={closeNameEdit}
+        onChange={setDisplayNameDraft}
+        onSubmit={saveDisplayName}
+        onContinue={continueNameEdit}
+        onDiscard={discardNameEdit}
+      />
     )
   }
 
   if (isSettingsOpen && isIconEditOpen) {
     return (
-      <main className="home-page icon-edit-page">
-        <AppHeader
-          title="アイコン"
-          leftAction={
-            <button
-              className="settings-back-button"
-              type="button"
-              aria-label="設定に戻る"
-              onClick={closeIconEdit}
-            >
-              <BackIcon />
-            </button>
-          }
-          rightAction={
-            <button
-              className="name-edit-done-button"
-              type="submit"
-              form="settings-icon-form"
-              disabled={!canSaveSettingsIcon || isProfileSaving}
-            >
-              完了
-            </button>
-          }
-        />
-
-        <form
-          id="settings-icon-form"
-          className="icon-edit-content"
-          aria-label="アイコン変更"
-          onSubmit={saveSettingsIcon}
-        >
-          <img
-            className="icon-edit-preview"
-            src={settingsIconPreviewSrc}
-            alt=""
-            aria-hidden="true"
-          />
-          {profileSaveError ? (
-            <p className="notice error" role="alert">
-              {profileSaveError}
-            </p>
-          ) : null}
-
-          <div className="icon-edit-action-list">
-            <button
-              className="icon-edit-action"
-              type="button"
-              aria-expanded={isSettingsAvatarGridOpen}
-              onClick={() => setIsSettingsAvatarGridOpen((current) => !current)}
-            >
-              <img
-                className="icon-edit-action-icon icon-edit-action-icon-grid"
-                src={iconGridIcon}
-                alt=""
-                aria-hidden="true"
-              />
-              <span className="icon-edit-action-text-grid">アイコンを選択</span>
-            </button>
-
-            {isSettingsCameraAvailable ? (
-              <label
-                className="icon-edit-action icon-edit-camera-action"
-                role="button"
-                tabIndex={0}
-                htmlFor="settings-camera-input"
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault()
-                    settingsCameraInputRef.current?.click()
-                  }
-                }}
-              >
-                <img
-                  className="icon-edit-action-icon icon-edit-action-icon-camera"
-                  src={cameraIcon}
-                  alt=""
-                  aria-hidden="true"
-                />
-                <span>カメラで撮影</span>
-              </label>
-            ) : null}
-
-            <button
-              className="icon-edit-action"
-              type="button"
-              onClick={() => settingsPhotoInputRef.current?.click()}
-            >
-              <span
-                className="icon-edit-action-icon icon-edit-action-icon-folder folder-icon"
-                aria-hidden="true"
-              />
-              <span>写真を選ぶ</span>
-            </button>
-          </div>
-
-          {isSettingsAvatarGridOpen ? (
-            <div
-              className="icon-palette-backdrop"
-              role="presentation"
-              onClick={() => setIsSettingsAvatarGridOpen(false)}
-            >
-              <section
-                className="icon-palette-modal"
-                role="dialog"
-                aria-modal="true"
-                aria-label="アイコンを選択"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <button
-                  className="icon-palette-close-button"
-                  type="button"
-                  aria-label="閉じる"
-                  onClick={() => setIsSettingsAvatarGridOpen(false)}
-                >
-                  ×
-                </button>
-                <div
-                  className="avatar-grid icon-edit-avatar-grid"
-                  role="radiogroup"
-                  aria-label="アイコン"
-                >
-                  {avatarOptions.map((avatar) => {
-                    const isCustomPhoto = avatar.id === customPhotoIconId
-                    const hasCustomPhoto =
-                      isCustomPhoto && settingsCustomPhotoUrl
-                    const isCameraSlot = isCustomPhoto && !hasCustomPhoto
-                    const avatarId = hasCustomPhoto
-                      ? settingsCustomPhotoUrl
-                      : avatar.id
-
-                    return (
-                      <button
-                        key={avatar.id}
-                        className={`avatar-option ${
-                          selectedSettingsIconId === avatarId ? 'selected' : ''
-                        } ${isCameraSlot ? 'photo-slot-empty' : ''}`}
-                        type="button"
-                        role="radio"
-                        aria-checked={selectedSettingsIconId === avatarId}
-                        aria-label={isCameraSlot ? '写真未選択' : avatar.label}
-                        disabled={isCameraSlot}
-                        onClick={() => handleSettingsAvatarClick(avatarId)}
-                      >
-                        {hasCustomPhoto ? (
-                          <img
-                            src={settingsCustomPhotoUrl}
-                            alt=""
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          !isCustomPhoto && (
-                            <img src={avatar.src} alt="" aria-hidden="true" />
-                          )
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            </div>
-          ) : null}
-
-          <input
-            id="settings-camera-input"
-            ref={settingsCameraInputRef}
-            className="photo-input"
-            type="file"
-            accept="image/*"
-            capture="user"
-            aria-label="撮影する写真"
-            onChange={handleSettingsPhotoChange}
-          />
-          <input
-            ref={settingsPhotoInputRef}
-            className="photo-input"
-            type="file"
-            accept="image/*"
-            aria-label="選択する写真"
-            onChange={handleSettingsPhotoChange}
-          />
-        </form>
-
-        {isIconDiscardConfirmOpen ? (
-          <UnsavedChangesModal
-            onContinue={continueIconEdit}
-            onDiscard={discardIconEdit}
-          />
-        ) : null}
-      </main>
+      <ProfileIconEditPage
+        cameraInputRef={settingsCameraInputRef}
+        photoInputRef={settingsPhotoInputRef}
+        previewSrc={settingsIconPreviewSrc}
+        selectedIconId={selectedSettingsIconId}
+        customPhotoUrl={settingsCustomPhotoUrl}
+        canSave={canSaveSettingsIcon}
+        isSaving={isProfileSaving}
+        saveError={profileSaveError}
+        isAvatarGridOpen={isSettingsAvatarGridOpen}
+        isCameraAvailable={isSettingsCameraAvailable}
+        isDiscardConfirmOpen={isIconDiscardConfirmOpen}
+        onBack={closeIconEdit}
+        onSubmit={saveSettingsIcon}
+        onToggleAvatarGrid={() =>
+          setIsSettingsAvatarGridOpen((current) => !current)
+        }
+        onCloseAvatarGrid={() => setIsSettingsAvatarGridOpen(false)}
+        onAvatarClick={handleSettingsAvatarClick}
+        onPhotoChange={handleSettingsPhotoChange}
+        onContinue={continueIconEdit}
+        onDiscard={discardIconEdit}
+      />
     )
   }
-
   if (isSettingsOpen) {
     return (
       <main className="home-page settings-page">
