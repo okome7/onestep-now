@@ -47,6 +47,7 @@ import {
   PostDeleteModal,
   TaskCompleteScreen,
   useLevelUpNotification,
+  useFeedTimer,
   useMyPageData,
 } from '../components/home'
 import { resetBottomSheetScrollLock } from '../components/home/useBottomSheet'
@@ -158,11 +159,6 @@ export function HomePage() {
     useState(false)
   const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
     useState(false)
-  const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(0)
-  const [feedAccessExpiresAt, setFeedAccessExpiresAt] = useState<number | null>(
-    null,
-  )
-  const [feedNow, setFeedNow] = useState(() => Date.now())
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
   const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
   const [isFeedLoading, setIsFeedLoading] = useState(false)
@@ -170,7 +166,6 @@ export function HomePage() {
   const [feedPage, setFeedPage] = useState(1)
   const [hasMoreFeedPosts, setHasMoreFeedPosts] = useState(false)
   const [feedLoadMoreError, setFeedLoadMoreError] = useState('')
-  const [isFeedTimeoutModalOpen, setIsFeedTimeoutModalOpen] = useState(false)
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
@@ -181,6 +176,23 @@ export function HomePage() {
   const [hasMoreComments, setHasMoreComments] = useState(false)
   const [isCommentsLoading, setIsCommentsLoading] = useState(false)
   const [commentsLoadError, setCommentsLoadError] = useState('')
+  const {
+    clearTimeout: clearFeedTimeout,
+    expire: expireFeed,
+    handAngle: feedCountdownHandAngle,
+    hasActiveAccess: hasActiveFeedAccess,
+    isExpired: isFeedExpired,
+    now: feedNow,
+    remainingSeconds: feedRemainingSeconds,
+    reset: resetFeedTimer,
+    start: startFeedTimer,
+    touch: touchFeedNow,
+  } = useFeedTimer({
+    durationSeconds: feedViewDurationSeconds,
+    enabled:
+      isFeedOpen && !isFeedAccessDenied && !isFeedLoading && !isFeedIntroOpen,
+    isFeedOpen,
+  })
   const redirectToLoginForAuthRequired = useCallback(() => {
     clearAuthSession()
     window.localStorage.removeItem(signupCompleteStorageKey)
@@ -190,7 +202,7 @@ export function HomePage() {
     window.sessionStorage.removeItem(signupDraftStorageKey)
     window.location.assign('/login')
   }, [])
-  const handleMyPageLoaded = useCallback(() => setFeedNow(Date.now()), [])
+  const handleMyPageLoaded = touchFeedNow
   const {
     abort: abortMyPageRequest,
     clear: clearMyPageData,
@@ -208,13 +220,6 @@ export function HomePage() {
   })
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
-  const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
-  const feedCountdownElapsedSeconds = Math.min(
-    feedViewDurationSeconds,
-    Math.max(0, feedViewDurationSeconds - feedRemainingSeconds),
-  )
-  const feedCountdownHandAngle =
-    (feedCountdownElapsedSeconds / feedViewDurationSeconds) * 360
   const visibleFeedPosts = feedPosts
   const isViewingOwnProfile = profileUserId === completeProfile.id
   const profileAvatarSrc = visibleMyPageData
@@ -435,61 +440,11 @@ export function HomePage() {
     }
   }, [isFeedExpired])
 
-  useEffect(() => {
-    if (
-      !isFeedOpen ||
-      isFeedAccessDenied ||
-      isFeedLoading ||
-      isFeedExpired ||
-      isFeedIntroOpen
-    ) {
-      return undefined
-    }
-
-    if (feedRemainingSeconds <= 0) {
-      return undefined
-    }
-
-    const expirationTimerId = window.setTimeout(() => {
-      setFeedRemainingSeconds(0)
-      setFeedAccessExpiresAt(null)
-      setIsFeedIntroOpen(false)
-      setIsFeedTimeoutModalOpen(true)
-      setFeedNow(Date.now())
-    }, feedRemainingSeconds * 1000)
-    const timerId = window.setInterval(() => {
-      setFeedRemainingSeconds((current) => {
-        const nextSeconds = Math.max(0, current - 1)
-
-        if (nextSeconds === 0) {
-          setFeedAccessExpiresAt(null)
-          setIsFeedIntroOpen(false)
-          setIsFeedTimeoutModalOpen(true)
-        }
-
-        return nextSeconds
-      })
-      setFeedNow(Date.now())
-    }, 1000)
-
-    return () => {
-      window.clearInterval(timerId)
-      window.clearTimeout(expirationTimerId)
-    }
-  }, [
-    feedRemainingSeconds,
-    isFeedAccessDenied,
-    isFeedExpired,
-    isFeedLoading,
-    isFeedOpen,
-    isFeedIntroOpen,
-  ])
-
   const loadFeed = useCallback(async () => {
     setFeedError('')
     setFeedLoadMoreError('')
     setIsFeedLoading(true)
-    setIsFeedTimeoutModalOpen(false)
+    clearFeedTimeout()
 
     try {
       const result = await fetchFeed(completeProfile.id)
@@ -499,14 +454,8 @@ export function HomePage() {
       setFeedPosts(result.posts)
       setFeedPage(result.page)
       setHasMoreFeedPosts(result.hasMore)
-      setFeedRemainingSeconds(nextRemainingSeconds)
-      setFeedAccessExpiresAt(
-        result.feedAccessExpiresAt
-          ? new Date(result.feedAccessExpiresAt).getTime()
-          : Date.now() + nextRemainingSeconds * 1000,
-      )
+      startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
       setIsFeedAccessDenied(false)
-      setFeedNow(Date.now())
 
       if (!window.localStorage.getItem(feedIntroStorageKey)) {
         setIsFeedIntroOpen(true)
@@ -516,10 +465,8 @@ export function HomePage() {
         setFeedPosts([])
         setFeedPage(1)
         setHasMoreFeedPosts(false)
-        setFeedRemainingSeconds(0)
-        setFeedAccessExpiresAt(null)
+        resetFeedTimer()
         setIsFeedAccessDenied(true)
-        setIsFeedTimeoutModalOpen(false)
         setIsFeedIntroOpen(false)
         return
       }
@@ -533,7 +480,7 @@ export function HomePage() {
     } finally {
       setIsFeedLoading(false)
     }
-  }, [completeProfile.id])
+  }, [clearFeedTimeout, completeProfile.id, resetFeedTimer, startFeedTimer])
 
   const loadMoreFeed = useCallback(async () => {
     if (isFeedLoadingMore || !hasMoreFeedPosts) {
@@ -560,9 +507,7 @@ export function HomePage() {
       setHasMoreFeedPosts(result.hasMore)
     } catch (caughtError) {
       if (caughtError instanceof FeedAccessDeniedError) {
-        setFeedRemainingSeconds(0)
-        setFeedAccessExpiresAt(null)
-        setIsFeedTimeoutModalOpen(true)
+        expireFeed()
         return
       }
 
@@ -574,7 +519,13 @@ export function HomePage() {
     } finally {
       setIsFeedLoadingMore(false)
     }
-  }, [completeProfile.id, feedPage, hasMoreFeedPosts, isFeedLoadingMore])
+  }, [
+    completeProfile.id,
+    expireFeed,
+    feedPage,
+    hasMoreFeedPosts,
+    isFeedLoadingMore,
+  ])
 
   useEffect(() => {
     const target = feedLoadMoreRef.current
@@ -758,12 +709,7 @@ export function HomePage() {
       const result = await startFeedAccess(completeProfile.id)
       const remainingSeconds =
         result.remaining_seconds ?? feedViewDurationSeconds
-      setFeedRemainingSeconds(remainingSeconds)
-      setFeedAccessExpiresAt(
-        result.feed_access_expires_at
-          ? new Date(result.feed_access_expires_at).getTime()
-          : Date.now() + remainingSeconds * 1000,
-      )
+      startFeedTimer(remainingSeconds, result.feed_access_expires_at)
       window.localStorage.setItem(feedIntroStorageKey, 'true')
       setIsFeedIntroOpen(false)
     } catch (caughtError) {
@@ -790,15 +736,14 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    const hasKnownFeedAccess =
-      feedAccessExpiresAt !== null && feedAccessExpiresAt > Date.now()
+    const hasKnownFeedAccess = hasActiveFeedAccess()
     if (!hasKnownFeedAccess) {
       setFeedPosts([])
-      setFeedRemainingSeconds(0)
+      resetFeedTimer()
     }
     setFeedError('')
     setIsFeedAccessDenied(!hasKnownFeedAccess)
-    setIsFeedTimeoutModalOpen(false)
+    clearFeedTimeout()
     if (isFeedOpen) {
       void loadFeed()
     }
@@ -821,7 +766,7 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     setIsFeedAccessDenied(false)
-    setIsFeedTimeoutModalOpen(false)
+    clearFeedTimeout()
     setFeedError('')
     if (isTaskComplete) {
       handleNextTask()
@@ -845,7 +790,7 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     setIsFeedAccessDenied(false)
-    setIsFeedTimeoutModalOpen(false)
+    clearFeedTimeout()
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
