@@ -1,14 +1,6 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-const isTruthy = (value: string | undefined) =>
-  value === "1" || value === "true" || value === "yes";
-
-const backendURL =
-  process.env.E2E_BACKEND_URL ||
-  (isTruthy(process.env.E2E_USE_DOCKER)
-    ? "http://127.0.0.1:3000"
-    : "http://127.0.0.1:3001");
 const authSessionStorageKey = "onestep-auth-session";
 const signupCompleteStorageKey = "onestep-signup-complete";
 const sessionRoute = /.*\/(?:api\/)?session$/;
@@ -380,99 +372,6 @@ test("未ログイン時にウェルカム画面から認証画面へ遷移で�
   await page.getByRole("link", { name: "新規登録" }).click();
   await expect(page).toHaveURL(/\/signup$/);
   await expect(page.getByRole("heading", { name: "新規登録" })).toBeVisible();
-});
-
-test("バックエンドのヘルスチェックが成功する", async ({ request }) => {
-  const response = await request.get(`${backendURL}/up`);
-
-  expect(response.status()).toBe(200);
-});
-
-test("バックエンドにデフォルトアイコンで登録できる", async ({ request }) => {
-  const email = `e2e+${Date.now()}@example.com`;
-  const response = await request.post(`${backendURL}/signup`, {
-    headers: { Origin: "http://localhost:5173" },
-    data: {
-      user: {
-        name: "E2E登録",
-        email,
-        password: "password1",
-        password_confirmation: "password1",
-        avatar_key: "avatar-1",
-      },
-    },
-  });
-
-  expect(response.status()).toBe(201);
-  await expect(response).toBeOK();
-
-  const body = await response.json();
-  expect(body).toMatchObject({
-    status: "success",
-    data: {
-      name: "E2E登録",
-      email,
-      avatar_key: "avatar-1",
-    },
-  });
-});
-
-test("バックエンドで保存せずにメールアドレスの重複を確認できる", async ({
-  request,
-}) => {
-  const email = `e2e-check+${Date.now()}@example.com`;
-  const response = await request.post(`${backendURL}/signup/email_check`, {
-    headers: { Origin: "http://localhost:5173" },
-    data: {
-      user: {
-        email,
-      },
-    },
-  });
-
-  expect(response.status()).toBe(200);
-  await expect(response).toBeOK();
-
-  const body = await response.json();
-  expect(body).toMatchObject({ status: "success" });
-});
-
-test("バックエンドでログインできる", async ({ request }) => {
-  const email = `e2e-login+${Date.now()}@example.com`;
-  await request.post(`${backendURL}/signup`, {
-    headers: { Origin: "http://localhost:5173" },
-    data: {
-      user: {
-        name: "E2Eログイン",
-        email,
-        password: "password1",
-        password_confirmation: "password1",
-        avatar_key: "avatar-1",
-      },
-    },
-  });
-
-  const response = await request.post(`${backendURL}/login`, {
-    headers: { Origin: "http://localhost:5173" },
-    data: {
-      user: {
-        email,
-        password: "password1",
-      },
-    },
-  });
-
-  expect(response.status()).toBe(200);
-  await expect(response).toBeOK();
-
-  const body = await response.json();
-  expect(body).toMatchObject({
-    status: "success",
-    data: {
-      name: "E2Eログイン",
-      email,
-    },
-  });
 });
 
 test("フロントエンドの新規登録画面が表示される", async ({ page }) => {

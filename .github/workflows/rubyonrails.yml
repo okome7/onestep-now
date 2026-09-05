@@ -40,6 +40,8 @@ jobs:
         run: bundle exec ruby bin/rails db:prepare
       - name: Run tests
         run: bundle exec ruby bin/rspec
+      - name: Run Rails unit and integration tests
+        run: bundle exec ruby bin/rails test
 
   lint:
     runs-on: ubuntu-latest

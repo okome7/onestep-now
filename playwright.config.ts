@@ -78,11 +78,13 @@ export default defineConfig({
 
     {
       name: "firefox",
+      grep: /@critical/,
       use: { ...devices["Desktop Firefox"] },
     },
 
     {
       name: "webkit",
+      grep: /@critical/,
       use: { ...devices["Desktop Safari"] },
     },
   ],
