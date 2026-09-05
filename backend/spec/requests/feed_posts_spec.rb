@@ -143,6 +143,7 @@ RSpec.describe "Feed posts", type: :request do
       expect(completion_post.reload).to be_completed
       expect(completion_post.completed_at.to_i).to eq(task.completed_at.to_i)
       expect(user.reload.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
+      expect(user.feed_access_pending).to be(false)
       body = JSON.parse(response.body)
       expect(body.dig("data", "completion_post")).to include(
         "id" => completion_post.id,

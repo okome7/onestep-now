@@ -1465,6 +1465,9 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   await mockTaskAndFeedApi(page);
   await page.clock.install();
   await gotoHome(page);
+  await page.evaluate(() => {
+    localStorage.setItem("onestep-feed-intro-seen", "true");
+  });
 
   await page
     .getByRole("textbox", { name: "今できること" })
