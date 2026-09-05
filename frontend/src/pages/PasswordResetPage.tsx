@@ -2,10 +2,8 @@ import { useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import {
   apiMessageToPasswordResetFieldErrors,
-  errorFieldClass,
   formatPasswordInput,
   hasErrors,
-  isPasswordGuidanceError,
   validatePasswordResetCode,
   validatePasswordResetEmail,
   validatePasswordResetPassword,
@@ -14,17 +12,20 @@ import type {
   PasswordResetFieldErrors,
   PasswordResetStep,
 } from '../appTypes'
+import { PasswordResetForm } from '../components/password-reset'
 import {
   resetPassword,
   sendPasswordResetCode,
   verifyPasswordResetCode,
 } from '../passwordResetApi'
-import type { PasswordResetForm } from '../passwordResetApi'
+import type {
+  PasswordResetForm as PasswordResetFormValues,
+} from '../passwordResetApi'
 import { SignupHeader } from '../sharedComponents'
 
 export function PasswordResetPage() {
   const [step, setStep] = useState<PasswordResetStep>('email')
-  const [form, setForm] = useState<PasswordResetForm>({
+  const [form, setForm] = useState<PasswordResetFormValues>({
     email: '',
     code: '',
     password: '',
@@ -34,9 +35,6 @@ export function PasswordResetPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const showPasswordGuidanceError = isPasswordGuidanceError(
-    fieldErrors.password,
-  )
   const noticeText = message || error
 
   const handleBack = () => {
@@ -135,161 +133,14 @@ export function PasswordResetPage() {
       <SignupHeader title="パスワード再設定" onBack={handleBack} />
 
       <section className="signup-content">
-        <form className="signup-form" onSubmit={handleSubmit} noValidate>
-          <div className="form-fields">
-            {step === 'email' && (
-              <div className="form-field">
-                <label htmlFor="reset-email">メールアドレス</label>
-                <input
-                  id="reset-email"
-                  className={errorFieldClass(fieldErrors.email)}
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="メールアドレスを入力"
-                  value={form.email}
-                  onChange={handleChange}
-                  aria-invalid={Boolean(fieldErrors.email)}
-                  aria-describedby={
-                    fieldErrors.email ? 'reset-email-error' : undefined
-                  }
-                  required
-                />
-                {fieldErrors.email && (
-                  <p
-                    id="reset-email-error"
-                    className="field-error-message"
-                    role="alert"
-                  >
-                    {fieldErrors.email}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {step === 'code' && (
-              <div className="form-field">
-                <label htmlFor="reset-code">認証コード</label>
-                <input
-                  id="reset-code"
-                  className={errorFieldClass(fieldErrors.code)}
-                  name="code"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="6桁の認証コードを入力"
-                  value={form.code}
-                  onChange={handleChange}
-                  aria-invalid={Boolean(fieldErrors.code)}
-                  aria-describedby={
-                    fieldErrors.code ? 'reset-code-error' : undefined
-                  }
-                  required
-                />
-                {fieldErrors.code && (
-                  <p
-                    id="reset-code-error"
-                    className="field-error-message"
-                    role="alert"
-                  >
-                    {fieldErrors.code}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {step === 'password' && (
-              <>
-                <div className="form-field">
-                  <label htmlFor="reset-password">新しいパスワード</label>
-                  <input
-                    id="reset-password"
-                    className={errorFieldClass(fieldErrors.password)}
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    inputMode="text"
-                    placeholder="新しいパスワードを入力"
-                    value={form.password}
-                    onChange={handleChange}
-                    aria-invalid={Boolean(fieldErrors.password)}
-                    aria-describedby={
-                      fieldErrors.password && !showPasswordGuidanceError
-                        ? 'reset-password-error'
-                        : 'reset-password-description'
-                    }
-                    required
-                  />
-                  <p
-                    id="reset-password-description"
-                    className={`field-note ${
-                      showPasswordGuidanceError ? 'field-note-error' : ''
-                    }`}
-                  >
-                    ※8文字以上で英字と数字を含めてください
-                  </p>
-                  {fieldErrors.password && !showPasswordGuidanceError && (
-                    <p
-                      id="reset-password-error"
-                      className="field-error-message"
-                      role="alert"
-                    >
-                      {fieldErrors.password}
-                    </p>
-                  )}
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor="reset-password-confirmation">
-                    新しいパスワード確認
-                  </label>
-                  <input
-                    id="reset-password-confirmation"
-                    className={errorFieldClass(
-                      fieldErrors.passwordConfirmation,
-                    )}
-                    name="passwordConfirmation"
-                    type="password"
-                    autoComplete="new-password"
-                    inputMode="text"
-                    placeholder="新しいパスワードを再入力"
-                    value={form.passwordConfirmation}
-                    onChange={handleChange}
-                    aria-invalid={Boolean(fieldErrors.passwordConfirmation)}
-                    aria-describedby={
-                      fieldErrors.passwordConfirmation
-                        ? 'reset-password-confirmation-error'
-                        : undefined
-                    }
-                    required
-                  />
-                  {fieldErrors.passwordConfirmation && (
-                    <p
-                      id="reset-password-confirmation-error"
-                      className="field-error-message"
-                      role="alert"
-                    >
-                      {fieldErrors.passwordConfirmation}
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          <button
-            className="submit-button"
-            type="submit"
-            disabled={isSubmitting}
-            aria-busy={isSubmitting}
-          >
-            {step === 'email'
-              ? 'コードを送信'
-              : step === 'code'
-                ? 'コードを確認'
-                : '再設定'}
-          </button>
-        </form>
+        <PasswordResetForm
+          step={step}
+          form={form}
+          fieldErrors={fieldErrors}
+          isSubmitting={isSubmitting}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+        />
 
         <p
           className={`notice ${message ? 'success' : ''} ${error ? 'error' : ''}`}
