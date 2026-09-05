@@ -28,6 +28,7 @@ import settingsIcon from '../assets/icons/settings.svg'
 import {
   AchievementDetailPanel,
   AchievementList,
+  AchievementsPage,
   FeedCommentPanel,
   FeedCountdown,
   FeedExpiredModal,
@@ -1688,70 +1689,30 @@ export function HomePage() {
   }
   if (isAchievementsOpen) {
     return (
-      <main
-        className={`home-page profile-page achievements-page ${
-          activeAchievement ? 'detail-open' : ''
-        }`}
-      >
-        <AppHeader
-          title="すべての達成"
-          leftAction={
-            <button
-              className="settings-back-button"
-              type="button"
-              aria-label="マイページに戻る"
-              onClick={closeAchievements}
-            >
-              <BackIcon />
-            </button>
-          }
-        />
-
-        <section className="all-achievements-content" aria-label="すべての達成">
-          {myPageError ? (
-            <p className="profile-state-message" role="alert">
-              {myPageError}
-            </p>
-          ) : isMyPageLoading && !visibleMyPageData ? (
-            <p className="profile-state-message">読み込み中...</p>
-          ) : allProfileAchievements.length === 0 ? (
-            <p className="profile-state-message">まだ記録はありません</p>
-          ) : (
-            <AchievementList
-              achievements={allProfileAchievements}
-              now={feedNow}
-              activeAchievementId={activeAchievementId}
-              variant="all"
-              onOpenDetail={openAchievementDetail}
-              openMenuId={openAchievementMenuId}
-              onToggleMenu={toggleAchievementMenu}
-              onRequestDelete={requestPostDeletion}
-            />
-          )}
-        </section>
-
-        {activeAchievement ? (
-          <AchievementDetailPanel
-            achievement={activeAchievement}
-            activeTab={activeAchievementTab}
-            now={feedNow}
-            onClose={closeAchievementDetail}
-            onTabChange={setActiveAchievementTab}
-          />
-        ) : null}
-
-        {postPendingDeletionId ? (
-          <PostDeleteModal
-            isDeleting={isDeletingPost}
-            error={postDeleteError}
-            onCancel={cancelPostDeletion}
-            onConfirm={() => void confirmPostDeletion()}
-          />
-        ) : null}
-      </main>
+      <AchievementsPage
+        achievements={allProfileAchievements}
+        now={feedNow}
+        activeAchievement={activeAchievement}
+        activeAchievementId={activeAchievementId}
+        activeTab={activeAchievementTab}
+        openMenuId={openAchievementMenuId}
+        error={myPageError}
+        isLoading={isMyPageLoading}
+        hasLoadedData={Boolean(visibleMyPageData)}
+        isDeleteModalOpen={Boolean(postPendingDeletionId)}
+        isDeleting={isDeletingPost}
+        deleteError={postDeleteError}
+        onBack={closeAchievements}
+        onOpenDetail={openAchievementDetail}
+        onCloseDetail={closeAchievementDetail}
+        onTabChange={setActiveAchievementTab}
+        onToggleMenu={toggleAchievementMenu}
+        onRequestDelete={requestPostDeletion}
+        onCancelDelete={cancelPostDeletion}
+        onConfirmDelete={() => void confirmPostDeletion()}
+      />
     )
   }
-
   if (isProfileOpen) {
     return (
       <main className="home-page profile-page">
