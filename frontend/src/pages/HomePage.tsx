@@ -44,11 +44,14 @@ import {
   FeedStartGate,
   FocusSession,
   HomeStartForm,
+  LevelUpAvatar,
+  LevelUpToast,
   ProfileEmptyState,
   ProfileLevelCard,
   ProfileStatsGrid,
   PostDeleteModal,
   TaskCompleteScreen,
+  useLevelUpNotification,
 } from '../components/home'
 import { resetBottomSheetScrollLock } from '../components/home/useBottomSheet'
 import {
@@ -78,7 +81,6 @@ import {
   feedIntroStorageKey,
   getInitialHomeView,
   getInitialTaskDraft,
-  getLastDisplayedLevelStorageKey,
   taskDraftStorageKey,
 } from '../homePageStorage'
 import { fetchCableToken, logoutSession } from '../sessionApi'
@@ -156,11 +158,6 @@ export function HomePage() {
   const myPageRequestUserIdRef = useRef<number | null>(null)
   const myPageRequestIdRef = useRef(0)
   const myPageRequestPromiseRef = useRef<Promise<void> | null>(null)
-  const [levelUpNotificationLevel, setLevelUpNotificationLevel] = useState<
-    number | null
-  >(null)
-  const [isLevelUpNotificationClosing, setIsLevelUpNotificationClosing] =
-    useState(false)
   const [displayNameDraft, setDisplayNameDraft] = useState(
     completeProfile.name || 'おこめ',
   )
@@ -233,6 +230,15 @@ export function HomePage() {
   const nextLevel = visibleMyPageData?.nextLevel ?? 1
   const remainingToNextLevel = visibleMyPageData?.remainingToNextLevel ?? 10
   const progressPercent = visibleMyPageData?.progressPercent ?? 0
+  const {
+    notificationLevel: levelUpNotificationLevel,
+    isClosing: isLevelUpNotificationClosing,
+    dismiss: dismissLevelUpNotification,
+  } = useLevelUpNotification({
+    enabled: isProfileOpen && isViewingOwnProfile,
+    userId: completeProfile.id,
+    level: visibleMyPageData?.level,
+  })
   const achievementsCount = visibleMyPageData?.achievementsCount ?? 0
   const hasProfileAchievements = achievementsCount > 0
   const allProfileAchievements = visibleMyPageData?.allAchievements ?? []
@@ -892,58 +898,6 @@ export function HomePage() {
     }
   }, [abortMyPageRequest, clearMyPageCache, completeProfile.id, loadMyPage])
 
-  useEffect(() => {
-    if (
-      !isProfileOpen ||
-      !visibleMyPageData ||
-      !completeProfile.id ||
-      !isViewingOwnProfile
-    )
-      return
-
-    const storageKey = getLastDisplayedLevelStorageKey(completeProfile.id)
-    const storedLevel = Number.parseInt(
-      window.localStorage.getItem(storageKey) ?? '',
-      10,
-    )
-
-    if (!Number.isFinite(storedLevel)) {
-      window.localStorage.setItem(storageKey, String(visibleMyPageData.level))
-      return
-    }
-    if (visibleMyPageData.level <= storedLevel) return
-
-    window.localStorage.setItem(storageKey, String(visibleMyPageData.level))
-    const showTimerId = window.setTimeout(() => {
-      setIsLevelUpNotificationClosing(false)
-      setLevelUpNotificationLevel(visibleMyPageData.level)
-    }, 0)
-    return () => window.clearTimeout(showTimerId)
-  }, [
-    completeProfile.id,
-    isProfileOpen,
-    isViewingOwnProfile,
-    visibleMyPageData,
-  ])
-
-  useEffect(() => {
-    if (levelUpNotificationLevel === null) return
-
-    const fadeTimerId = window.setTimeout(
-      () => setIsLevelUpNotificationClosing(true),
-      4000,
-    )
-    const removeTimerId = window.setTimeout(() => {
-      setLevelUpNotificationLevel(null)
-      setIsLevelUpNotificationClosing(false)
-    }, 4350)
-
-    return () => {
-      window.clearTimeout(fadeTimerId)
-      window.clearTimeout(removeTimerId)
-    }
-  }, [levelUpNotificationLevel])
-
   async function closeFeedIntro() {
     try {
       const result = await startFeedAccess(completeProfile.id)
@@ -1065,8 +1019,7 @@ export function HomePage() {
   function openFeedUserProfile(userId: number) {
     currentMyPageUserIdRef.current = userId
     setProfileUserId(userId)
-    setLevelUpNotificationLevel(null)
-    setIsLevelUpNotificationClosing(false)
+    dismissLevelUpNotification()
     setIsFeedOpen(false)
     setIsProfileOpen(true)
     setIsAchievementsOpen(false)
@@ -2575,57 +2528,17 @@ export function HomePage() {
           }
         />
 
-        {levelUpNotificationLevel !== null ? (
-          <div
-            className={`level-up-toast${
-              isLevelUpNotificationClosing ? ' is-closing' : ''
-            }`}
-            role="status"
-            aria-live="polite"
-          >
-            <span className="level-up-toast-sparkle-icon" aria-hidden="true">
-              ✦
-            </span>
-            <div className="level-up-toast-copy">
-              <strong>
-                <span className="level-up-toast-level">
-                  Lv.{levelUpNotificationLevel}
-                </span>
-                にレベルアップしました！
-              </strong>
-              <span>一歩ずつ前に進んでいます！</span>
-            </div>
-            <button
-              className="level-up-toast-close"
-              type="button"
-              aria-label="レベルアップ通知を閉じる"
-              onClick={() => setLevelUpNotificationLevel(null)}
-            >
-              ×
-            </button>
-          </div>
-        ) : null}
+        <LevelUpToast
+          isClosing={isLevelUpNotificationClosing}
+          level={levelUpNotificationLevel}
+          onDismiss={dismissLevelUpNotification}
+        />
 
         <section className="profile-content" aria-label="マイページ">
-          <div
-            className={`profile-avatar-celebration${
-              levelUpNotificationLevel !== null ? ' is-leveling-up' : ''
-            }`}
-          >
-            <img
-              className="profile-avatar-large"
-              src={profileAvatarSrc}
-              alt=""
-              aria-hidden="true"
-            />
-            {levelUpNotificationLevel !== null ? (
-              <span className="level-up-sparkles" aria-hidden="true">
-                {Array.from({ length: 9 }, (_, index) => (
-                  <i key={index} />
-                ))}
-              </span>
-            ) : null}
-          </div>
+          <LevelUpAvatar
+            avatarSrc={profileAvatarSrc}
+            isLevelingUp={levelUpNotificationLevel !== null}
+          />
           <p className="profile-name">{profileName}</p>
 
           <ProfileLevelCard
