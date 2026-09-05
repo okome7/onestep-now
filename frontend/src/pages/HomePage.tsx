@@ -24,12 +24,7 @@ import {
   isAvatarImageDataUrl,
   saveCompleteProfile,
 } from '../appHelpers'
-import type {
-  AchievementDetailTab,
-  FeedComment,
-  FeedPost,
-  MyPageData,
-} from '../appTypes'
+import type { AchievementDetailTab, FeedComment, FeedPost } from '../appTypes'
 import cameraIcon from '../assets/icons/camera.svg'
 import iconGridIcon from '../assets/icons/icon-grid.svg'
 import settingsIcon from '../assets/icons/settings.svg'
@@ -52,6 +47,7 @@ import {
   PostDeleteModal,
   TaskCompleteScreen,
   useLevelUpNotification,
+  useMyPageData,
 } from '../components/home'
 import { resetBottomSheetScrollLock } from '../components/home/useBottomSheet'
 import {
@@ -84,12 +80,7 @@ import {
   taskDraftStorageKey,
 } from '../homePageStorage'
 import { fetchCableToken, logoutSession } from '../sessionApi'
-import {
-  deleteCompletionPost,
-  fetchMyPage,
-  isAbortError,
-  isCurrentMyPageResponse,
-} from '../mypageApi'
+import { deleteCompletionPost } from '../mypageApi'
 import { updateProfile } from '../profileApi'
 
 export function HomePage() {
@@ -152,12 +143,6 @@ export function HomePage() {
     getInitialCompleteProfile(),
   )
   const [profileUserId, setProfileUserId] = useState(completeProfile.id)
-  const currentMyPageUserIdRef = useRef<number | undefined>(completeProfile.id)
-  const loadedMyPageUserIdRef = useRef<number | null>(null)
-  const myPageAbortControllerRef = useRef<AbortController | null>(null)
-  const myPageRequestUserIdRef = useRef<number | null>(null)
-  const myPageRequestIdRef = useRef(0)
-  const myPageRequestPromiseRef = useRef<Promise<void> | null>(null)
   const [displayNameDraft, setDisplayNameDraft] = useState(
     completeProfile.name || 'おこめ',
   )
@@ -188,10 +173,6 @@ export function HomePage() {
   const [isFeedTimeoutModalOpen, setIsFeedTimeoutModalOpen] = useState(false)
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
-  const [myPageData, setMyPageData] = useState<MyPageData | null>(null)
-  const [myPageDataUserId, setMyPageDataUserId] = useState<number | null>(null)
-  const [isMyPageLoading, setIsMyPageLoading] = useState(false)
-  const [myPageError, setMyPageError] = useState('')
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
@@ -200,6 +181,31 @@ export function HomePage() {
   const [hasMoreComments, setHasMoreComments] = useState(false)
   const [isCommentsLoading, setIsCommentsLoading] = useState(false)
   const [commentsLoadError, setCommentsLoadError] = useState('')
+  const redirectToLoginForAuthRequired = useCallback(() => {
+    clearAuthSession()
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
+    window.sessionStorage.removeItem(taskDraftStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
+    window.sessionStorage.removeItem(signupDraftStorageKey)
+    window.location.assign('/login')
+  }, [])
+  const handleMyPageLoaded = useCallback(() => setFeedNow(Date.now()), [])
+  const {
+    abort: abortMyPageRequest,
+    clear: clearMyPageData,
+    data: visibleMyPageData,
+    error: myPageError,
+    invalidate: invalidateMyPageData,
+    isLoading: isMyPageLoading,
+    load: loadMyPage,
+    refresh: refreshMyPageData,
+    selectUser: selectMyPageUser,
+    setError: setMyPageError,
+  } = useMyPageData(profileUserId, {
+    onAuthRequired: redirectToLoginForAuthRequired,
+    onLoaded: handleMyPageLoaded,
+  })
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
@@ -211,8 +217,6 @@ export function HomePage() {
     (feedCountdownElapsedSeconds / feedViewDurationSeconds) * 360
   const visibleFeedPosts = feedPosts
   const isViewingOwnProfile = profileUserId === completeProfile.id
-  const visibleMyPageData =
-    myPageDataUserId === profileUserId ? myPageData : null
   const profileAvatarSrc = visibleMyPageData
     ? getAvatarSrc(visibleMyPageData.user.avatarId)
     : getCompleteAvatarSrc(completeProfile)
@@ -604,36 +608,12 @@ export function HomePage() {
     loadMoreFeed,
   ])
 
-  const abortMyPageRequest = useCallback(() => {
-    myPageAbortControllerRef.current?.abort()
-    myPageRequestIdRef.current += 1
-    myPageAbortControllerRef.current = null
-    myPageRequestUserIdRef.current = null
-    myPageRequestPromiseRef.current = null
-  }, [])
-
   const clearMyPageCache = useCallback(() => {
-    abortMyPageRequest()
-    loadedMyPageUserIdRef.current = null
-    setMyPageData(null)
-    setMyPageDataUserId(null)
-    setMyPageError('')
-    setIsMyPageLoading(false)
+    clearMyPageData()
     setActiveAchievementId(null)
     setOpenAchievementMenuId(null)
     setPostPendingDeletionId(null)
-  }, [abortMyPageRequest])
-
-  const redirectToLoginForAuthRequired = useCallback(() => {
-    clearMyPageCache()
-    clearAuthSession()
-    window.localStorage.removeItem(signupCompleteStorageKey)
-    window.sessionStorage.removeItem(activeHomeViewStorageKey)
-    window.sessionStorage.removeItem(taskDraftStorageKey)
-    window.sessionStorage.removeItem(signupScreenStorageKey)
-    window.sessionStorage.removeItem(signupDraftStorageKey)
-    window.location.assign('/login')
-  }, [clearMyPageCache])
+  }, [clearMyPageData])
 
   useEffect(() => {
     let isCancelled = false
@@ -646,9 +626,7 @@ export function HomePage() {
 
       try {
         const task = await fetchActiveTask(completeProfile.id)
-        if (isCancelled || !task) {
-          return
-        }
+        if (isCancelled || !task) return
 
         const startedAt = task.started_at
           ? new Date(task.started_at).getTime()
@@ -682,142 +660,19 @@ export function HomePage() {
           )
         }
       } finally {
-        if (!isCancelled) {
-          setIsActiveTaskRestoring(false)
-        }
+        if (!isCancelled) setIsActiveTaskRestoring(false)
       }
     }
 
     void restoreActiveTask()
-
     return () => {
       isCancelled = true
     }
   }, [completeProfile.id, redirectToLoginForAuthRequired])
 
-  const loadMyPage = useCallback(
-    (force = false): Promise<void> => {
-      const requestUserId = currentMyPageUserIdRef.current
-
-      if (!requestUserId) {
-        return Promise.resolve()
-      }
-
-      if (!force && loadedMyPageUserIdRef.current === requestUserId) {
-        return Promise.resolve()
-      }
-
-      if (
-        !force &&
-        myPageRequestUserIdRef.current === requestUserId &&
-        myPageRequestPromiseRef.current
-      ) {
-        return myPageRequestPromiseRef.current
-      }
-
-      abortMyPageRequest()
-      const controller = new AbortController()
-      const requestId = myPageRequestIdRef.current + 1
-      myPageRequestIdRef.current = requestId
-      myPageAbortControllerRef.current = controller
-      myPageRequestUserIdRef.current = requestUserId
-      setMyPageError('')
-      setIsMyPageLoading(true)
-
-      const requestPromise = (async () => {
-        try {
-          const result = await fetchMyPage(
-            requestUserId,
-            undefined,
-            controller.signal,
-          )
-
-          if (
-            !isCurrentMyPageResponse(
-              requestUserId,
-              currentMyPageUserIdRef.current,
-              requestId,
-              myPageRequestIdRef.current,
-              controller.signal,
-            )
-          ) {
-            return
-          }
-
-          loadedMyPageUserIdRef.current = requestUserId
-          setMyPageData(result)
-          setMyPageDataUserId(requestUserId)
-          setFeedNow(Date.now())
-        } catch (caughtError) {
-          if (isAbortError(caughtError)) {
-            return
-          }
-
-          if (
-            !isCurrentMyPageResponse(
-              requestUserId,
-              currentMyPageUserIdRef.current,
-              requestId,
-              myPageRequestIdRef.current,
-              controller.signal,
-            )
-          ) {
-            return
-          }
-
-          if (caughtError instanceof AuthRequiredError) {
-            redirectToLoginForAuthRequired()
-            return
-          }
-
-          setMyPageError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : 'マイページ取得に失敗しました。',
-          )
-        } finally {
-          if (requestId === myPageRequestIdRef.current) {
-            myPageAbortControllerRef.current = null
-            myPageRequestUserIdRef.current = null
-            myPageRequestPromiseRef.current = null
-            setIsMyPageLoading(false)
-          }
-        }
-      })()
-
-      myPageRequestPromiseRef.current = requestPromise
-      return requestPromise
-    },
-    [abortMyPageRequest, redirectToLoginForAuthRequired],
-  )
-
-  const invalidateMyPageData = useCallback(
-    (userId: number) => {
-      if (currentMyPageUserIdRef.current !== userId) {
-        return false
-      }
-
-      abortMyPageRequest()
-      loadedMyPageUserIdRef.current = null
-      return true
-    },
-    [abortMyPageRequest],
-  )
-
-  const refreshMyPageData = useCallback(
-    (userId: number): Promise<void> => {
-      if (!invalidateMyPageData(userId)) {
-        return Promise.resolve()
-      }
-
-      return loadMyPage(true)
-    },
-    [invalidateMyPageData, loadMyPage],
-  )
-
   useLayoutEffect(() => {
-    currentMyPageUserIdRef.current = completeProfile.id
-  }, [completeProfile.id])
+    selectMyPageUser(completeProfile.id)
+  }, [completeProfile.id, selectMyPageUser])
 
   useEffect(() => {
     if (!isFeedOpen) {
@@ -997,7 +852,7 @@ export function HomePage() {
 
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
-    currentMyPageUserIdRef.current = completeProfile.id
+    selectMyPageUser(completeProfile.id)
     setProfileUserId(completeProfile.id)
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
     setIsFeedOpen(false)
@@ -1017,7 +872,7 @@ export function HomePage() {
   }
 
   function openFeedUserProfile(userId: number) {
-    currentMyPageUserIdRef.current = userId
+    selectMyPageUser(userId)
     setProfileUserId(userId)
     dismissLevelUpNotification()
     setIsFeedOpen(false)
