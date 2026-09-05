@@ -905,6 +905,11 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
 test("ホーム画面が表示される", async ({ page }) => {
   await gotoHome(page);
 
+  await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+    "content",
+    /interactive-widget=overlays-content/,
+  );
+
   await expect(
     page.getByRole("heading", { name: "OneStep Now" }),
   ).toBeVisible();
