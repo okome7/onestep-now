@@ -940,6 +940,7 @@ test("ホーム画面が表示される", async ({ page }) => {
 
 test("スマホの主要コンテンツに左右の余白を表示する", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
+  await mockTaskAndFeedApi(page);
   await gotoHome(page);
 
   const homeStart = page.locator(".home-start");
@@ -959,7 +960,10 @@ test("スマホの主要コンテンツに左右の余白を表示する", async
     })
     .toBeCloseTo(taskInputBox?.width ?? 0, 0);
 
-  await page.getByRole("link", { name: "プロフィール" }).click();
+  await page.evaluate(() => {
+    sessionStorage.setItem("onestep-active-home-view", "profile");
+  });
+  await page.reload();
   const profileContent = page.locator(".profile-content");
   await expect(profileContent).toBeVisible();
   await expect
