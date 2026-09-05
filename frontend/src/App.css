@@ -2931,13 +2931,17 @@ body {
   width: 40px;
   height: 40px;
   place-items: center;
+  border: 1px solid rgb(111 143 176 / 32%);
   border-radius: 50%;
+  background: rgb(255 255 255 / 64%);
+  box-shadow: 0 2px 8px rgb(53 91 132 / 8%);
   color: #52667c;
 }
 .profile-back-button svg { display: block; }
 .profile-back-button:hover,
 .profile-back-button:focus-visible {
-  background: rgb(255 255 255 / 70%);
+  border-color: rgb(77 149 229 / 48%);
+  background: rgb(255 255 255 / 90%);
 }
 .feed-profile-button {
   display: flex;
