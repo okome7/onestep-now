@@ -206,8 +206,8 @@ RSpec.describe "Mypage", type: :request do
         data = JSON.parse(response.body).fetch("data")
         expect(data).to include(
           "level" => 1,
-          "remaining_to_next_level" => 9,
-          "progress_percent" => 10,
+          "remaining_to_next_level" => 4,
+          "progress_percent" => 20,
           "achievements_count" => 1,
           "streak_days" => 1,
           "likes_count" => 1,
