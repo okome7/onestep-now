@@ -1,4 +1,6 @@
 class User < ApplicationRecord
+  COMPLETIONS_PER_LEVEL = 5
+
   has_secure_password
 
   has_many :tasks, dependent: :destroy

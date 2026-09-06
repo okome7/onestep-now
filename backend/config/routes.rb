@@ -18,6 +18,7 @@ Rails.application.routes.draw do
   scope "/api" do
     patch "profile", to: "profiles#update"
     get "feed", to: "feed#index"
+    post "feed/access", to: "feed#start_access"
     get "mypage", to: "mypage#show"
     post "cable_token", to: "cable_tokens#create"
     get "tasks/active", to: "tasks#active"

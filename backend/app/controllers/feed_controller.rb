@@ -31,6 +31,19 @@ class FeedController < ApplicationController
     }, status: :ok
   end
 
+  def start_access
+    if current_user.feed_access_pending?
+      current_user.update!(feed_access_pending: false, feed_access_expires_at: 3.minutes.from_now)
+    end
+    return render_feed_unavailable unless feed_accessible?
+
+    render json: {
+      status: "success",
+      remaining_seconds: remaining_seconds,
+      feed_access_expires_at: current_user.feed_access_expires_at
+    }, status: :ok
+  end
+
   private
 
   def feed_accessible?
@@ -59,7 +72,8 @@ class FeedController < ApplicationController
       viewer: current_user,
       completed_count: @completed_post_counts.fetch(post.user_id, 0),
       comment_count: @comment_counts.fetch(post.id, 0),
-      commented_by_viewer: @commented_post_ids.include?(post.id)
+      commented_by_viewer: @commented_post_ids.include?(post.id),
+      include_user_id: true
     ).as_json
   end
 

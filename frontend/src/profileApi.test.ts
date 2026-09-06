@@ -6,6 +6,7 @@ afterEach(() => vi.restoreAllMocks())
 test('変更したプロフィールを永続化APIへ送信する', async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
+    headers: new Headers({ 'Content-Type': 'application/json' }),
     json: () =>
       Promise.resolve({
         status: 'success',

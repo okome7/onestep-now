@@ -1,3 +1,12 @@
+import {
+  apiErrorMessage,
+  apiFetch,
+  buildApiUrl,
+  defaultApiBaseUrl,
+  readJsonResponse,
+  type ApiErrorResponse,
+} from './apiClient'
+
 export type LoginForm = {
   email: string
   password: string
@@ -13,16 +22,9 @@ type LoginSuccessResponse = {
   }
 }
 
-type LoginErrorResponse = {
-  status: 'error'
-  errors?: string[]
-  error?: string
-  message?: string
-}
+type LoginErrorResponse = ApiErrorResponse
 
 type LoginResponse = LoginSuccessResponse | LoginErrorResponse
-
-const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 const loginAuthErrorMessage = 'メールアドレスまたはパスワードが違います'
 
@@ -37,29 +39,11 @@ function translateLoginError(message: string) {
   return japaneseErrorMessages[message] ?? message
 }
 
-function isPresentString(message: string | undefined): message is string {
-  return Boolean(message)
-}
-
-function apiUrl(apiBaseUrl: string) {
-  const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-  return `${trimmedApiBaseUrl.replace(/\/$/, '')}/login`
-}
-
-function errorMessageFromResult(result: LoginErrorResponse) {
-  const errors =
-    result.errors ?? [result.error, result.message].filter(isPresentString)
-
-  return errors.length
-    ? errors.map(translateLoginError).join('\n')
-    : loginAuthErrorMessage
-}
-
 export async function login(form: LoginForm, apiBaseUrl = defaultApiBaseUrl) {
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl), {
+    response = await apiFetch(buildApiUrl(apiBaseUrl, '/login'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -77,26 +61,24 @@ export async function login(form: LoginForm, apiBaseUrl = defaultApiBaseUrl) {
     )
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
-
-  if (!contentType.includes('application/json')) {
-    if (response.status >= 500) {
-      throw new Error(
-        'APIに接続できませんでした。時間をおいて再度お試しください。',
-      )
-    }
-
-    throw new Error(
-      'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
-    )
-  }
-
-  const result = (await response.json()) as LoginResponse
+  const unexpectedResponseMessage =
+    response.status >= 500
+      ? 'APIに接続できませんでした。時間をおいて再度お試しください。'
+      : 'APIから想定外の応答が返りました。時間をおいて再度お試しください。'
+  const result = await readJsonResponse<LoginResponse>(
+    response,
+    unexpectedResponseMessage,
+  )
 
   if (!response.ok || result.status === 'error') {
-    throw new Error(errorMessageFromResult(result as LoginErrorResponse))
+    throw new Error(
+      apiErrorMessage(
+        result as LoginErrorResponse,
+        loginAuthErrorMessage,
+        translateLoginError,
+      ),
+    )
   }
 
   return result.data
 }
-import { apiFetch } from './apiClient'

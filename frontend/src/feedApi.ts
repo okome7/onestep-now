@@ -1,5 +1,12 @@
 import type { FeedComment, FeedPost, FeedPostStatus } from './appTypes'
-import { apiFetch } from './apiClient'
+import {
+  apiErrorMessage,
+  apiFetch,
+  buildApiUrl,
+  defaultApiBaseUrl,
+  readJsonResponse,
+  type ApiErrorResponse,
+} from './apiClient'
 
 type ApiFeedStatus = 'doing' | 'completed'
 
@@ -93,14 +100,7 @@ type CommentsResponse = {
   data: ApiComment[]
 }
 
-type ErrorResponse = {
-  status: 'error'
-  errors?: string[]
-  error?: string
-  message?: string
-}
-
-const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
+type ErrorResponse = ApiErrorResponse
 
 export class FeedAccessDeniedError extends Error {
   constructor() {
@@ -115,13 +115,7 @@ export class AuthRequiredError extends Error {
 }
 
 function apiUrl(apiBaseUrl: string, path: string) {
-  const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-  const normalizedApiBaseUrl = trimmedApiBaseUrl.replace(/\/$/, '')
-  const apiBasePath = normalizedApiBaseUrl.endsWith('/api')
-    ? normalizedApiBaseUrl
-    : `${normalizedApiBaseUrl}/api`
-
-  return `${apiBasePath}${path}`
+  return buildApiUrl(apiBaseUrl, path, { ensureApiPath: true })
 }
 
 function userHeaders(userId?: number) {
@@ -129,21 +123,6 @@ function userHeaders(userId?: number) {
   return {
     'Content-Type': 'application/json',
   }
-}
-
-function errorMessage(result: ErrorResponse, fallback: string) {
-  const errors = result.errors ?? [result.error, result.message].filter(Boolean)
-  return errors.length ? errors.join('\n') : fallback
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get('content-type') ?? ''
-
-  if (!contentType.includes('application/json')) {
-    throw new Error('APIから想定外の応答が返りました。')
-  }
-
-  return (await response.json()) as T
 }
 
 function uiStatus(status: ApiFeedStatus): FeedPostStatus {
@@ -175,6 +154,7 @@ export function mapFeedPost(
 
   return {
     id: String(post.id),
+    userId: post.user_id,
     userName:
       post.is_mine || post.user_id === currentUserId
         ? 'あなた'
@@ -215,11 +195,16 @@ export async function fetchComments(postId: string, userId?: number, page = 1) {
     throw new AuthRequiredError()
   }
 
-  const result = await readJson<CommentsResponse | ErrorResponse>(response)
+  const result = await readJsonResponse<CommentsResponse | ErrorResponse>(
+    response,
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(result as ErrorResponse, 'コメントの取得に失敗しました。'),
+      apiErrorMessage(
+        result as ErrorResponse,
+        'コメントの取得に失敗しました。',
+      ),
     )
   }
 
@@ -252,11 +237,13 @@ export async function fetchFeed(
     throw new FeedAccessDeniedError()
   }
 
-  const result = await readJson<FeedSuccessResponse | ErrorResponse>(response)
+  const result = await readJsonResponse<FeedSuccessResponse | ErrorResponse>(
+    response,
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(result as ErrorResponse, 'フィード取得に失敗しました。'),
+      apiErrorMessage(result as ErrorResponse, 'フィード取得に失敗しました。'),
     )
   }
 
@@ -297,11 +284,11 @@ export async function createTask(title: string, userId?: number) {
     throw new AuthRequiredError()
   }
 
-  const result = await readJson<TaskResponse | ErrorResponse>(response)
+  const result = await readJsonResponse<TaskResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(result as ErrorResponse, 'タスク作成に失敗しました。'),
+      apiErrorMessage(result as ErrorResponse, 'タスク作成に失敗しました。'),
     )
   }
 
@@ -317,11 +304,13 @@ export async function fetchActiveTask(userId?: number) {
     throw new AuthRequiredError()
   }
 
-  const result = await readJson<ActiveTaskResponse | ErrorResponse>(response)
+  const result = await readJsonResponse<ActiveTaskResponse | ErrorResponse>(
+    response,
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(
+      apiErrorMessage(
         result as ErrorResponse,
         '進行中のタスク取得に失敗しました。',
       ),
@@ -344,23 +333,28 @@ export async function startTask(taskId: number, userId?: number) {
     throw new AuthRequiredError()
   }
 
-  const result = await readJson<TaskResponse | ErrorResponse>(response)
+  const result = await readJsonResponse<TaskResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(result as ErrorResponse, 'タスク開始に失敗しました。'),
+      apiErrorMessage(result as ErrorResponse, 'タスク開始に失敗しました。'),
     )
   }
 
   return (result as TaskResponse).data
 }
 
-export async function completeTask(taskId: number, userId?: number) {
+export async function completeTask(
+  taskId: number,
+  userId?: number,
+  deferFeedAccess = false,
+) {
   const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/tasks/${taskId}/complete`),
     {
       method: 'PATCH',
       headers: userHeaders(userId),
+      body: JSON.stringify({ defer_feed_access: deferFeedAccess }),
     },
   )
 
@@ -368,15 +362,35 @@ export async function completeTask(taskId: number, userId?: number) {
     throw new AuthRequiredError()
   }
 
-  const result = await readJson<TaskResponse | ErrorResponse>(response)
+  const result = await readJsonResponse<TaskResponse | ErrorResponse>(response)
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(result as ErrorResponse, 'タスク完了に失敗しました。'),
+      apiErrorMessage(result as ErrorResponse, 'タスク完了に失敗しました。'),
     )
   }
 
   return (result as TaskResponse).data
+}
+
+export async function startFeedAccess(userId?: number) {
+  const response = await apiFetch(apiUrl(defaultApiBaseUrl, '/feed/access'), {
+    method: 'POST',
+    headers: userHeaders(userId),
+  })
+  if (response.status === 401) throw new AuthRequiredError()
+  const result = await readJsonResponse<FeedSuccessResponse | ErrorResponse>(
+    response,
+  )
+  if (!response.ok || result.status === 'error') {
+    throw new Error(
+      apiErrorMessage(
+        result as ErrorResponse,
+        'フィードを開始できませんでした。',
+      ),
+    )
+  }
+  return result as FeedSuccessResponse
 }
 
 export async function cancelTask(taskId: number, userId?: number) {
@@ -392,11 +406,13 @@ export async function cancelTask(taskId: number, userId?: number) {
     throw new AuthRequiredError()
   }
 
-  const result = await readJson<{ status: 'success' } | ErrorResponse>(response)
+  const result = await readJsonResponse<{ status: 'success' } | ErrorResponse>(
+    response,
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(result as ErrorResponse, 'タスクの中止に失敗しました。'),
+      apiErrorMessage(result as ErrorResponse, 'タスクの中止に失敗しました。'),
     )
   }
 }
@@ -455,11 +471,13 @@ export async function createComment(
     throw new AuthRequiredError()
   }
 
-  const result = await readJson<CommentResponse | ErrorResponse>(response)
+  const result = await readJsonResponse<CommentResponse | ErrorResponse>(
+    response,
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(result as ErrorResponse, 'コメント投稿に失敗しました。'),
+      apiErrorMessage(result as ErrorResponse, 'コメント投稿に失敗しました。'),
     )
   }
 

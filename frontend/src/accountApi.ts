@@ -1,43 +1,27 @@
+import {
+  apiErrorMessage,
+  apiFetch,
+  buildApiUrl,
+  defaultApiBaseUrl,
+  readJsonResponse,
+  type ApiErrorResponse,
+} from './apiClient'
+
 type DeleteAccountSuccessResponse = {
   status: 'success'
 }
 
-type DeleteAccountErrorResponse = {
-  status: 'error'
-  errors?: string[]
-  error?: string
-  message?: string
-}
+type DeleteAccountErrorResponse = ApiErrorResponse
 
 type DeleteAccountResponse =
   | DeleteAccountSuccessResponse
   | DeleteAccountErrorResponse
 
-const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
-
-function isPresentString(message: string | undefined): message is string {
-  return Boolean(message)
-}
-
-function apiUrl(apiBaseUrl: string) {
-  const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-  return `${trimmedApiBaseUrl.replace(/\/$/, '')}/account`
-}
-
-function errorMessageFromResult(result: DeleteAccountErrorResponse) {
-  const errors =
-    result.errors ?? [result.error, result.message].filter(isPresentString)
-
-  return errors.length ? errors.join('\n') : 'アカウント削除に失敗しました。'
-}
-
-export async function deleteAccount(
-  apiBaseUrl = defaultApiBaseUrl,
-) {
+export async function deleteAccount(apiBaseUrl = defaultApiBaseUrl) {
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl), {
+    response = await apiFetch(buildApiUrl(apiBaseUrl, '/account'), {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -49,18 +33,17 @@ export async function deleteAccount(
     )
   }
 
-  const contentType = response.headers.get('content-type') ?? ''
-
-  if (!contentType.includes('application/json')) {
-    throw new Error(
-      'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
-    )
-  }
-
-  const result = (await response.json()) as DeleteAccountResponse
+  const result = await readJsonResponse<DeleteAccountResponse>(
+    response,
+    'APIから想定外の応答が返りました。時間をおいて再度お試しください。',
+  )
 
   if (!response.ok || result.status === 'error') {
-    throw new Error(errorMessageFromResult(result as DeleteAccountErrorResponse))
+    throw new Error(
+      apiErrorMessage(
+        result as DeleteAccountErrorResponse,
+        'アカウント削除に失敗しました。',
+      ),
+    )
   }
 }
-import { apiFetch } from './apiClient'

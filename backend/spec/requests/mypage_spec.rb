@@ -38,6 +38,30 @@ RSpec.describe "Mypage", type: :request do
   let(:fan) { create_user(email: "fan@example.com") }
 
   describe "GET /api/mypage" do
+    it "指定したユーザーのマイページを本人専用操作なしで返す" do
+      post = create_completed_post(user: other_user, title: "他の人の達成", completed_at: Time.current)
+      create_completed_post(user: user, title: "自分の達成", completed_at: 1.hour.ago)
+
+      get "/api/mypage?user_id=#{other_user.id}", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body).fetch("data")
+      expect(data.fetch("user")).to include(
+        "id" => other_user.id,
+        "name" => "other",
+        "avatar_key" => other_user.avatar_key
+      )
+      expect(data.fetch("all_achievements")).to contain_exactly(
+        include("id" => post.id, "task_title" => "他の人の達成", "can_delete" => false)
+      )
+    end
+
+    it "存在しないユーザーには404を返す" do
+      get "/api/mypage?user_id=999999", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:not_found)
+    end
+
     it "ログイン中ユーザーの達成だけを集計して新しい順で返す" do
       travel_to Time.zone.local(2026, 7, 9, 12, 0, 0) do
         older_post = create_completed_post(user: user, title: "古い達成", completed_at: 2.days.ago)
@@ -58,8 +82,8 @@ RSpec.describe "Mypage", type: :request do
         expect(data).to include(
           "level" => 1,
           "next_level" => 2,
-          "remaining_to_next_level" => 8,
-          "progress_percent" => 20,
+          "remaining_to_next_level" => 3,
+          "progress_percent" => 40,
           "achievements_count" => 2,
           "streak_days" => 1,
           "likes_count" => 3,
@@ -77,7 +101,7 @@ RSpec.describe "Mypage", type: :request do
       end
     end
 
-    it "レベルを10達成ごとに計算する" do
+    it "レベルを5達成ごとに計算する" do
       travel_to Time.zone.local(2026, 7, 9, 12, 0, 0) do
         128.times do |index|
           create_completed_post(
@@ -91,10 +115,10 @@ RSpec.describe "Mypage", type: :request do
 
         data = JSON.parse(response.body).fetch("data")
         expect(data).to include(
-          "level" => 13,
-          "next_level" => 14,
+          "level" => 26,
+          "next_level" => 27,
           "remaining_to_next_level" => 2,
-          "progress_percent" => 80,
+          "progress_percent" => 60,
           "achievements_count" => 128
         )
       end
@@ -107,7 +131,7 @@ RSpec.describe "Mypage", type: :request do
       expect(data).to include(
         "level" => 0,
         "next_level" => 1,
-        "remaining_to_next_level" => 10,
+        "remaining_to_next_level" => 5,
         "progress_percent" => 0,
         "achievements_count" => 0,
         "streak_days" => 0,
@@ -206,8 +230,8 @@ RSpec.describe "Mypage", type: :request do
         data = JSON.parse(response.body).fetch("data")
         expect(data).to include(
           "level" => 1,
-          "remaining_to_next_level" => 9,
-          "progress_percent" => 10,
+          "remaining_to_next_level" => 4,
+          "progress_percent" => 20,
           "achievements_count" => 1,
           "streak_days" => 1,
           "likes_count" => 1,

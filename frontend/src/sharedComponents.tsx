@@ -1,5 +1,25 @@
 import type { MouseEvent, ReactNode } from 'react'
 
+export function BackIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M15 5L8 12L15 19"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 type SignupHeaderProps = {
   title: string
   onBack?: () => void
@@ -19,7 +39,7 @@ export function SignupHeader({ title, onBack }: SignupHeaderProps) {
           aria-label="戻る"
           onClick={onBack}
         >
-          &lt;
+          <BackIcon />
         </button>
       ) : null}
       <h1>{title}</h1>

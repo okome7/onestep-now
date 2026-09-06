@@ -70,7 +70,7 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
-  test "他ユーザーIDを指定してもマイページは現在のユーザーを基準にする" do
+  test "認証中でも指定した他ユーザーのマイページを閲覧できる" do
     own_post = create_post_for(@user, "自分の達成", completed: true)
     other_post = create_post_for(@other_user, "他人の達成", completed: true)
     login_as(@user)
@@ -79,8 +79,8 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
 
     assert_response :ok
     achievement_ids = response.parsed_body.dig("data", "all_achievements").pluck("id")
-    assert_includes achievement_ids, own_post.id
-    assert_not_includes achievement_ids, other_post.id
+    assert_includes achievement_ids, other_post.id
+    assert_not_includes achievement_ids, own_post.id
   end
 
   test "他ユーザーの投稿を削除できない" do

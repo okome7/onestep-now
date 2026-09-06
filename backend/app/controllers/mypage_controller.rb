@@ -4,7 +4,10 @@ class MypageController < ApplicationController
   before_action :require_current_user
 
   def show
-    completed_posts = current_user.completion_posts.completed
+    profile_user = params[:user_id].present? ? User.find_by(id: params[:user_id]) : current_user
+    return render json: { status: "error", errors: [ "ユーザーが見つかりません。" ] }, status: :not_found unless profile_user
+
+    completed_posts = profile_user.completion_posts.completed
     completed_count = completed_posts.count
     likes_count = CompletionPostLike.where(completion_post_id: completed_posts.select(:id)).count
     comments_count = Comment.where(completion_post_id: completed_posts.select(:id)).count
@@ -19,13 +22,20 @@ class MypageController < ApplicationController
       .to_a
     @completed_post_counts = completed_post_counts_for(posts)
 
+    level_progress = LevelProgress.new(completed_count)
+
     render json: {
       status: "success",
       data: {
-        level: level_for(completed_count),
-        next_level: next_level_for(completed_count),
-        remaining_to_next_level: remaining_to_next_level_for(completed_count),
-        progress_percent: progress_percent_for(completed_count),
+        user: {
+          id: profile_user.id,
+          name: profile_user.name,
+          avatar_key: profile_user.avatar_key
+        },
+        level: level_progress.level,
+        next_level: level_progress.next_level,
+        remaining_to_next_level: level_progress.remaining_to_next_level,
+        progress_percent: level_progress.progress_percent,
         achievements_count: completed_count,
         streak_days: streak_days(achieved_dates),
         likes_count: likes_count,
@@ -37,26 +47,6 @@ class MypageController < ApplicationController
   end
 
   private
-
-  def level_for(completed_count)
-    return 0 if completed_count.zero?
-
-    (completed_count / 10).floor + 1
-  end
-
-  def next_level_for(completed_count)
-    level_for(completed_count) + 1
-  end
-
-  def remaining_to_next_level_for(completed_count)
-    completed_in_current_level = completed_count % 10
-    remaining = 10 - completed_in_current_level
-    remaining.zero? ? 10 : remaining
-  end
-
-  def progress_percent_for(completed_count)
-    (completed_count % 10) * 10
-  end
 
   def streak_days(achieved_dates)
     achieved_dates = achieved_dates.uniq
@@ -94,7 +84,7 @@ class MypageController < ApplicationController
     {
       id: user.id,
       name: user.name,
-      level: level_for(@completed_post_counts.fetch(user.id, 0))
+      level: LevelProgress.new(@completed_post_counts.fetch(user.id, 0)).level
     }
   end
 
@@ -102,7 +92,7 @@ class MypageController < ApplicationController
     {
       id: comment.id,
       user_name: comment.user.name,
-      user_level: level_for(@completed_post_counts.fetch(comment.user_id, 0)),
+      user_level: LevelProgress.new(@completed_post_counts.fetch(comment.user_id, 0)).level,
       avatar_key: comment.user.avatar_key,
       body: comment.body,
       created_at: comment.created_at

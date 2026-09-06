@@ -5,7 +5,14 @@ import type {
   ProfileAchievement,
 } from './appTypes'
 import { AuthRequiredError } from './feedApi'
-import { apiFetch } from './apiClient'
+import {
+  apiErrorMessage,
+  apiFetch,
+  buildApiUrl,
+  defaultApiBaseUrl,
+  readJsonResponse,
+  type ApiErrorResponse,
+} from './apiClient'
 
 type ApiAchievementUser = {
   id: number
@@ -36,6 +43,11 @@ type ApiAchievement = {
 type MyPageSuccessResponse = {
   status: 'success'
   data: {
+    user?: {
+      id: number
+      name: string
+      avatar_key?: string
+    }
     level: number
     next_level: number
     remaining_to_next_level: number
@@ -49,23 +61,10 @@ type MyPageSuccessResponse = {
   }
 }
 
-type ErrorResponse = {
-  status: 'error'
-  errors?: string[]
-  error?: string
-  message?: string
-}
-
-const defaultApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api'
+type ErrorResponse = ApiErrorResponse
 
 function apiUrl(apiBaseUrl: string, path: string) {
-  const trimmedApiBaseUrl = apiBaseUrl.trim() || '/api'
-  const normalizedApiBaseUrl = trimmedApiBaseUrl.replace(/\/$/, '')
-  const apiBasePath = normalizedApiBaseUrl.endsWith('/api')
-    ? normalizedApiBaseUrl
-    : `${normalizedApiBaseUrl}/api`
-
-  return `${apiBasePath}${path}`
+  return buildApiUrl(apiBaseUrl, path, { ensureApiPath: true })
 }
 
 function userHeaders(userId?: number) {
@@ -73,21 +72,6 @@ function userHeaders(userId?: number) {
   return {
     'Content-Type': 'application/json',
   }
-}
-
-function errorMessage(result: ErrorResponse, fallback: string) {
-  const errors = result.errors ?? [result.error, result.message].filter(Boolean)
-  return errors.length ? errors.join('\n') : fallback
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get('content-type') ?? ''
-
-  if (!contentType.includes('application/json')) {
-    throw new Error('APIから想定外の応答が返りました。')
-  }
-
-  return (await response.json()) as T
 }
 
 function toTimestamp(value: string) {
@@ -134,7 +118,7 @@ export async function fetchMyPage(
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl, '/mypage'), {
+    response = await apiFetch(apiUrl(apiBaseUrl, `/mypage?user_id=${userId}`), {
       headers: userHeaders(userId),
       signal,
     })
@@ -150,17 +134,27 @@ export async function fetchMyPage(
     throw new AuthRequiredError()
   }
 
-  const result = await readJson<MyPageSuccessResponse | ErrorResponse>(response)
+  const result = await readJsonResponse<MyPageSuccessResponse | ErrorResponse>(
+    response,
+  )
 
   if (!response.ok || result.status === 'error') {
     throw new Error(
-      errorMessage(result as ErrorResponse, 'マイページ取得に失敗しました。'),
+      apiErrorMessage(
+        result as ErrorResponse,
+        'マイページ取得に失敗しました。',
+      ),
     )
   }
 
   const data = (result as MyPageSuccessResponse).data
 
   return {
+    user: {
+      id: data.user?.id ?? userId ?? 0,
+      name: data.user?.name ?? '',
+      avatarId: data.user?.avatar_key ?? 'avatar-1',
+    },
     level: data.level,
     nextLevel: data.next_level,
     remainingToNextLevel: data.remaining_to_next_level,
@@ -200,10 +194,13 @@ export async function deleteCompletionPost(
   let response: Response
 
   try {
-    response = await apiFetch(apiUrl(apiBaseUrl, `/completion_posts/${postId}`), {
-      method: 'DELETE',
-      headers: userHeaders(userId),
-    })
+    response = await apiFetch(
+      apiUrl(apiBaseUrl, `/completion_posts/${postId}`),
+      {
+        method: 'DELETE',
+        headers: userHeaders(userId),
+      },
+    )
   } catch {
     throw new Error('APIに接続できませんでした。')
   }
@@ -217,7 +214,7 @@ export async function deleteCompletionPost(
   }
 
   if (!response.ok) {
-    const result = await readJson<ErrorResponse>(response)
-    throw new Error(errorMessage(result, '投稿の削除に失敗しました。'))
+    const result = await readJsonResponse<ErrorResponse>(response)
+    throw new Error(apiErrorMessage(result, '投稿の削除に失敗しました。'))
   }
 }

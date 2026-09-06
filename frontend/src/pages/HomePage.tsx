@@ -8,7 +8,6 @@ import {
 import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { deleteAccount } from '../accountApi'
 import {
-  avatarOptions,
   customPhotoIconId,
   feedViewDurationSeconds,
   signupCompleteStorageKey,
@@ -24,18 +23,9 @@ import {
   isAvatarImageDataUrl,
   saveCompleteProfile,
 } from '../appHelpers'
-import type {
-  AchievementDetailTab,
-  FeedComment,
-  FeedPost,
-  MyPageData,
-} from '../appTypes'
-import cameraIcon from '../assets/icons/camera.svg'
-import iconGridIcon from '../assets/icons/icon-grid.svg'
-import settingsIcon from '../assets/icons/settings.svg'
+import type { AchievementDetailTab, FeedComment, FeedPost } from '../appTypes'
 import {
-  AchievementDetailPanel,
-  AchievementList,
+  AchievementsPage,
   FeedCommentPanel,
   FeedCountdown,
   FeedExpiredModal,
@@ -44,18 +34,17 @@ import {
   FeedStartGate,
   FocusSession,
   HomeStartForm,
-  ProfileEmptyState,
-  ProfileLevelCard,
-  ProfileStatsGrid,
-  PostDeleteModal,
+  ProfileIconEditPage,
+  ProfileNameEditPage,
+  ProfilePage,
+  SettingsPage,
   TaskCompleteScreen,
+  useLevelUpNotification,
+  useFeedTimer,
+  useMyPageData,
 } from '../components/home'
 import { resetBottomSheetScrollLock } from '../components/home/useBottomSheet'
-import {
-  AppHeader,
-  HomeBottomNav,
-  UnsavedChangesModal,
-} from '../sharedComponents'
+import { AppHeader, HomeBottomNav } from '../sharedComponents'
 import {
   AuthRequiredError,
   FeedAccessDeniedError,
@@ -66,26 +55,22 @@ import {
   fetchActiveTask,
   fetchComments,
   fetchFeed,
+  startFeedAccess,
   likePost,
   startTask,
   unlikePost,
 } from '../feedApi'
 import { applyFeedCableEvent, subscribeToFeedUpdates } from '../feedCable'
-import { fetchCableToken, logoutSession } from '../sessionApi'
 import {
-  deleteCompletionPost,
-  fetchMyPage,
-  isAbortError,
-  isCurrentMyPageResponse,
-} from '../mypageApi'
+  activeHomeViewStorageKey,
+  feedIntroStorageKey,
+  getInitialHomeView,
+  getInitialTaskDraft,
+  taskDraftStorageKey,
+} from '../homePageStorage'
+import { fetchCableToken, logoutSession } from '../sessionApi'
+import { deleteCompletionPost } from '../mypageApi'
 import { updateProfile } from '../profileApi'
-
-const feedIntroStorageKey = 'onestep-feed-intro-seen'
-const activeHomeViewStorageKey = 'onestep-active-home-view'
-
-function getInitialHomeView() {
-  return window.sessionStorage.getItem(activeHomeViewStorageKey)
-}
 
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
@@ -93,7 +78,7 @@ export function HomePage() {
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
   const deletedFeedPostIdsRef = useRef(new Set<string>())
   const latestLikeEventTimesRef = useRef(new Map<string, number>())
-  const [taskText, setTaskText] = useState('')
+  const [taskText, setTaskText] = useState(getInitialTaskDraft)
   const [taskError, setTaskError] = useState('')
   const [activeTask, setActiveTask] = useState('')
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null)
@@ -146,12 +131,7 @@ export function HomePage() {
   const [completeProfile, setCompleteProfile] = useState(() =>
     getInitialCompleteProfile(),
   )
-  const currentMyPageUserIdRef = useRef<number | undefined>(completeProfile.id)
-  const loadedMyPageUserIdRef = useRef<number | null>(null)
-  const myPageAbortControllerRef = useRef<AbortController | null>(null)
-  const myPageRequestUserIdRef = useRef<number | null>(null)
-  const myPageRequestIdRef = useRef(0)
-  const myPageRequestPromiseRef = useRef<Promise<void> | null>(null)
+  const [profileUserId, setProfileUserId] = useState(completeProfile.id)
   const [displayNameDraft, setDisplayNameDraft] = useState(
     completeProfile.name || 'おこめ',
   )
@@ -167,11 +147,6 @@ export function HomePage() {
     useState(false)
   const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
     useState(false)
-  const [feedRemainingSeconds, setFeedRemainingSeconds] = useState(0)
-  const [feedAccessExpiresAt, setFeedAccessExpiresAt] = useState<number | null>(
-    null,
-  )
-  const [feedNow, setFeedNow] = useState(() => Date.now())
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
   const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
   const [isFeedLoading, setIsFeedLoading] = useState(false)
@@ -179,13 +154,8 @@ export function HomePage() {
   const [feedPage, setFeedPage] = useState(1)
   const [hasMoreFeedPosts, setHasMoreFeedPosts] = useState(false)
   const [feedLoadMoreError, setFeedLoadMoreError] = useState('')
-  const [isFeedTimeoutModalOpen, setIsFeedTimeoutModalOpen] = useState(false)
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
-  const [myPageData, setMyPageData] = useState<MyPageData | null>(null)
-  const [myPageDataUserId, setMyPageDataUserId] = useState<number | null>(null)
-  const [isMyPageLoading, setIsMyPageLoading] = useState(false)
-  const [myPageError, setMyPageError] = useState('')
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
@@ -194,18 +164,57 @@ export function HomePage() {
   const [hasMoreComments, setHasMoreComments] = useState(false)
   const [isCommentsLoading, setIsCommentsLoading] = useState(false)
   const [commentsLoadError, setCommentsLoadError] = useState('')
+  const {
+    clearTimeout: clearFeedTimeout,
+    expire: expireFeed,
+    handAngle: feedCountdownHandAngle,
+    hasActiveAccess: hasActiveFeedAccess,
+    isExpired: isFeedExpired,
+    now: feedNow,
+    remainingSeconds: feedRemainingSeconds,
+    reset: resetFeedTimer,
+    start: startFeedTimer,
+    touch: touchFeedNow,
+  } = useFeedTimer({
+    durationSeconds: feedViewDurationSeconds,
+    enabled:
+      isFeedOpen && !isFeedAccessDenied && !isFeedLoading && !isFeedIntroOpen,
+    isFeedOpen,
+  })
+  const redirectToLoginForAuthRequired = useCallback(() => {
+    clearAuthSession()
+    window.localStorage.removeItem(signupCompleteStorageKey)
+    window.sessionStorage.removeItem(activeHomeViewStorageKey)
+    window.sessionStorage.removeItem(taskDraftStorageKey)
+    window.sessionStorage.removeItem(signupScreenStorageKey)
+    window.sessionStorage.removeItem(signupDraftStorageKey)
+    window.location.assign('/login')
+  }, [])
+  const handleMyPageLoaded = touchFeedNow
+  const {
+    abort: abortMyPageRequest,
+    clear: clearMyPageData,
+    data: visibleMyPageData,
+    error: myPageError,
+    invalidate: invalidateMyPageData,
+    isLoading: isMyPageLoading,
+    load: loadMyPage,
+    refresh: refreshMyPageData,
+    selectUser: selectMyPageUser,
+    setError: setMyPageError,
+  } = useMyPageData(profileUserId, {
+    onAuthRequired: redirectToLoginForAuthRequired,
+    onLoaded: handleMyPageLoaded,
+  })
   const isTaskActive = Boolean(activeTask)
   const isTaskRunning = isTaskActive && !isTaskComplete
-  const isFeedExpired = isFeedOpen && isFeedTimeoutModalOpen
-  const feedCountdownElapsedSeconds = Math.min(
-    feedViewDurationSeconds,
-    Math.max(0, feedViewDurationSeconds - feedRemainingSeconds),
-  )
-  const feedCountdownHandAngle =
-    (feedCountdownElapsedSeconds / feedViewDurationSeconds) * 360
   const visibleFeedPosts = feedPosts
-  const profileAvatarSrc = getCompleteAvatarSrc(completeProfile)
-  const profileName = completeProfile.name || 'おこめ'
+  const isViewingOwnProfile = profileUserId === completeProfile.id
+  const profileAvatarSrc = visibleMyPageData
+    ? getAvatarSrc(visibleMyPageData.user.avatarId)
+    : getCompleteAvatarSrc(completeProfile)
+  const profileName =
+    visibleMyPageData?.user.name || completeProfile.name || 'おこめ'
   const trimmedDisplayNameDraft = displayNameDraft.trim()
   const hasDisplayNameDraftChanged = displayNameDraft !== profileName
   const canSaveDisplayName =
@@ -214,14 +223,20 @@ export function HomePage() {
   const settingsIconPreviewSrc = getAvatarSrc(selectedSettingsIconId)
   const canSaveSettingsIcon =
     selectedSettingsIconId !== completeProfile.avatarId
-  const visibleMyPageData =
-    myPageDataUserId === completeProfile.id ? myPageData : null
   const level = visibleMyPageData?.level ?? 0
   const nextLevel = visibleMyPageData?.nextLevel ?? 1
   const remainingToNextLevel = visibleMyPageData?.remainingToNextLevel ?? 10
   const progressPercent = visibleMyPageData?.progressPercent ?? 0
+  const {
+    notificationLevel: levelUpNotificationLevel,
+    isClosing: isLevelUpNotificationClosing,
+    dismiss: dismissLevelUpNotification,
+  } = useLevelUpNotification({
+    enabled: isProfileOpen && isViewingOwnProfile,
+    userId: completeProfile.id,
+    level: visibleMyPageData?.level,
+  })
   const achievementsCount = visibleMyPageData?.achievementsCount ?? 0
-  const hasProfileAchievements = achievementsCount > 0
   const allProfileAchievements = visibleMyPageData?.allAchievements ?? []
   const recentAchievements = visibleMyPageData?.recentAchievements ?? []
   const activeAchievement = activeAchievementId
@@ -412,54 +427,11 @@ export function HomePage() {
     }
   }, [isFeedExpired])
 
-  useEffect(() => {
-    if (!isFeedOpen || isFeedAccessDenied || isFeedLoading || isFeedExpired) {
-      return undefined
-    }
-
-    if (feedRemainingSeconds <= 0) {
-      return undefined
-    }
-
-    const expirationTimerId = window.setTimeout(() => {
-      setFeedRemainingSeconds(0)
-      setFeedAccessExpiresAt(null)
-      setIsFeedIntroOpen(false)
-      setIsFeedTimeoutModalOpen(true)
-      setFeedNow(Date.now())
-    }, feedRemainingSeconds * 1000)
-    const timerId = window.setInterval(() => {
-      setFeedRemainingSeconds((current) => {
-        const nextSeconds = Math.max(0, current - 1)
-
-        if (nextSeconds === 0) {
-          setFeedAccessExpiresAt(null)
-          setIsFeedIntroOpen(false)
-          setIsFeedTimeoutModalOpen(true)
-        }
-
-        return nextSeconds
-      })
-      setFeedNow(Date.now())
-    }, 1000)
-
-    return () => {
-      window.clearInterval(timerId)
-      window.clearTimeout(expirationTimerId)
-    }
-  }, [
-    feedRemainingSeconds,
-    isFeedAccessDenied,
-    isFeedExpired,
-    isFeedLoading,
-    isFeedOpen,
-  ])
-
   const loadFeed = useCallback(async () => {
     setFeedError('')
     setFeedLoadMoreError('')
     setIsFeedLoading(true)
-    setIsFeedTimeoutModalOpen(false)
+    clearFeedTimeout()
 
     try {
       const result = await fetchFeed(completeProfile.id)
@@ -469,14 +441,8 @@ export function HomePage() {
       setFeedPosts(result.posts)
       setFeedPage(result.page)
       setHasMoreFeedPosts(result.hasMore)
-      setFeedRemainingSeconds(nextRemainingSeconds)
-      setFeedAccessExpiresAt(
-        result.feedAccessExpiresAt
-          ? new Date(result.feedAccessExpiresAt).getTime()
-          : Date.now() + nextRemainingSeconds * 1000,
-      )
+      startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
       setIsFeedAccessDenied(false)
-      setFeedNow(Date.now())
 
       if (!window.localStorage.getItem(feedIntroStorageKey)) {
         setIsFeedIntroOpen(true)
@@ -486,10 +452,8 @@ export function HomePage() {
         setFeedPosts([])
         setFeedPage(1)
         setHasMoreFeedPosts(false)
-        setFeedRemainingSeconds(0)
-        setFeedAccessExpiresAt(null)
+        resetFeedTimer()
         setIsFeedAccessDenied(true)
-        setIsFeedTimeoutModalOpen(false)
         setIsFeedIntroOpen(false)
         return
       }
@@ -503,7 +467,7 @@ export function HomePage() {
     } finally {
       setIsFeedLoading(false)
     }
-  }, [completeProfile.id])
+  }, [clearFeedTimeout, completeProfile.id, resetFeedTimer, startFeedTimer])
 
   const loadMoreFeed = useCallback(async () => {
     if (isFeedLoadingMore || !hasMoreFeedPosts) {
@@ -530,9 +494,7 @@ export function HomePage() {
       setHasMoreFeedPosts(result.hasMore)
     } catch (caughtError) {
       if (caughtError instanceof FeedAccessDeniedError) {
-        setFeedRemainingSeconds(0)
-        setFeedAccessExpiresAt(null)
-        setIsFeedTimeoutModalOpen(true)
+        expireFeed()
         return
       }
 
@@ -544,7 +506,13 @@ export function HomePage() {
     } finally {
       setIsFeedLoadingMore(false)
     }
-  }, [completeProfile.id, feedPage, hasMoreFeedPosts, isFeedLoadingMore])
+  }, [
+    completeProfile.id,
+    expireFeed,
+    feedPage,
+    hasMoreFeedPosts,
+    isFeedLoadingMore,
+  ])
 
   useEffect(() => {
     const target = feedLoadMoreRef.current
@@ -578,35 +546,12 @@ export function HomePage() {
     loadMoreFeed,
   ])
 
-  const abortMyPageRequest = useCallback(() => {
-    myPageAbortControllerRef.current?.abort()
-    myPageRequestIdRef.current += 1
-    myPageAbortControllerRef.current = null
-    myPageRequestUserIdRef.current = null
-    myPageRequestPromiseRef.current = null
-  }, [])
-
   const clearMyPageCache = useCallback(() => {
-    abortMyPageRequest()
-    loadedMyPageUserIdRef.current = null
-    setMyPageData(null)
-    setMyPageDataUserId(null)
-    setMyPageError('')
-    setIsMyPageLoading(false)
+    clearMyPageData()
     setActiveAchievementId(null)
     setOpenAchievementMenuId(null)
     setPostPendingDeletionId(null)
-  }, [abortMyPageRequest])
-
-  const redirectToLoginForAuthRequired = useCallback(() => {
-    clearMyPageCache()
-    clearAuthSession()
-    window.localStorage.removeItem(signupCompleteStorageKey)
-    window.sessionStorage.removeItem(activeHomeViewStorageKey)
-    window.sessionStorage.removeItem(signupScreenStorageKey)
-    window.sessionStorage.removeItem(signupDraftStorageKey)
-    window.location.assign('/login')
-  }, [clearMyPageCache])
+  }, [clearMyPageData])
 
   useEffect(() => {
     let isCancelled = false
@@ -619,9 +564,7 @@ export function HomePage() {
 
       try {
         const task = await fetchActiveTask(completeProfile.id)
-        if (isCancelled || !task) {
-          return
-        }
+        if (isCancelled || !task) return
 
         const startedAt = task.started_at
           ? new Date(task.started_at).getTime()
@@ -655,142 +598,19 @@ export function HomePage() {
           )
         }
       } finally {
-        if (!isCancelled) {
-          setIsActiveTaskRestoring(false)
-        }
+        if (!isCancelled) setIsActiveTaskRestoring(false)
       }
     }
 
     void restoreActiveTask()
-
     return () => {
       isCancelled = true
     }
   }, [completeProfile.id, redirectToLoginForAuthRequired])
 
-  const loadMyPage = useCallback(
-    (force = false): Promise<void> => {
-      const requestUserId = currentMyPageUserIdRef.current
-
-      if (!requestUserId) {
-        return Promise.resolve()
-      }
-
-      if (!force && loadedMyPageUserIdRef.current === requestUserId) {
-        return Promise.resolve()
-      }
-
-      if (
-        !force &&
-        myPageRequestUserIdRef.current === requestUserId &&
-        myPageRequestPromiseRef.current
-      ) {
-        return myPageRequestPromiseRef.current
-      }
-
-      abortMyPageRequest()
-      const controller = new AbortController()
-      const requestId = myPageRequestIdRef.current + 1
-      myPageRequestIdRef.current = requestId
-      myPageAbortControllerRef.current = controller
-      myPageRequestUserIdRef.current = requestUserId
-      setMyPageError('')
-      setIsMyPageLoading(true)
-
-      const requestPromise = (async () => {
-        try {
-          const result = await fetchMyPage(
-            requestUserId,
-            undefined,
-            controller.signal,
-          )
-
-          if (
-            !isCurrentMyPageResponse(
-              requestUserId,
-              currentMyPageUserIdRef.current,
-              requestId,
-              myPageRequestIdRef.current,
-              controller.signal,
-            )
-          ) {
-            return
-          }
-
-          loadedMyPageUserIdRef.current = requestUserId
-          setMyPageData(result)
-          setMyPageDataUserId(requestUserId)
-          setFeedNow(Date.now())
-        } catch (caughtError) {
-          if (isAbortError(caughtError)) {
-            return
-          }
-
-          if (
-            !isCurrentMyPageResponse(
-              requestUserId,
-              currentMyPageUserIdRef.current,
-              requestId,
-              myPageRequestIdRef.current,
-              controller.signal,
-            )
-          ) {
-            return
-          }
-
-          if (caughtError instanceof AuthRequiredError) {
-            redirectToLoginForAuthRequired()
-            return
-          }
-
-          setMyPageError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : 'マイページ取得に失敗しました。',
-          )
-        } finally {
-          if (requestId === myPageRequestIdRef.current) {
-            myPageAbortControllerRef.current = null
-            myPageRequestUserIdRef.current = null
-            myPageRequestPromiseRef.current = null
-            setIsMyPageLoading(false)
-          }
-        }
-      })()
-
-      myPageRequestPromiseRef.current = requestPromise
-      return requestPromise
-    },
-    [abortMyPageRequest, redirectToLoginForAuthRequired],
-  )
-
-  const invalidateMyPageData = useCallback(
-    (userId: number) => {
-      if (currentMyPageUserIdRef.current !== userId) {
-        return false
-      }
-
-      abortMyPageRequest()
-      loadedMyPageUserIdRef.current = null
-      return true
-    },
-    [abortMyPageRequest],
-  )
-
-  const refreshMyPageData = useCallback(
-    (userId: number): Promise<void> => {
-      if (!invalidateMyPageData(userId)) {
-        return Promise.resolve()
-      }
-
-      return loadMyPage(true)
-    },
-    [invalidateMyPageData, loadMyPage],
-  )
-
   useLayoutEffect(() => {
-    currentMyPageUserIdRef.current = completeProfile.id
-  }, [completeProfile.id])
+    selectMyPageUser(completeProfile.id)
+  }, [completeProfile.id, selectMyPageUser])
 
   useEffect(() => {
     if (!isFeedOpen) {
@@ -871,9 +691,21 @@ export function HomePage() {
     }
   }, [abortMyPageRequest, clearMyPageCache, completeProfile.id, loadMyPage])
 
-  function closeFeedIntro() {
-    window.localStorage.setItem(feedIntroStorageKey, 'true')
-    setIsFeedIntroOpen(false)
+  async function closeFeedIntro() {
+    try {
+      const result = await startFeedAccess(completeProfile.id)
+      const remainingSeconds =
+        result.remaining_seconds ?? feedViewDurationSeconds
+      startFeedTimer(remainingSeconds, result.feed_access_expires_at)
+      window.localStorage.setItem(feedIntroStorageKey, 'true')
+      setIsFeedIntroOpen(false)
+    } catch (caughtError) {
+      setFeedError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'フィードを開始できませんでした。',
+      )
+    }
   }
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
@@ -891,15 +723,14 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    const hasKnownFeedAccess =
-      feedAccessExpiresAt !== null && feedAccessExpiresAt > Date.now()
+    const hasKnownFeedAccess = hasActiveFeedAccess()
     if (!hasKnownFeedAccess) {
       setFeedPosts([])
-      setFeedRemainingSeconds(0)
+      resetFeedTimer()
     }
     setFeedError('')
     setIsFeedAccessDenied(!hasKnownFeedAccess)
-    setIsFeedTimeoutModalOpen(false)
+    clearFeedTimeout()
     if (isFeedOpen) {
       void loadFeed()
     }
@@ -922,7 +753,7 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     setIsFeedAccessDenied(false)
-    setIsFeedTimeoutModalOpen(false)
+    clearFeedTimeout()
     setFeedError('')
     if (isTaskComplete) {
       handleNextTask()
@@ -946,13 +777,15 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     setIsFeedAccessDenied(false)
-    setIsFeedTimeoutModalOpen(false)
+    clearFeedTimeout()
     handleNextTask()
     window.scrollTo({ top: 0, left: 0 })
   }
 
   function openProfile(event?: MouseEvent<HTMLAnchorElement>) {
     event?.preventDefault()
+    selectMyPageUser(completeProfile.id)
+    setProfileUserId(completeProfile.id)
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'profile')
     setIsFeedOpen(false)
     setIsProfileOpen(true)
@@ -967,6 +800,25 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     void loadMyPage(isProfileOpen)
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function openFeedUserProfile(userId: number) {
+    selectMyPageUser(userId)
+    setProfileUserId(userId)
+    dismissLevelUpNotification()
+    setIsFeedOpen(false)
+    setIsProfileOpen(true)
+    setIsAchievementsOpen(false)
+    setActiveAchievementId(null)
+    setMyPageError('')
+    void loadMyPage()
+    window.scrollTo({ top: 0, left: 0 })
+  }
+
+  function returnToFeedFromProfile() {
+    setIsProfileOpen(false)
+    setIsFeedOpen(true)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1110,6 +962,7 @@ export function HomePage() {
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
       window.sessionStorage.removeItem(activeHomeViewStorageKey)
+      window.sessionStorage.removeItem(taskDraftStorageKey)
       window.location.href = '/login'
     } catch {
       setIsLogoutConfirmOpen(false)
@@ -1156,6 +1009,7 @@ export function HomePage() {
       clearAuthSession()
       window.localStorage.removeItem(signupCompleteStorageKey)
       window.sessionStorage.removeItem(activeHomeViewStorageKey)
+      window.sessionStorage.removeItem(taskDraftStorageKey)
       window.sessionStorage.removeItem(signupScreenStorageKey)
       window.sessionStorage.removeItem(signupDraftStorageKey)
       setIsAccountDeleteConfirmOpen(false)
@@ -1422,6 +1276,8 @@ export function HomePage() {
         : Date.now()
       setActiveTaskId(startedTask.id)
       setActiveTask(startedTask.title)
+      setTaskText('')
+      window.sessionStorage.removeItem(taskDraftStorageKey)
       setActiveTaskStartedAt(startedAt)
       setElapsedSeconds(0)
       setIsTaskComplete(false)
@@ -1480,6 +1336,7 @@ export function HomePage() {
     }
 
     setTaskText('')
+    window.sessionStorage.removeItem(taskDraftStorageKey)
     setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
@@ -1512,7 +1369,11 @@ export function HomePage() {
     setIsTaskSubmitting(true)
 
     try {
-      const completedTask = await completeTask(activeTaskId, completeProfile.id)
+      const completedTask = await completeTask(
+        activeTaskId,
+        completeProfile.id,
+        !window.localStorage.getItem(feedIntroStorageKey),
+      )
       upsertOwnTaskPost(completedTask)
       setCompletedTaskReactions({
         likes: completedTask.completion_post?.likes_count ?? 0,
@@ -1551,6 +1412,7 @@ export function HomePage() {
 
   function handleNextTask() {
     setTaskText('')
+    window.sessionStorage.removeItem(taskDraftStorageKey)
     setTaskError('')
     setActiveTask('')
     setActiveTaskId(null)
@@ -1753,775 +1615,139 @@ export function HomePage() {
 
   if (isSettingsOpen && isNameEditOpen) {
     return (
-      <main className="home-page name-edit-page">
-        <AppHeader
-          title="名前"
-          leftAction={
-            <button
-              className="settings-back-button"
-              type="button"
-              aria-label="設定に戻る"
-              onClick={closeNameEdit}
-            >
-              &lt;
-            </button>
-          }
-          rightAction={
-            <button
-              className="name-edit-done-button"
-              type="submit"
-              form="display-name-form"
-              disabled={!canSaveDisplayName || isProfileSaving}
-            >
-              完了
-            </button>
-          }
-        />
-
-        <section className="name-edit-content" aria-label="表示名変更">
-          <form
-            id="display-name-form"
-            className="name-edit-form"
-            onSubmit={saveDisplayName}
-          >
-            <label htmlFor="display-name-input">表示名</label>
-            <input
-              id="display-name-input"
-              type="text"
-              value={displayNameDraft}
-              onChange={(event) => setDisplayNameDraft(event.target.value)}
-            />
-          </form>
-          {profileSaveError ? (
-            <p className="notice error" role="alert">
-              {profileSaveError}
-            </p>
-          ) : null}
-        </section>
-
-        {isNameDiscardConfirmOpen ? (
-          <UnsavedChangesModal
-            onContinue={continueNameEdit}
-            onDiscard={discardNameEdit}
-          />
-        ) : null}
-      </main>
+      <ProfileNameEditPage
+        displayNameDraft={displayNameDraft}
+        canSave={canSaveDisplayName}
+        isSaving={isProfileSaving}
+        saveError={profileSaveError}
+        isDiscardConfirmOpen={isNameDiscardConfirmOpen}
+        onBack={closeNameEdit}
+        onChange={setDisplayNameDraft}
+        onSubmit={saveDisplayName}
+        onContinue={continueNameEdit}
+        onDiscard={discardNameEdit}
+      />
     )
   }
 
   if (isSettingsOpen && isIconEditOpen) {
     return (
-      <main className="home-page icon-edit-page">
-        <AppHeader
-          title="アイコン"
-          leftAction={
-            <button
-              className="settings-back-button"
-              type="button"
-              aria-label="設定に戻る"
-              onClick={closeIconEdit}
-            >
-              &lt;
-            </button>
-          }
-          rightAction={
-            <button
-              className="name-edit-done-button"
-              type="submit"
-              form="settings-icon-form"
-              disabled={!canSaveSettingsIcon || isProfileSaving}
-            >
-              完了
-            </button>
-          }
-        />
-
-        <form
-          id="settings-icon-form"
-          className="icon-edit-content"
-          aria-label="アイコン変更"
-          onSubmit={saveSettingsIcon}
-        >
-          <img
-            className="icon-edit-preview"
-            src={settingsIconPreviewSrc}
-            alt=""
-            aria-hidden="true"
-          />
-          {profileSaveError ? (
-            <p className="notice error" role="alert">
-              {profileSaveError}
-            </p>
-          ) : null}
-
-          <div className="icon-edit-action-list">
-            <button
-              className="icon-edit-action"
-              type="button"
-              aria-expanded={isSettingsAvatarGridOpen}
-              onClick={() => setIsSettingsAvatarGridOpen((current) => !current)}
-            >
-              <img
-                className="icon-edit-action-icon icon-edit-action-icon-grid"
-                src={iconGridIcon}
-                alt=""
-                aria-hidden="true"
-              />
-              <span className="icon-edit-action-text-grid">アイコンを選択</span>
-            </button>
-
-            {isSettingsCameraAvailable ? (
-              <button
-                className="icon-edit-action icon-edit-camera-action"
-                type="button"
-                onClick={() => settingsCameraInputRef.current?.click()}
-              >
-                <img
-                  className="icon-edit-action-icon icon-edit-action-icon-camera"
-                  src={cameraIcon}
-                  alt=""
-                  aria-hidden="true"
-                />
-                <span>カメラで撮影</span>
-              </button>
-            ) : null}
-
-            <button
-              className="icon-edit-action"
-              type="button"
-              onClick={() => settingsPhotoInputRef.current?.click()}
-            >
-              <span
-                className="icon-edit-action-icon icon-edit-action-icon-folder folder-icon"
-                aria-hidden="true"
-              />
-              <span>写真を選ぶ</span>
-            </button>
-          </div>
-
-          {isSettingsAvatarGridOpen ? (
-            <div
-              className="icon-palette-backdrop"
-              role="presentation"
-              onClick={() => setIsSettingsAvatarGridOpen(false)}
-            >
-              <section
-                className="icon-palette-modal"
-                role="dialog"
-                aria-modal="true"
-                aria-label="アイコンを選択"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <button
-                  className="icon-palette-close-button"
-                  type="button"
-                  aria-label="閉じる"
-                  onClick={() => setIsSettingsAvatarGridOpen(false)}
-                >
-                  ×
-                </button>
-                <div
-                  className="avatar-grid icon-edit-avatar-grid"
-                  role="radiogroup"
-                  aria-label="アイコン"
-                >
-                  {avatarOptions.map((avatar) => {
-                    const isCustomPhoto = avatar.id === customPhotoIconId
-                    const hasCustomPhoto =
-                      isCustomPhoto && settingsCustomPhotoUrl
-                    const isCameraSlot = isCustomPhoto && !hasCustomPhoto
-                    const avatarId = hasCustomPhoto
-                      ? settingsCustomPhotoUrl
-                      : avatar.id
-
-                    return (
-                      <button
-                        key={avatar.id}
-                        className={`avatar-option ${
-                          selectedSettingsIconId === avatarId ? 'selected' : ''
-                        } ${isCameraSlot ? 'photo-slot-empty' : ''}`}
-                        type="button"
-                        role="radio"
-                        aria-checked={selectedSettingsIconId === avatarId}
-                        aria-label={isCameraSlot ? '写真未選択' : avatar.label}
-                        disabled={isCameraSlot}
-                        onClick={() => handleSettingsAvatarClick(avatarId)}
-                      >
-                        {hasCustomPhoto ? (
-                          <img
-                            src={settingsCustomPhotoUrl}
-                            alt=""
-                            aria-hidden="true"
-                          />
-                        ) : (
-                          !isCustomPhoto && (
-                            <img src={avatar.src} alt="" aria-hidden="true" />
-                          )
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            </div>
-          ) : null}
-
-          <input
-            ref={settingsCameraInputRef}
-            className="photo-input"
-            type="file"
-            accept="image/*"
-            capture="user"
-            aria-label="撮影する写真"
-            onChange={handleSettingsPhotoChange}
-          />
-          <input
-            ref={settingsPhotoInputRef}
-            className="photo-input"
-            type="file"
-            accept="image/*"
-            aria-label="選択する写真"
-            onChange={handleSettingsPhotoChange}
-          />
-        </form>
-
-        {isIconDiscardConfirmOpen ? (
-          <UnsavedChangesModal
-            onContinue={continueIconEdit}
-            onDiscard={discardIconEdit}
-          />
-        ) : null}
-      </main>
+      <ProfileIconEditPage
+        cameraInputRef={settingsCameraInputRef}
+        photoInputRef={settingsPhotoInputRef}
+        previewSrc={settingsIconPreviewSrc}
+        selectedIconId={selectedSettingsIconId}
+        customPhotoUrl={settingsCustomPhotoUrl}
+        canSave={canSaveSettingsIcon}
+        isSaving={isProfileSaving}
+        saveError={profileSaveError}
+        isAvatarGridOpen={isSettingsAvatarGridOpen}
+        isCameraAvailable={isSettingsCameraAvailable}
+        isDiscardConfirmOpen={isIconDiscardConfirmOpen}
+        onBack={closeIconEdit}
+        onSubmit={saveSettingsIcon}
+        onToggleAvatarGrid={() =>
+          setIsSettingsAvatarGridOpen((current) => !current)
+        }
+        onCloseAvatarGrid={() => setIsSettingsAvatarGridOpen(false)}
+        onAvatarClick={handleSettingsAvatarClick}
+        onPhotoChange={handleSettingsPhotoChange}
+        onContinue={continueIconEdit}
+        onDiscard={discardIconEdit}
+      />
     )
   }
-
   if (isSettingsOpen) {
     return (
-      <main className="home-page settings-page">
-        <AppHeader
-          title="設定"
-          leftAction={
-            <button
-              className="settings-back-button"
-              type="button"
-              aria-label="マイページに戻る"
-              onClick={closeSettings}
-            >
-              &lt;
-            </button>
-          }
-        />
-
-        <section className="settings-content" aria-label="設定">
-          <div className="settings-menu-group">
-            <button
-              className="settings-menu-item"
-              type="button"
-              onClick={openNameEdit}
-            >
-              <span className="settings-menu-label">
-                <span
-                  className="settings-menu-icon settings-menu-icon-name"
-                  aria-hidden="true"
-                >
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 28 28"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M5 7.5H15.5"
-                      stroke="#9B6BFF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M5 14H12.5"
-                      stroke="#9B6BFF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M5 20.5H10"
-                      stroke="#9B6BFF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M18.2 9.3L21.7 12.8"
-                      stroke="#9B6BFF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M12.8 21.2L16.1 20.4L23.4 13.1C24.2 12.3 24.2 11 23.4 10.2L22.8 9.6C22 8.8 20.7 8.8 19.9 9.6L12.6 16.9L11.8 20.2C11.6 20.8 12.2 21.4 12.8 21.2Z"
-                      stroke="#9B6BFF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                <span>表示名変更</span>
-              </span>
-              <span className="settings-menu-chevron" aria-hidden="true">
-                &gt;
-              </span>
-            </button>
-            <button
-              className="settings-menu-item"
-              type="button"
-              onClick={openIconEdit}
-            >
-              <span className="settings-menu-label">
-                <span
-                  className="settings-menu-icon settings-menu-icon-avatar"
-                  aria-hidden="true"
-                >
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 28 28"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <circle
-                      cx="14"
-                      cy="10"
-                      r="4"
-                      stroke="#2EA8FF"
-                      strokeWidth="2.3"
-                    />
-                    <path
-                      d="M6.5 22C7.6 18.4 10.3 16.5 14 16.5C17.7 16.5 20.4 18.4 21.5 22"
-                      stroke="#2EA8FF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M20.5 7.5L22.5 5.5"
-                      stroke="#2EA8FF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M22.5 5.5L24.5 7.5"
-                      stroke="#2EA8FF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M22.5 5.5V11"
-                      stroke="#2EA8FF"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </span>
-                <span>アイコン変更</span>
-              </span>
-              <span className="settings-menu-chevron" aria-hidden="true">
-                &gt;
-              </span>
-            </button>
-          </div>
-
-          <div className="settings-menu-group">
-            <button
-              className="settings-menu-item"
-              type="button"
-              onClick={openLogoutConfirm}
-            >
-              <span className="settings-menu-label">
-                <span
-                  className="settings-menu-icon settings-menu-icon-logout"
-                  aria-hidden="true"
-                >
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 28 28"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M17 6H10C8.9 6 8 6.9 8 8V20C8 21.1 8.9 22 10 22H17"
-                      stroke="#24C58A"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M14 14H23"
-                      stroke="#24C58A"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M20 11L23 14L20 17"
-                      stroke="#24C58A"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                <span>ログアウト</span>
-              </span>
-              <span className="settings-menu-chevron" aria-hidden="true">
-                &gt;
-              </span>
-            </button>
-            <button
-              className="settings-menu-item settings-menu-item-danger"
-              type="button"
-              onClick={openAccountDeleteConfirm}
-            >
-              <span className="settings-menu-label">
-                <span
-                  className="settings-menu-icon settings-menu-icon-delete"
-                  aria-hidden="true"
-                >
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 28 28"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <rect
-                      x="11"
-                      y="4.5"
-                      width="6"
-                      height="3"
-                      rx="1"
-                      stroke="#FF5A5F"
-                      strokeWidth="2.3"
-                    />
-                    <path
-                      d="M7 8H21"
-                      stroke="#FF5A5F"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <rect
-                      x="8"
-                      y="8"
-                      width="12"
-                      height="14"
-                      rx="2.5"
-                      stroke="#FF5A5F"
-                      strokeWidth="2.3"
-                    />
-                    <path
-                      d="M12 12V18"
-                      stroke="#FF5A5F"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M16 12V18"
-                      stroke="#FF5A5F"
-                      strokeWidth="2.3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </span>
-                <span>アカウント削除</span>
-              </span>
-              <span className="settings-menu-chevron" aria-hidden="true">
-                &gt;
-              </span>
-            </button>
-          </div>
-        </section>
-
-        {isLogoutConfirmOpen ? (
-          <div className="logout-modal-backdrop" role="presentation">
-            <section
-              className="logout-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="logout-modal-title"
-              aria-describedby="logout-modal-description"
-            >
-              <div className="logout-modal-body">
-                <h2 id="logout-modal-title">ログアウトしますか？</h2>
-                <p id="logout-modal-description">
-                  現在のアカウントからログアウトします。
-                </p>
-              </div>
-              <div className="logout-modal-actions">
-                <button
-                  className="logout-modal-secondary"
-                  type="button"
-                  onClick={closeLogoutConfirm}
-                >
-                  キャンセル
-                </button>
-                <button
-                  className="logout-modal-primary"
-                  type="button"
-                  onClick={() => void confirmLogout()}
-                >
-                  ログアウト
-                </button>
-              </div>
-            </section>
-          </div>
-        ) : null}
-
-        {isAccountDeleteConfirmOpen ? (
-          <div className="logout-modal-backdrop" role="presentation">
-            <section
-              className="logout-modal account-delete-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="account-delete-modal-title"
-              aria-describedby="account-delete-modal-description"
-            >
-              <div className="logout-modal-body">
-                <h2 id="account-delete-modal-title">
-                  アカウントを削除しますか？
-                </h2>
-                <p id="account-delete-modal-description">
-                  この操作は取り消せません。
-                  <br />
-                  アカウントとすべてのデータが削除されます。
-                </p>
-                {accountDeleteError ? (
-                  <p className="account-delete-error" role="alert">
-                    {accountDeleteError}
-                  </p>
-                ) : null}
-              </div>
-              <div className="logout-modal-actions">
-                <button
-                  className="logout-modal-secondary"
-                  type="button"
-                  onClick={closeAccountDeleteConfirm}
-                  disabled={isDeletingAccount}
-                >
-                  キャンセル
-                </button>
-                <button
-                  className="account-delete-modal-primary"
-                  type="button"
-                  onClick={confirmAccountDelete}
-                  disabled={isDeletingAccount}
-                >
-                  {isDeletingAccount ? '削除中' : '削除する'}
-                </button>
-              </div>
-            </section>
-          </div>
-        ) : null}
-
-        {isAccountDeletedOpen ? (
-          <div className="account-deleted-page" role="presentation">
-            <section
-              className="account-deleted-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="account-deleted-modal-title"
-              aria-describedby="account-deleted-modal-description"
-            >
-              <h2 id="account-deleted-modal-title">アカウントを削除しました</h2>
-              <p id="account-deleted-modal-description">
-                ご利用ありがとうございました。
-              </p>
-              <div className="account-deleted-divider" aria-hidden="true" />
-              <button
-                className="account-deleted-button"
-                type="button"
-                onClick={goToLoginAfterAccountDelete}
-              >
-                ログイン画面へ
-              </button>
-            </section>
-          </div>
-        ) : null}
-      </main>
+      <SettingsPage
+        isLogoutConfirmOpen={isLogoutConfirmOpen}
+        isAccountDeleteConfirmOpen={isAccountDeleteConfirmOpen}
+        isAccountDeletedOpen={isAccountDeletedOpen}
+        isDeletingAccount={isDeletingAccount}
+        accountDeleteError={accountDeleteError}
+        onBack={closeSettings}
+        onOpenNameEdit={openNameEdit}
+        onOpenIconEdit={openIconEdit}
+        onOpenLogoutConfirm={openLogoutConfirm}
+        onCloseLogoutConfirm={closeLogoutConfirm}
+        onConfirmLogout={() => void confirmLogout()}
+        onOpenAccountDeleteConfirm={openAccountDeleteConfirm}
+        onCloseAccountDeleteConfirm={closeAccountDeleteConfirm}
+        onConfirmAccountDelete={() => void confirmAccountDelete()}
+        onGoToLogin={goToLoginAfterAccountDelete}
+      />
     )
   }
-
   if (isAchievementsOpen) {
     return (
-      <main
-        className={`home-page profile-page achievements-page ${
-          activeAchievement ? 'detail-open' : ''
-        }`}
-      >
-        <AppHeader
-          title="すべての達成"
-          leftAction={
-            <button
-              className="settings-back-button"
-              type="button"
-              aria-label="マイページに戻る"
-              onClick={closeAchievements}
-            >
-              &lt;
-            </button>
-          }
-        />
-
-        <section className="all-achievements-content" aria-label="すべての達成">
-          {myPageError ? (
-            <p className="profile-state-message" role="alert">
-              {myPageError}
-            </p>
-          ) : isMyPageLoading && !visibleMyPageData ? (
-            <p className="profile-state-message">読み込み中...</p>
-          ) : allProfileAchievements.length === 0 ? (
-            <p className="profile-state-message">まだ記録はありません</p>
-          ) : (
-            <AchievementList
-              achievements={allProfileAchievements}
-              now={feedNow}
-              activeAchievementId={activeAchievementId}
-              variant="all"
-              onOpenDetail={openAchievementDetail}
-              openMenuId={openAchievementMenuId}
-              onToggleMenu={toggleAchievementMenu}
-              onRequestDelete={requestPostDeletion}
-            />
-          )}
-        </section>
-
-        {activeAchievement ? (
-          <AchievementDetailPanel
-            achievement={activeAchievement}
-            activeTab={activeAchievementTab}
-            now={feedNow}
-            onClose={closeAchievementDetail}
-            onTabChange={setActiveAchievementTab}
-          />
-        ) : null}
-
-        {postPendingDeletionId ? (
-          <PostDeleteModal
-            isDeleting={isDeletingPost}
-            error={postDeleteError}
-            onCancel={cancelPostDeletion}
-            onConfirm={() => void confirmPostDeletion()}
-          />
-        ) : null}
-      </main>
+      <AchievementsPage
+        achievements={allProfileAchievements}
+        now={feedNow}
+        activeAchievement={activeAchievement}
+        activeAchievementId={activeAchievementId}
+        activeTab={activeAchievementTab}
+        openMenuId={openAchievementMenuId}
+        error={myPageError}
+        isLoading={isMyPageLoading}
+        hasLoadedData={Boolean(visibleMyPageData)}
+        isDeleteModalOpen={Boolean(postPendingDeletionId)}
+        isDeleting={isDeletingPost}
+        deleteError={postDeleteError}
+        onBack={closeAchievements}
+        onOpenDetail={openAchievementDetail}
+        onCloseDetail={closeAchievementDetail}
+        onTabChange={setActiveAchievementTab}
+        onToggleMenu={toggleAchievementMenu}
+        onRequestDelete={requestPostDeletion}
+        onCancelDelete={cancelPostDeletion}
+        onConfirmDelete={() => void confirmPostDeletion()}
+      />
     )
   }
-
   if (isProfileOpen) {
     return (
-      <main className="home-page profile-page">
-        <AppHeader
-          title="マイページ"
-          rightAction={
-            <button
-              className="profile-settings-button"
-              type="button"
-              aria-label="設定"
-              onClick={openSettings}
-            >
-              <img src={settingsIcon} alt="" aria-hidden="true" />
-            </button>
-          }
-        />
-
-        <section className="profile-content" aria-label="マイページ">
-          <img
-            className="profile-avatar-large"
-            src={profileAvatarSrc}
-            alt=""
-            aria-hidden="true"
-          />
-          <p className="profile-name">{profileName}</p>
-
-          <ProfileLevelCard
-            level={level}
-            nextLevel={nextLevel}
-            remainingToNextLevel={remainingToNextLevel}
-            progressPercent={progressPercent}
-          />
-
-          {myPageError ? (
-            <p className="profile-state-message" role="alert">
-              {myPageError}
-            </p>
-          ) : isMyPageLoading && !visibleMyPageData ? (
-            <p className="profile-state-message">読み込み中...</p>
-          ) : hasProfileAchievements ? (
-            <>
-              <section
-                className="profile-section"
-                aria-labelledby="profile-stats-title"
-              >
-                <h2 id="profile-stats-title">実績</h2>
-                <ProfileStatsGrid
-                  achievementsCount={achievementsCount}
-                  streakDays={visibleMyPageData?.streakDays ?? 0}
-                  likesCount={visibleMyPageData?.likesCount ?? 0}
-                  commentsCount={visibleMyPageData?.commentsCount ?? 0}
-                />
-              </section>
-
-              <section
-                className="profile-section"
-                aria-labelledby="profile-recent-title"
-              >
-                <div className="profile-section-heading">
-                  <h2 id="profile-recent-title">最近の達成</h2>
-                  <a href="/home" onClick={openAchievements}>
-                    すべて見る&gt;
-                  </a>
-                </div>
-                <AchievementList
-                  achievements={recentAchievements}
-                  now={feedNow}
-                  onOpenDetail={openAchievementDetail}
-                  openMenuId={openAchievementMenuId}
-                  onToggleMenu={toggleAchievementMenu}
-                  onRequestDelete={requestPostDeletion}
-                />
-              </section>
-            </>
-          ) : (
-            <ProfileEmptyState onStart={openHome} />
-          )}
-        </section>
-
-        {activeAchievement ? (
-          <AchievementDetailPanel
-            achievement={activeAchievement}
-            activeTab={activeAchievementTab}
-            now={feedNow}
-            onClose={closeAchievementDetail}
-            onTabChange={setActiveAchievementTab}
-          />
-        ) : null}
-
-        {postPendingDeletionId ? (
-          <PostDeleteModal
-            isDeleting={isDeletingPost}
-            error={postDeleteError}
-            onCancel={cancelPostDeletion}
-            onConfirm={() => void confirmPostDeletion()}
-          />
-        ) : null}
-
-        <HomeBottomNav
-          activeItem="profile"
-          onHomeClick={openHome}
-          onFeedClick={openFeed}
-          onProfileClick={openProfile}
-        />
-      </main>
+      <ProfilePage
+        isViewingOwnProfile={isViewingOwnProfile}
+        avatarSrc={profileAvatarSrc}
+        profileName={profileName}
+        level={level}
+        nextLevel={nextLevel}
+        remainingToNextLevel={remainingToNextLevel}
+        progressPercent={progressPercent}
+        achievementsCount={achievementsCount}
+        streakDays={visibleMyPageData?.streakDays ?? 0}
+        likesCount={visibleMyPageData?.likesCount ?? 0}
+        commentsCount={visibleMyPageData?.commentsCount ?? 0}
+        recentAchievements={recentAchievements}
+        now={feedNow}
+        error={myPageError}
+        isLoading={isMyPageLoading}
+        hasLoadedData={Boolean(visibleMyPageData)}
+        activeAchievement={activeAchievement}
+        activeAchievementTab={activeAchievementTab}
+        openAchievementMenuId={openAchievementMenuId}
+        isDeletingPost={isDeletingPost}
+        postDeleteError={postDeleteError}
+        isPostDeleteModalOpen={Boolean(postPendingDeletionId)}
+        levelUpNotificationLevel={levelUpNotificationLevel}
+        isLevelUpNotificationClosing={isLevelUpNotificationClosing}
+        onBackToFeed={returnToFeedFromProfile}
+        onOpenSettings={openSettings}
+        onDismissLevelUp={dismissLevelUpNotification}
+        onOpenAchievements={openAchievements}
+        onOpenAchievementDetail={openAchievementDetail}
+        onCloseAchievementDetail={closeAchievementDetail}
+        onAchievementTabChange={setActiveAchievementTab}
+        onToggleAchievementMenu={toggleAchievementMenu}
+        onRequestPostDeletion={requestPostDeletion}
+        onCancelPostDeletion={cancelPostDeletion}
+        onConfirmPostDeletion={() => void confirmPostDeletion()}
+        onHomeClick={openHome}
+        onFeedClick={openFeed}
+        onProfileClick={openProfile}
+      />
     )
   }
-
   if (isFeedOpen) {
     return (
       <main className="home-page feed-page">
@@ -2557,6 +1783,7 @@ export function HomePage() {
                   now={feedNow}
                   onLike={(postId) => void togglePostLike(postId)}
                   onOpenComments={openCommentPanel}
+                  onOpenProfile={openFeedUserProfile}
                 />
               ))}
               {hasMoreFeedPosts ? (
@@ -2640,6 +1867,11 @@ export function HomePage() {
           isSubmitting={isTaskSubmitting}
           onTaskTextChange={(value) => {
             setTaskText(value)
+            if (value) {
+              window.sessionStorage.setItem(taskDraftStorageKey, value)
+            } else {
+              window.sessionStorage.removeItem(taskDraftStorageKey)
+            }
             if (taskError) {
               setTaskError('')
             }
