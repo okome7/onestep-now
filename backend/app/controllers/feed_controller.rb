@@ -4,6 +4,7 @@ class FeedController < ApplicationController
   before_action :require_current_user
 
   def index
+    return render_feed_unavailable if current_user.feed_access_pending?
     return render_feed_unavailable unless feed_accessible?
 
     page = [ params.fetch(:page, 1).to_i, 1 ].max
