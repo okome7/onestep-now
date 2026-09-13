@@ -33,15 +33,9 @@ class FeedController < ApplicationController
   end
 
   def start_access
-    started_at = Time.current
-    current_user.class
-      .where(id: current_user.id, feed_access_pending: true)
-      .update_all(
-        feed_access_pending: false,
-        feed_access_expires_at: started_at + 3.minutes,
-        updated_at: started_at
-      )
-    current_user.reload
+    if current_user.feed_access_pending?
+      current_user.update!(feed_access_pending: false, feed_access_expires_at: 3.minutes.from_now)
+    end
     return render_feed_unavailable unless feed_accessible?
 
     render json: {

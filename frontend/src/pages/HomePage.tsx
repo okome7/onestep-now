@@ -76,7 +76,6 @@ export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
-  const isFeedAccessStartingRef = useRef(false)
   const deletedFeedPostIdsRef = useRef(new Set<string>())
   const latestLikeEventTimesRef = useRef(new Map<string, number>())
   const [taskText, setTaskText] = useState(getInitialTaskDraft)
@@ -157,7 +156,6 @@ export function HomePage() {
   const [feedLoadMoreError, setFeedLoadMoreError] = useState('')
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
-  const [isFeedAccessStarting, setIsFeedAccessStarting] = useState(false)
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
@@ -697,13 +695,6 @@ export function HomePage() {
   }, [abortMyPageRequest, clearMyPageCache, completeProfile.id, loadMyPage])
 
   async function closeFeedIntro() {
-    if (isFeedAccessStartingRef.current) {
-      return
-    }
-
-    isFeedAccessStartingRef.current = true
-    setIsFeedAccessStarting(true)
-
     try {
       const result = await startFeedAccess(completeProfile.id)
       const remainingSeconds =
@@ -717,9 +708,6 @@ export function HomePage() {
           ? caughtError.message
           : 'フィードを開始できませんでした。',
       )
-    } finally {
-      isFeedAccessStartingRef.current = false
-      setIsFeedAccessStarting(false)
     }
   }
 
@@ -1827,12 +1815,7 @@ export function HomePage() {
           )}
         </section>
 
-        {isFeedIntroOpen ? (
-          <FeedIntroModal
-            isStarting={isFeedAccessStarting}
-            onClose={closeFeedIntro}
-          />
-        ) : null}
+        {isFeedIntroOpen ? <FeedIntroModal onClose={closeFeedIntro} /> : null}
 
         {isFeedExpired ? (
           <FeedExpiredModal onStart={startNextTaskFromExpiredFeed} />
