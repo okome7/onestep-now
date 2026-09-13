@@ -127,6 +127,20 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "PATCH /api/tasks/:id/complete" do
+    it "初回説明未確認ならフィード閲覧を開始待ちにする" do
+      task = user.tasks.create!(title: "初回説明を確認する", status: :active, started_at: 1.minute.ago)
+      task.create_completion_post!(user: user, status: :doing, content: task.title)
+
+      patch "/api/tasks/#{task.id}/complete",
+        params: { defer_feed_access: true },
+        headers: authenticated_headers(user),
+        as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.feed_access_pending).to be(true)
+      expect(user.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
+    end
+
     it "開始時の投稿をcompletedに更新し、新規投稿を作成しない" do
       task = user.tasks.create!(title: "参考記事を1つ読む", status: :active, started_at: 1.minute.ago)
       completion_post = task.create_completion_post!(user: user, status: :doing, content: task.title)
@@ -188,6 +202,21 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "GET /api/feed" do
+    it "初回説明の開始待ち中は投稿を返さない" do
+      user.update!(feed_access_pending: true, feed_access_expires_at: 3.minutes.from_now)
+      create_completed_posts(user: other_user, count: 1)
+
+      get "/api/feed", headers: authenticated_headers(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to include(
+        "status" => "success",
+        "access_allowed" => false,
+        "remaining_seconds" => 0,
+        "data" => []
+      )
+    end
+
     it "自分の投稿も含め、操作可否を返す" do
       user.update!(feed_access_expires_at: 3.minutes.from_now)
       create_completed_posts(user: user, count: 9)

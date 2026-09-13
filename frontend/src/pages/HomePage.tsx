@@ -444,9 +444,6 @@ export function HomePage() {
       startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
       setIsFeedAccessDenied(false)
 
-      if (!window.localStorage.getItem(feedIntroStorageKey)) {
-        setIsFeedIntroOpen(true)
-      }
     } catch (caughtError) {
       if (caughtError instanceof FeedAccessDeniedError) {
         setFeedPosts([])
@@ -617,16 +614,21 @@ export function HomePage() {
       return undefined
     }
 
+    if (isFeedIntroOpen) {
+      return undefined
+    }
+
     const timerId = window.setTimeout(() => {
       void loadFeed()
     }, 0)
 
     return () => window.clearTimeout(timerId)
-  }, [isFeedOpen, loadFeed])
+  }, [isFeedIntroOpen, isFeedOpen, loadFeed])
 
   useEffect(() => {
     if (
       !isFeedOpen ||
+      isFeedIntroOpen ||
       isFeedAccessDenied ||
       isFeedExpired ||
       !completeProfile.id
@@ -673,6 +675,7 @@ export function HomePage() {
     completeProfile.id,
     isFeedAccessDenied,
     isFeedExpired,
+    isFeedIntroOpen,
     isFeedOpen,
     loadFeed,
   ])
@@ -710,8 +713,11 @@ export function HomePage() {
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
+    const needsIntro =
+      isTaskComplete && !window.localStorage.getItem(feedIntroStorageKey)
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
+    setIsFeedIntroOpen(needsIntro)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
@@ -724,14 +730,14 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     const hasKnownFeedAccess = hasActiveFeedAccess()
-    if (!hasKnownFeedAccess) {
+    if (!hasKnownFeedAccess || needsIntro) {
       setFeedPosts([])
       resetFeedTimer()
     }
     setFeedError('')
     setIsFeedAccessDenied(!hasKnownFeedAccess)
     clearFeedTimeout()
-    if (isFeedOpen) {
+    if (isFeedOpen && !needsIntro) {
       void loadFeed()
     }
     window.scrollTo({ top: 0, left: 0 })
@@ -1283,7 +1289,9 @@ export function HomePage() {
       setIsTaskComplete(false)
       setCompletedTaskReactions({ likes: 0, comments: [] })
       upsertOwnTaskPost(startedTask)
-      await loadFeed()
+      if (window.localStorage.getItem(feedIntroStorageKey)) {
+        await loadFeed()
+      }
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
@@ -1393,7 +1401,9 @@ export function HomePage() {
       })
       setIsTaskComplete(true)
       void refreshMyPageData(completeProfile.id)
-      await loadFeed()
+      if (window.localStorage.getItem(feedIntroStorageKey)) {
+        await loadFeed()
+      }
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
