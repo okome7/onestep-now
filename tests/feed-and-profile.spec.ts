@@ -651,6 +651,7 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   expect(feedRequests).toBe(0);
   expect(cableTokenRequests).toBe(0);
   await expect(introDialog).toBeVisible();
+  await expect(introDialog.getByRole("button", { name: "OK" })).toBeEnabled();
   await expect(page.getByLabel("残り 00:00")).toHaveCount(0);
   await expect(page.getByText("初回説明後に見える投稿")).toHaveCount(0);
 
@@ -661,4 +662,54 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   await expect.poll(() => cableTokenRequests).toBe(1);
   await expect(page.getByLabel("残り 03:00")).toBeVisible();
   await expect(page.getByText("初回説明後に見える投稿")).toBeVisible();
+});
+
+test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行する", async ({
+  page,
+}) => {
+  let accessRequests = 0;
+  let releaseAccessResponse = () => {};
+  const accessResponseGate = new Promise<void>((resolve) => {
+    releaseAccessResponse = resolve;
+  });
+
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    accessRequests += 1;
+    await accessResponseGate;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_access_expires_at: new Date(Date.now() + 180_000).toISOString(),
+      }),
+    });
+  });
+
+  await page.clock.install();
+  await gotoHome(page);
+  await page
+    .getByRole("textbox", { name: "今できること" })
+    .fill("OKの連打を確認する");
+  await page.getByRole("button", { name: "始める" }).click();
+  await page.getByRole("button", { name: "できた！" }).click();
+  await page.getByRole("link", { name: "みんなを見る" }).click();
+
+  const okButton = page
+    .getByRole("dialog", { name: "利用時間は3分限定！" })
+    .getByRole("button", { name: "OK" });
+  await okButton.evaluate((button: HTMLButtonElement) => {
+    button.click();
+    button.click();
+    button.click();
+  });
+
+  await expect.poll(() => accessRequests).toBe(1);
+  await expect(okButton).toBeDisabled();
+
+  releaseAccessResponse();
+
+  await expect(page.getByLabel("残り 03:00")).toBeVisible();
+  expect(accessRequests).toBe(1);
 });

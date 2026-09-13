@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe "Feed posts", type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   def create_user(email:)
     User.create!(
       name: email.split('@').first,
@@ -142,36 +144,40 @@ RSpec.describe "Feed posts", type: :request do
     end
 
     it "開始時の投稿をcompletedに更新し、新規投稿を作成しない" do
-      task = user.tasks.create!(title: "参考記事を1つ読む", status: :active, started_at: 1.minute.ago)
-      completion_post = task.create_completion_post!(user: user, status: :doing, content: task.title)
-      completion_post.completion_post_likes.create!(user: other_user)
-      completion_post.comments.create!(user: other_user, body: "応援しています")
+      fixed_time = Time.zone.local(2026, 9, 14, 12, 0, 0)
 
-      expect {
-        patch "/api/tasks/#{task.id}/complete", headers: authenticated_headers(user), as: :json
-      }.not_to change(CompletionPost, :count)
+      travel_to fixed_time do
+        task = user.tasks.create!(title: "参考記事を1つ読む", status: :active, started_at: 1.minute.ago)
+        completion_post = task.create_completion_post!(user: user, status: :doing, content: task.title)
+        completion_post.completion_post_likes.create!(user: other_user)
+        completion_post.comments.create!(user: other_user, body: "応援しています")
 
-      expect(response).to have_http_status(:ok)
-      expect(task.reload).to be_completed
-      expect(task.completed_at).to be_present
-      expect(completion_post.reload).to be_completed
-      expect(completion_post.completed_at.to_i).to eq(task.completed_at.to_i)
-      expect(user.reload.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
-      expect(user.feed_access_pending).to be(false)
-      body = JSON.parse(response.body)
-      expect(body.dig("data", "completion_post")).to include(
-        "id" => completion_post.id,
-        "status" => "completed",
-        "status_label" => "できた",
-        "card_variant" => "completed",
-        "likes_count" => 1,
-        "comments_count" => 1
-      )
-      expect(body.dig("data", "completion_post", "comments").first).to include(
-        "body" => "応援しています",
-        "avatar_key" => other_user.avatar_key,
-        "post_status_when_commented" => "doing"
-      )
+        expect {
+          patch "/api/tasks/#{task.id}/complete", headers: authenticated_headers(user), as: :json
+        }.not_to change(CompletionPost, :count)
+
+        expect(response).to have_http_status(:ok)
+        expect(task.reload).to be_completed
+        expect(task.completed_at).to be_present
+        expect(completion_post.reload).to be_completed
+        expect(completion_post.completed_at.to_i).to eq(task.completed_at.to_i)
+        expect(user.reload.feed_access_expires_at).to eq(fixed_time + 3.minutes)
+        expect(user.feed_access_pending).to be(false)
+        body = JSON.parse(response.body)
+        expect(body.dig("data", "completion_post")).to include(
+          "id" => completion_post.id,
+          "status" => "completed",
+          "status_label" => "できた",
+          "card_variant" => "completed",
+          "likes_count" => 1,
+          "comments_count" => 1
+        )
+        expect(body.dig("data", "completion_post", "comments").first).to include(
+          "body" => "応援しています",
+          "avatar_key" => other_user.avatar_key,
+          "post_status_when_commented" => "doing"
+        )
+      end
     end
   end
 
@@ -367,6 +373,44 @@ RSpec.describe "Feed posts", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(user.reload.feed_access_expires_at).to be_within(1.second).of(original_expiration)
+    end
+
+    it "同一ユーザーへの並行リクエストでは最初に確定した期限を両方に返す" do
+      user.update!(feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+      update_barrier = Concurrent::CyclicBarrier.new(2)
+
+      allow_any_instance_of(User).to receive(:update!).and_wrap_original do |method, *args|
+        attributes = args.first
+        if attributes.is_a?(Hash) && attributes[:feed_access_pending] == false
+          update_barrier.wait(5)
+        end
+        method.call(*args)
+      end
+
+      sessions = 2.times.map do
+        _auth_session, session_token, csrf_token = AuthSession.issue_for(user)
+        session = ActionDispatch::Integration::Session.new(Rails.application)
+        session.cookies[ApplicationController::SESSION_COOKIE] = session_token
+        session.cookies[ApplicationController::CSRF_COOKIE] = csrf_token
+        [ session, { "Origin" => "http://localhost:5173", "X-CSRF-Token" => csrf_token } ]
+      end
+      Rails.application.routes.recognize_path("/api/feed/access", method: :post)
+      start_barrier = Concurrent::CyclicBarrier.new(2)
+
+      responses = sessions.map do |session, headers|
+        Thread.new do
+          start_barrier.wait(5)
+          session.post "/api/feed/access", headers: headers, as: :json
+          [ session.response.status, JSON.parse(session.response.body) ]
+        end
+      end.map(&:value)
+
+      expect(responses.map(&:first)).to all(eq(200))
+      expirations = responses.map { |_status, body| body.fetch("feed_access_expires_at") }
+      expect(expirations.uniq.one?).to be(true)
+      expect(Time.zone.parse(expirations.first)).to be_within(2.seconds).of(3.minutes.from_now)
+      expect(user.reload.feed_access_pending).to be(false)
+      expect(user.feed_access_expires_at).to be_within(0.001.seconds).of(Time.zone.parse(expirations.first))
     end
   end
 
