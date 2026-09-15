@@ -1844,7 +1844,7 @@ export function HomePage() {
           onFeedClick={openFeed}
           onProfileClick={openProfile}
         />
-        {activeCommentPost ? (
+        {activeCommentPost && !isFeedExpired ? (
           <FeedCommentPanel
             post={activeCommentPost}
             draft={commentDrafts[activeCommentPost.id] ?? ''}
