@@ -518,6 +518,50 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   page,
 }) => {
   await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_access_expires_at: new Date(
+          Date.now() + 180_000,
+        ).toISOString(),
+        data: [
+          {
+            id: 92,
+            user_name: "みき",
+            level: 2,
+            task_title: "期限切れ前にコメントする投稿",
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            is_mine: false,
+            can_like: true,
+            can_comment: true,
+            likes_count: 0,
+            comments_count: 0,
+            liked_by_me: false,
+            comments: [],
+            created_at: new Date().toISOString(),
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(
+    /.*\/(?:api\/)?completion_posts\/92\/comments(?:\?.*)?$/,
+    async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "success",
+          pagination: { page: 1, per_page: 20, has_more: false },
+          data: [],
+        }),
+      });
+    },
+  );
   await page.clock.install();
   await gotoHome(page);
   await page.evaluate(() => {
@@ -532,6 +576,18 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   await page.getByRole("link", { name: "みんなを見る" }).click();
 
   await expect(page.getByRole("heading", { name: "フィード" })).toBeVisible();
+  await page
+    .getByRole("button", { name: "みきさんのコメントを開く" })
+    .click();
+  const commentPanel = page.locator(".feed-comment-panel");
+  const commentInput = page.getByRole("textbox", {
+    name: "みきさんの投稿にコメントする",
+  });
+  const commentSubmit = page.getByRole("button", { name: "コメントを送信" });
+  await commentInput.fill("期限切れ後は送信できない");
+  await commentInput.focus();
+  await expect(commentInput).toBeFocused();
+
   await page.clock.fastForward(3 * 60 * 1000);
 
   const expiredDialog = page.getByRole("dialog", {
@@ -541,6 +597,14 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
   await expect(expiredBackdrop).toHaveCSS("position", "fixed");
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(expiredDialog).toBeVisible();
+  await expect(page.getByLabel("残り 00:00")).toBeVisible();
+  await expect(page.locator(".feed-list")).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
+  await expect(commentPanel).toHaveCount(0);
+  await expect(commentInput).toHaveCount(0);
+  await expect(commentSubmit).toHaveCount(0);
   await expect(
     expiredDialog.getByText("リフレッシュできましたか？"),
   ).toBeVisible();
