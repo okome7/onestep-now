@@ -2,6 +2,7 @@ import {
   expect,
   gotoHome,
   markLoggedIn,
+  mockLogin,
   myPageRoute,
   mockTaskAndFeedApi,
   prepareAppTest,
@@ -712,4 +713,85 @@ test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行
 
   await expect(page.getByLabel("残り 03:00")).toBeVisible();
   expect(accessRequests).toBe(1);
+});
+
+test("再読み込み・再訪・再ログイン後も最初のフィード閲覧期限を引き継ぐ", async ({
+  page,
+}) => {
+  const fixedTime = new Date("2026-09-15T03:00:00.000Z");
+  const feedAccessExpiresAt = new Date(
+    fixedTime.getTime() + 3 * 60 * 1000,
+  ).toISOString();
+  const returnedExpirations: string[] = [];
+  let serverRemainingSeconds = 180;
+
+  await page.clock.install({ time: fixedTime });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    returnedExpirations.push(feedAccessExpiresAt);
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: serverRemainingSeconds,
+        feed_access_expires_at: feedAccessExpiresAt,
+        data: [],
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?logout$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success" }),
+    });
+  });
+  await mockLogin(page, {
+    status: 200,
+    body: {
+      status: "success",
+      data: {
+        id: 1,
+        name: "おこめ",
+        email: "okome@example.com",
+        avatar_key: "avatar-1",
+      },
+    },
+  });
+
+  await gotoHome(page);
+  await page.evaluate(() => {
+    localStorage.setItem("onestep-feed-intro-seen", "true");
+  });
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(page.getByLabel("残り 03:00")).toBeVisible();
+
+  await page.clock.runFor(60_000);
+  serverRemainingSeconds = 120;
+  await expect(page.getByLabel("残り 02:00")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel("残り 02:00")).toBeVisible();
+
+  await page.getByRole("link", { name: "ホーム" }).click();
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(page.getByLabel("残り 02:00")).toBeVisible();
+
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  await page.getByRole("button", { name: "設定" }).click();
+  await page.getByRole("button", { name: "ログアウト" }).click();
+  await page
+    .getByRole("dialog", { name: "ログアウトしますか？" })
+    .getByRole("button", { name: "ログアウト" })
+    .click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  await page.getByLabel("メールアドレス").fill("okome@example.com");
+  await page.getByLabel("パスワード").fill("password1");
+  await page.getByRole("button", { name: "ログイン" }).click();
+  await expect(page).toHaveURL(/\/home$/);
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(page.getByLabel("残り 02:00")).toBeVisible();
+
+  expect(returnedExpirations.length).toBeGreaterThanOrEqual(4);
+  expect(new Set(returnedExpirations)).toEqual(new Set([feedAccessExpiresAt]));
 });
