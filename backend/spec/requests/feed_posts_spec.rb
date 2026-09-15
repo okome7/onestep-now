@@ -375,6 +375,37 @@ RSpec.describe "Feed posts", type: :request do
       expect(user.reload.feed_access_expires_at).to be_within(1.second).of(original_expiration)
     end
 
+    it "時間経過後の再取得と開始API再実行でも最初の閲覧期限を引き継ぐ" do
+      fixed_time = Time.zone.local(2026, 9, 15, 12, 0, 0)
+
+      travel_to fixed_time do
+        user.update!(feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+
+        post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        first_expiration = user.reload.feed_access_expires_at
+        expect(first_expiration).to eq(fixed_time + 3.minutes)
+
+        travel 60.seconds
+
+        get "/api/feed", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        feed_body = JSON.parse(response.body)
+        expect(Time.zone.parse(feed_body.fetch("feed_access_expires_at"))).to eq(first_expiration)
+        expect(feed_body.fetch("remaining_seconds")).to eq(120)
+
+        post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        access_body = JSON.parse(response.body)
+        expect(Time.zone.parse(access_body.fetch("feed_access_expires_at"))).to eq(first_expiration)
+        expect(access_body.fetch("remaining_seconds")).to eq(120)
+        expect(user.reload.feed_access_expires_at).to eq(first_expiration)
+      end
+    end
+
     it "同一ユーザーへの並行リクエストでは最初に確定した期限を両方に返す" do
       user.update!(feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
       update_barrier = Concurrent::CyclicBarrier.new(2)
