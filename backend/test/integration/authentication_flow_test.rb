@@ -105,6 +105,7 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
 
   test "本文のユーザーIDを信用せず現在のユーザーとしていいねとコメントを作成する" do
     other_post = create_post_for(@other_user, "応援対象")
+    @user.update!(feed_access_pending: false, feed_access_expires_at: 3.minutes.from_now)
     login_as(@user)
     clear_messages(FeedUpdatesBroadcaster::STREAM_NAME)
 
