@@ -28,6 +28,12 @@ class ApplicationController < ActionController::API
 
   alias_method :require_current_user, :authenticate_user!
 
+  def require_active_feed_access!
+    return if !current_user.feed_access_pending? && current_user.feed_access_expires_at&.future?
+
+    render_forbidden
+  end
+
   def verify_request_origin!
     return if request.get? || request.head? || request.options?
     return if ::AllowedFrontendOrigins.all.include?(request.headers["Origin"])
