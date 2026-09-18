@@ -2,6 +2,7 @@ class CommentsController < ApplicationController
   COMMENTS_LIMIT = 20
 
   before_action :require_current_user
+  before_action :require_active_feed_access!
   before_action :set_completion_post
 
   def index

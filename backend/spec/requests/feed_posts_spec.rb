@@ -446,6 +446,10 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "GET /api/completion_posts/:id/comments" do
+    before do
+      user.update!(feed_access_pending: false, feed_access_expires_at: 3.minutes.from_now)
+    end
+
     it "最新側から20件ずつ取得し、各ページ内は古い順で返す" do
       task = other_user.tasks.create!(title: "コメントが多い投稿")
       completion_post = task.create_completion_post!(user: other_user, status: :completed)
@@ -486,6 +490,10 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "POST /api/completion_posts/:id/comments" do
+    before do
+      user.update!(feed_access_pending: false, feed_access_expires_at: 3.minutes.from_now)
+    end
+
     it "コメント時点の投稿状態を保存する" do
       task = other_user.tasks.create!(title: "他人のタスク")
       completion_post = task.create_completion_post!(user: other_user, status: :completed)
@@ -521,6 +529,10 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "POST /api/completion_posts/:id/likes" do
+    before do
+      user.update!(feed_access_pending: false, feed_access_expires_at: 3.minutes.from_now)
+    end
+
     it "いいね解除できる" do
       task = other_user.tasks.create!(title: "他人のタスク")
       completion_post = task.create_completion_post!(user: other_user, status: :doing)
@@ -542,6 +554,133 @@ RSpec.describe "Feed posts", type: :request do
       }.to change(CompletionPostLike, :count).by(1)
 
       expect(response).to have_http_status(:created)
+    end
+  end
+
+  describe "フィード操作のアクセス制御" do
+    around do |example|
+      travel_to(Time.zone.local(2026, 9, 15, 12, 0, 0)) { example.run }
+    end
+
+    let(:completion_post) do
+      task = other_user.tasks.create!(title: "アクセス制御対象の投稿")
+      task.create_completion_post!(user: other_user, status: :completed)
+    end
+
+    shared_examples "フィード操作を拒否する" do
+      it "いいね追加を拒否し、いいねを増やさない" do
+        expect {
+          post "/api/completion_posts/#{completion_post.id}/likes",
+            headers: authenticated_headers(user),
+            as: :json
+        }.not_to change(CompletionPostLike, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)).to include("status" => "error")
+      end
+
+      it "いいね解除を拒否し、既存のいいねを残す" do
+        completion_post.completion_post_likes.create!(user: user)
+
+        expect {
+          delete "/api/completion_posts/#{completion_post.id}/likes",
+            headers: authenticated_headers(user),
+            as: :json
+        }.not_to change(CompletionPostLike, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(completion_post.completion_post_likes.exists?(user: user)).to be(true)
+      end
+
+      it "コメント一覧取得を拒否し、コメント内容を返さない" do
+        completion_post.comments.create!(user: other_user, body: "非公開にするコメント")
+
+        get "/api/completion_posts/#{completion_post.id}/comments",
+          headers: authenticated_headers(user),
+          as: :json
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)).to include("status" => "error")
+        expect(response.body).not_to include("非公開にするコメント")
+      end
+
+      it "コメント投稿を拒否し、コメントを増やさない" do
+        expect {
+          post "/api/completion_posts/#{completion_post.id}/comments",
+            params: { comment: { body: "保存しないコメント" } },
+            headers: authenticated_headers(user),
+            as: :json
+        }.not_to change(Comment, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)).to include("status" => "error")
+      end
+    end
+
+    context "閲覧開始前の場合" do
+      before do
+        user.update!(feed_access_pending: true, feed_access_expires_at: 3.minutes.from_now)
+      end
+
+      include_examples "フィード操作を拒否する"
+    end
+
+    context "閲覧期限が存在しない場合" do
+      before do
+        user.update!(feed_access_pending: false, feed_access_expires_at: nil)
+      end
+
+      include_examples "フィード操作を拒否する"
+    end
+
+    context "閲覧期限切れの場合" do
+      before do
+        user.update!(feed_access_pending: false, feed_access_expires_at: 1.second.ago)
+      end
+
+      include_examples "フィード操作を拒否する"
+    end
+
+    context "閲覧期限内の場合" do
+      before do
+        user.update!(feed_access_pending: false, feed_access_expires_at: 3.minutes.from_now)
+      end
+
+      it "いいね追加と解除を利用できる" do
+        post "/api/completion_posts/#{completion_post.id}/likes",
+          headers: authenticated_headers(user),
+          as: :json
+
+        expect(response).to have_http_status(:created)
+        expect(completion_post.completion_post_likes.exists?(user: user)).to be(true)
+
+        delete "/api/completion_posts/#{completion_post.id}/likes",
+          headers: authenticated_headers(user),
+          as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(completion_post.completion_post_likes.exists?(user: user)).to be(false)
+      end
+
+      it "コメント一覧取得と投稿を利用できる" do
+        completion_post.comments.create!(user: other_user, body: "期限内のコメント")
+
+        get "/api/completion_posts/#{completion_post.id}/comments",
+          headers: authenticated_headers(user),
+          as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body).fetch("data").pluck("body")).to include("期限内のコメント")
+
+        expect {
+          post "/api/completion_posts/#{completion_post.id}/comments",
+            params: { comment: { body: "期限内の投稿" } },
+            headers: authenticated_headers(user),
+            as: :json
+        }.to change(Comment, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+      end
     end
   end
 end
