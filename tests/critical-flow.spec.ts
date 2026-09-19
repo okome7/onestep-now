@@ -74,9 +74,8 @@ test("@critical 登録からタスク完了とフィード・マイページ確�
 
   await page.getByRole("link", { name: "みんなを見る" }).click();
   const introDialog = page.getByRole("dialog", { name: "利用時間は3分限定！" });
-  if (await introDialog.isVisible()) {
-    await introDialog.getByRole("button", { name: "OK" }).click();
-  }
+  await expect(introDialog).toBeVisible();
+  await introDialog.getByRole("button", { name: "OK" }).click();
   await expect(
     page.getByRole("heading", { name: "フィード", exact: true }),
   ).toBeVisible();

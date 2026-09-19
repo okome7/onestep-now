@@ -155,6 +155,9 @@ export function HomePage() {
   const [hasMoreFeedPosts, setHasMoreFeedPosts] = useState(false)
   const [feedLoadMoreError, setFeedLoadMoreError] = useState('')
   const [feedError, setFeedError] = useState('')
+  const [isFeedIntroPreparing, setIsFeedIntroPreparing] = useState(
+    initialHomeView === 'feed' && !completeProfile.feedIntroSeenAt,
+  )
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [isFeedAccessStarting, setIsFeedAccessStarting] = useState(false)
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
@@ -179,7 +182,11 @@ export function HomePage() {
   } = useFeedTimer({
     durationSeconds: feedViewDurationSeconds,
     enabled:
-      isFeedOpen && !isFeedAccessDenied && !isFeedLoading && !isFeedIntroOpen,
+      isFeedOpen &&
+      !isFeedAccessDenied &&
+      !isFeedLoading &&
+      !isFeedIntroPreparing &&
+      !isFeedIntroOpen,
     isFeedOpen,
   })
   const redirectToLoginForAuthRequired = useCallback(() => {
@@ -413,7 +420,7 @@ export function HomePage() {
   }, [activeAchievement])
 
   useEffect(() => {
-    if (!isFeedExpired) {
+    if (!isFeedExpired && !isFeedIntroOpen) {
       return undefined
     }
 
@@ -427,7 +434,7 @@ export function HomePage() {
       document.body.style.overflow = previousBodyOverflow
       document.documentElement.style.overflow = previousDocumentOverflow
     }
-  }, [isFeedExpired])
+  }, [isFeedExpired, isFeedIntroOpen])
 
   const loadFeed = useCallback(async () => {
     setFeedError('')
@@ -443,7 +450,14 @@ export function HomePage() {
       setFeedPosts(result.posts)
       setFeedPage(result.page)
       setHasMoreFeedPosts(result.hasMore)
-      startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
+      if (result.feedAccessPending) {
+        resetFeedTimer()
+        setIsFeedIntroPreparing(false)
+        setIsFeedIntroOpen(true)
+      } else {
+        setIsFeedIntroPreparing(false)
+        startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
+      }
       setIsFeedAccessDenied(false)
 
     } catch (caughtError) {
@@ -452,6 +466,7 @@ export function HomePage() {
         setFeedPage(1)
         setHasMoreFeedPosts(false)
         resetFeedTimer()
+        setIsFeedIntroPreparing(false)
         setIsFeedAccessDenied(true)
         setIsFeedIntroOpen(false)
         return
@@ -469,7 +484,12 @@ export function HomePage() {
   }, [clearFeedTimeout, completeProfile.id, resetFeedTimer, startFeedTimer])
 
   const loadMoreFeed = useCallback(async () => {
-    if (isFeedLoadingMore || !hasMoreFeedPosts) {
+    if (
+      isFeedIntroPreparing ||
+      isFeedIntroOpen ||
+      isFeedLoadingMore ||
+      !hasMoreFeedPosts
+    ) {
       return
     }
 
@@ -510,6 +530,8 @@ export function HomePage() {
     expireFeed,
     feedPage,
     hasMoreFeedPosts,
+    isFeedIntroOpen,
+    isFeedIntroPreparing,
     isFeedLoadingMore,
   ])
 
@@ -518,6 +540,8 @@ export function HomePage() {
 
     if (
       !isFeedOpen ||
+      isFeedIntroPreparing ||
+      isFeedIntroOpen ||
       isFeedExpired ||
       !hasMoreFeedPosts ||
       feedLoadMoreError ||
@@ -541,6 +565,8 @@ export function HomePage() {
     feedLoadMoreError,
     hasMoreFeedPosts,
     isFeedExpired,
+    isFeedIntroOpen,
+    isFeedIntroPreparing,
     isFeedOpen,
     loadMoreFeed,
   ])
@@ -616,20 +642,17 @@ export function HomePage() {
       return undefined
     }
 
-    if (isFeedIntroOpen) {
-      return undefined
-    }
-
     const timerId = window.setTimeout(() => {
       void loadFeed()
     }, 0)
 
     return () => window.clearTimeout(timerId)
-  }, [isFeedIntroOpen, isFeedOpen, loadFeed])
+  }, [isFeedOpen, loadFeed])
 
   useEffect(() => {
     if (
       !isFeedOpen ||
+      isFeedIntroPreparing ||
       isFeedIntroOpen ||
       isFeedAccessDenied ||
       isFeedExpired ||
@@ -678,6 +701,7 @@ export function HomePage() {
     isFeedAccessDenied,
     isFeedExpired,
     isFeedIntroOpen,
+    isFeedIntroPreparing,
     isFeedOpen,
     loadFeed,
   ])
@@ -715,6 +739,7 @@ export function HomePage() {
       }
       setCompleteProfile(nextProfile)
       saveCompleteProfile(nextProfile)
+      setFeedError('')
       setIsFeedIntroOpen(false)
     } catch (caughtError) {
       setFeedError(
@@ -733,7 +758,8 @@ export function HomePage() {
     const needsIntro = isTaskComplete && !hasSeenFeedIntro
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
-    setIsFeedIntroOpen(needsIntro)
+    setIsFeedIntroPreparing(needsIntro)
+    setIsFeedIntroOpen(false)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
@@ -751,7 +777,7 @@ export function HomePage() {
       resetFeedTimer()
     }
     setFeedError('')
-    setIsFeedAccessDenied(!hasKnownFeedAccess)
+    setIsFeedAccessDenied(needsIntro ? false : !hasKnownFeedAccess)
     clearFeedTimeout()
     if (isFeedOpen && !needsIntro) {
       void loadFeed()
@@ -775,6 +801,8 @@ export function HomePage() {
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
     setIsFeedAccessDenied(false)
+    setIsFeedIntroPreparing(false)
+    setIsFeedIntroOpen(false)
     clearFeedTimeout()
     setFeedError('')
     if (isTaskComplete) {
@@ -1781,7 +1809,9 @@ export function HomePage() {
         <AppHeader
           title="フィード"
           rightAction={
-            isFeedAccessDenied ? null : (
+            isFeedAccessDenied ||
+            isFeedIntroPreparing ||
+            isFeedIntroOpen ? null : (
               <FeedCountdown
                 remainingSeconds={feedRemainingSeconds}
                 handAngle={feedCountdownHandAngle}
@@ -1790,47 +1820,69 @@ export function HomePage() {
           }
         />
 
-        <section
-          className={`feed-list ${isFeedExpired ? 'feed-list-expired' : ''}`}
-          aria-label="みんなの投稿"
-          aria-hidden={isFeedExpired ? 'true' : undefined}
-        >
-          {isFeedAccessDenied ? (
-            <FeedStartGate onStart={openHome} />
-          ) : feedError ? (
-            <p className="feed-error" role="alert">
-              {feedError}
-            </p>
-          ) : (
-            <>
-              {visibleFeedPosts.map((post) => (
-                <FeedPostCard
-                  key={post.id}
-                  post={post}
-                  now={feedNow}
-                  onLike={(postId) => void togglePostLike(postId)}
-                  onOpenComments={openCommentPanel}
-                  onOpenProfile={openFeedUserProfile}
-                />
-              ))}
-              {hasMoreFeedPosts ? (
-                <div
-                  ref={feedLoadMoreRef}
-                  className="feed-load-more"
-                  aria-label="次の投稿を読み込み中"
-                >
-                  {feedLoadMoreError ? (
-                    <button type="button" onClick={() => void loadMoreFeed()}>
-                      再読み込み
-                    </button>
-                  ) : isFeedLoadingMore ? (
-                    '読み込み中…'
-                  ) : null}
-                </div>
-              ) : null}
-            </>
-          )}
-        </section>
+        {isFeedIntroPreparing ? (
+          <section
+            className="feed-intro-loading"
+            aria-live="polite"
+            aria-busy={isFeedLoading}
+          >
+            {feedError ? (
+              <>
+                <p className="feed-error" role="alert">
+                  {feedError}
+                </p>
+                <button type="button" onClick={() => void loadFeed()}>
+                  再読み込み
+                </button>
+              </>
+            ) : (
+              <p>読み込んでいます…</p>
+            )}
+          </section>
+        ) : (
+          <section
+            className={`feed-list ${isFeedExpired ? 'feed-list-expired' : ''} ${isFeedIntroOpen ? 'feed-list-intro' : ''}`}
+            aria-label="みんなの投稿"
+            aria-hidden={isFeedExpired || isFeedIntroOpen ? 'true' : undefined}
+            inert={isFeedExpired || isFeedIntroOpen ? true : undefined}
+          >
+            {isFeedAccessDenied ? (
+              <FeedStartGate onStart={openHome} />
+            ) : feedError && visibleFeedPosts.length === 0 ? (
+              <p className="feed-error" role="alert">
+                {feedError}
+              </p>
+            ) : (
+              <>
+                {visibleFeedPosts.map((post) => (
+                  <FeedPostCard
+                    key={post.id}
+                    post={post}
+                    now={feedNow}
+                    onLike={(postId) => void togglePostLike(postId)}
+                    onOpenComments={openCommentPanel}
+                    onOpenProfile={openFeedUserProfile}
+                  />
+                ))}
+                {hasMoreFeedPosts ? (
+                  <div
+                    ref={feedLoadMoreRef}
+                    className="feed-load-more"
+                    aria-label="次の投稿を読み込み中"
+                  >
+                    {feedLoadMoreError ? (
+                      <button type="button" onClick={() => void loadMoreFeed()}>
+                        再読み込み
+                      </button>
+                    ) : isFeedLoadingMore ? (
+                      '読み込み中…'
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </section>
+        )}
 
         {isFeedIntroOpen ? (
           <FeedIntroModal

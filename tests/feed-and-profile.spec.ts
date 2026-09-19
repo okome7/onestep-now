@@ -620,19 +620,47 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
 test("初回説明のOK後にカウントダウンとフィード閲覧を開始する", async ({
   page,
 }) => {
-  let feedRequests = 0;
+  let initialFeedRequests = 0;
+  let loadMoreFeedRequests = 0;
   let accessRequests = 0;
   let cableTokenRequests = 0;
+  let releaseInitialFeedResponse = () => {};
+  const initialFeedResponseGate = new Promise<void>((resolve) => {
+    releaseInitialFeedResponse = resolve;
+  });
 
   await mockTaskAndFeedApi(page);
-  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
-    feedRequests += 1;
+  await page.route(/.*\/(?:api\/)?feed(?:\?[^#]*)?$/, async (route) => {
+    const pageNumber = new URL(route.request().url()).searchParams.get("page");
+    if (pageNumber && pageNumber !== "1") {
+      loadMoreFeedRequests += 1;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "success",
+          access_allowed: true,
+          feed_access_pending: false,
+          remaining_seconds: 180,
+          feed_access_expires_at: new Date(
+            Date.now() + 180_000,
+          ).toISOString(),
+          pagination: { page: Number(pageNumber), per_page: 20, has_more: false },
+          data: [],
+        }),
+      });
+      return;
+    }
+
+    initialFeedRequests += 1;
+    await initialFeedResponseGate;
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
         status: "success",
-        remaining_seconds: 180,
-        feed_access_expires_at: new Date(Date.now() + 180_000).toISOString(),
+        access_allowed: false,
+        feed_access_pending: true,
+        remaining_seconds: 0,
+        pagination: { page: 1, per_page: 20, has_more: true },
         data: [
           {
             id: 91,
@@ -697,12 +725,54 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   const introDialog = page.getByRole("dialog", {
     name: "利用時間は3分限定！",
   });
-  await expect(introDialog).toBeVisible();
-  expect(feedRequests).toBe(0);
-  expect(accessRequests).toBe(0);
-  expect(cableTokenRequests).toBe(0);
+  await expect(page.getByText("読み込んでいます…")).toBeVisible();
+  await expect(introDialog).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "フィードは3分だけ見られます" }),
+  ).toHaveCount(0);
   await expect(page.getByText("初回説明後に見える投稿")).toHaveCount(0);
   await expect(page.locator(".feed-countdown")).toHaveCount(0);
+  expect(cableTokenRequests).toBe(0);
+
+  releaseInitialFeedResponse();
+
+  await expect(introDialog).toBeVisible();
+  await expect.poll(() => initialFeedRequests).toBe(1);
+  expect(loadMoreFeedRequests).toBe(0);
+  expect(accessRequests).toBe(0);
+  expect(cableTokenRequests).toBe(0);
+  const feedList = page.locator(".feed-list");
+  const backgroundPost = page.getByText("初回説明後に見える投稿");
+  await expect(backgroundPost).toBeAttached();
+  await expect(feedList).toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).toHaveAttribute("inert", "");
+  await expect(feedList).toHaveCSS("filter", "blur(5px)");
+  await expect(page.locator(".feed-intro-backdrop")).toBeVisible();
+  await expect(page.locator(".feed-countdown")).toHaveCount(0);
+  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+  await expect(
+    page.locator(".feed-reaction").first().click({ trial: true, timeout: 500 }),
+  ).rejects.toThrow();
+  await page.keyboard.press("Tab");
+  expect(
+    await page.evaluate(() =>
+      Boolean(document.activeElement?.closest(".feed-list")),
+    ),
+  ).toBe(false);
+
+  const scrollY = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 1000);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+  expect(initialFeedRequests).toBe(1);
+  expect(loadMoreFeedRequests).toBe(0);
+
+  await page.setViewportSize({ width: 375, height: 667 });
+  const modalBox = await introDialog.boundingBox();
+  expect(modalBox).not.toBeNull();
+  expect(modalBox!.x).toBeGreaterThanOrEqual(0);
+  expect(modalBox!.y).toBeGreaterThanOrEqual(0);
+  expect(modalBox!.x + modalBox!.width).toBeLessThanOrEqual(375);
+  expect(modalBox!.y + modalBox!.height).toBeLessThanOrEqual(667);
 
   await page.clock.fastForward(60_000);
   await expect(page.locator(".feed-countdown")).toHaveCount(0);
@@ -713,20 +783,29 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   await introDialog.getByRole("button", { name: "OK" }).click();
 
   expect(accessRequests).toBe(1);
-  expect(feedRequests).toBe(0);
+  expect(initialFeedRequests).toBe(1);
+  expect(loadMoreFeedRequests).toBe(0);
   expect(cableTokenRequests).toBe(0);
   await expect(introDialog).toBeVisible();
   await expect(introDialog.getByRole("button", { name: "OK" })).toBeEnabled();
   await expect(page.getByLabel("残り 00:00")).toHaveCount(0);
-  await expect(page.getByText("初回説明後に見える投稿")).toHaveCount(0);
+  await expect(backgroundPost).toBeAttached();
+  await expect(feedList).toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).toHaveCSS("filter", "blur(5px)");
 
   await introDialog.getByRole("button", { name: "OK" }).click();
 
   expect(accessRequests).toBe(2);
-  await expect.poll(() => feedRequests).toBe(1);
+  expect(initialFeedRequests).toBe(1);
   await expect.poll(() => cableTokenRequests).toBe(1);
-  await expect(page.getByLabel("残り 03:00")).toBeVisible();
-  await expect(page.getByText("初回説明後に見える投稿")).toBeVisible();
+  await expect(
+    page.getByLabel(/残り (?:03:00|02:5[89])/),
+  ).toBeVisible();
+  await expect(backgroundPost).toBeVisible();
+  await expect(feedList).not.toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).not.toHaveAttribute("inert", "");
+  await expect(feedList).toHaveCSS("filter", "none");
+  await page.locator(".feed-reaction").first().click();
 });
 
 test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行する", async ({
@@ -739,6 +818,19 @@ test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行
   });
 
   await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: false,
+        feed_access_pending: true,
+        remaining_seconds: 0,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [],
+      }),
+    });
+  });
   await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
     accessRequests += 1;
     await accessResponseGate;
@@ -779,6 +871,114 @@ test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行
   expect(accessRequests).toBe(1);
 });
 
+test("初回説明の背景取得に失敗しても再試行後にモーダルを表示する", async ({
+  page,
+}) => {
+  let feedRequests = 0;
+  let cableTokenRequests = 0;
+
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    feedRequests += 1;
+    if (feedRequests === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "error",
+          errors: ["フィード取得に失敗しました"],
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: false,
+        feed_access_pending: true,
+        remaining_seconds: 0,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [
+          {
+            id: 92,
+            user_name: "ゆき",
+            level: 1,
+            task_title: "再試行後に見える投稿",
+            status_label: "できた",
+            card_variant: "completed",
+            is_mine: false,
+            can_like: true,
+            can_comment: true,
+            likes_count: 0,
+            comments_count: 0,
+            liked_by_me: false,
+            created_at: new Date().toISOString(),
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        feed_intro_seen_at: new Date().toISOString(),
+        remaining_seconds: 180,
+        feed_access_expires_at: new Date(Date.now() + 180_000).toISOString(),
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?cable_token$/, async (route) => {
+    cableTokenRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: { token: "feed-intro-retry-token" },
+      }),
+    });
+  });
+
+  await page.clock.install();
+  await gotoHome(page, "/home", { feed_intro_seen_at: null });
+  await page
+    .getByRole("textbox", { name: "今できること" })
+    .fill("背景取得を再試行する");
+  await page.getByRole("button", { name: "始める" }).click();
+  await page.getByRole("button", { name: "できた！" }).click();
+  await page.getByRole("link", { name: "みんなを見る" }).click();
+
+  const introDialog = page.getByRole("dialog", {
+    name: "利用時間は3分限定！",
+  });
+  await expect(page.getByRole("alert")).toContainText(
+    "フィード取得に失敗しました",
+  );
+  await expect(introDialog).toHaveCount(0);
+  await expect(page.locator(".feed-list")).toHaveCount(0);
+  await expect(page.locator(".feed-countdown")).toHaveCount(0);
+  expect(cableTokenRequests).toBe(0);
+
+  await page.getByRole("button", { name: "再読み込み" }).click();
+
+  await expect(page.getByText("再試行後に見える投稿")).toBeAttached();
+  await expect(introDialog).toBeVisible();
+  await expect(page.locator(".feed-list")).toHaveAttribute(
+    "aria-hidden",
+    "true",
+  );
+  await expect(page.locator(".feed-countdown")).toHaveCount(0);
+  expect(cableTokenRequests).toBe(0);
+
+  await introDialog.getByRole("button", { name: "OK" }).click();
+
+  await expect(page.getByLabel(/残り (?:03:00|02:5[89])/)).toBeVisible();
+  await expect.poll(() => cableTokenRequests).toBe(1);
+});
+
 test("同じブラウザでもアカウントごとの初回説明確認状態に従う", async ({
   page,
 }) => {
@@ -815,6 +1015,23 @@ test("同じブラウザでもアカウントごとの初回説明確認状態�
     });
   });
   await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    const introSeen = Boolean(accounts[currentAccount].feed_intro_seen_at);
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: introSeen,
+        feed_access_pending: !introSeen,
+        remaining_seconds: introSeen ? 180 : 0,
+        feed_access_expires_at: introSeen
+          ? new Date(Date.now() + 180_000).toISOString()
+          : null,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [],
+      }),
+    });
+  });
   await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
     if (failNextStart) {
       failNextStart = false;

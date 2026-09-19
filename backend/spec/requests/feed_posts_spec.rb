@@ -228,19 +228,46 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "GET /api/feed" do
-    it "初回説明の開始待ち中は投稿を返さない" do
-      user.update!(feed_access_pending: true, feed_access_expires_at: 3.minutes.from_now)
-      create_completed_posts(user: other_user, count: 1)
+    it "初回説明の開始待ち中は状態を変更せず背景表示用の投稿を返す" do
+      fixed_time = Time.zone.local(2026, 9, 20, 12, 0, 0)
 
-      get "/api/feed", headers: authenticated_headers(user), as: :json
+      travel_to fixed_time do
+        original_expiration = fixed_time + 1.minute
+        user.update!(
+          feed_intro_seen_at: nil,
+          feed_access_pending: true,
+          feed_access_expires_at: original_expiration
+        )
+        create_completed_posts(user: other_user, count: 21)
 
-      expect(response).to have_http_status(:ok)
-      expect(JSON.parse(response.body)).to include(
-        "status" => "success",
-        "access_allowed" => false,
-        "remaining_seconds" => 0,
-        "data" => []
-      )
+        get "/api/feed", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        first_page = JSON.parse(response.body)
+        expect(first_page).to include(
+          "status" => "success",
+          "access_allowed" => false,
+          "feed_access_pending" => true,
+          "remaining_seconds" => 0
+        )
+        expect(first_page.fetch("data").size).to eq(20)
+        expect(first_page.fetch("pagination")).to include(
+          "page" => 1,
+          "per_page" => 20,
+          "has_more" => true
+        )
+
+        get "/api/feed?page=2", headers: authenticated_headers(user), as: :json
+
+        repeated_page = JSON.parse(response.body)
+        expect(repeated_page.dig("pagination", "page")).to eq(1)
+        expect(repeated_page.fetch("data").pluck("id")).to eq(first_page.fetch("data").pluck("id"))
+        expect(user.reload).to have_attributes(
+          feed_intro_seen_at: nil,
+          feed_access_pending: true,
+          feed_access_expires_at: original_expiration
+        )
+      end
     end
 
     it "自分の投稿も含め、操作可否を返す" do
