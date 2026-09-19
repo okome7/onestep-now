@@ -65,9 +65,6 @@ test("@critical 登録からタスク完了とフィード・マイページ確�
   await logOut(page);
 
   await logIn(page, account);
-  await page.evaluate(() => {
-    localStorage.setItem("onestep-feed-intro-seen", "true");
-  });
   await page.getByRole("textbox", { name: "今できること" }).fill(taskTitle);
   await page.getByRole("button", { name: "始める" }).click();
   await expect(page.getByRole("heading", { name: taskTitle })).toBeVisible();

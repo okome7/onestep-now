@@ -86,7 +86,8 @@ class ApplicationController < ActionController::API
       id: user.id,
       name: user.name,
       email: user.email,
-      avatar_key: user.avatar_key
+      avatar_key: user.avatar_key,
+      feed_intro_seen_at: user.feed_intro_seen_at
     }
   end
 

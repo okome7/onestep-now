@@ -332,6 +332,7 @@ export function getInitialCompleteProfile(): CompleteProfile {
       name: parsedProfile.name ?? '',
       email: parsedProfile.email ?? '',
       avatarId: parsedProfile.avatarId ?? avatarOptions[0].id,
+      feedIntroSeenAt: parsedProfile.feedIntroSeenAt ?? null,
     }
   } catch {
     return { name: '', avatarId: avatarOptions[0].id }

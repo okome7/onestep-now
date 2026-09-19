@@ -47,6 +47,7 @@ type FeedSuccessResponse = {
   access_allowed?: boolean
   remaining_seconds?: number
   feed_access_expires_at?: string
+  feed_intro_seen_at?: string
   pagination?: {
     page: number
     per_page: number
@@ -347,14 +348,12 @@ export async function startTask(taskId: number, userId?: number) {
 export async function completeTask(
   taskId: number,
   userId?: number,
-  deferFeedAccess = false,
 ) {
   const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/tasks/${taskId}/complete`),
     {
       method: 'PATCH',
       headers: userHeaders(userId),
-      body: JSON.stringify({ defer_feed_access: deferFeedAccess }),
     },
   )
 
