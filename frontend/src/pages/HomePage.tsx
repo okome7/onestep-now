@@ -63,7 +63,6 @@ import {
 import { applyFeedCableEvent, subscribeToFeedUpdates } from '../feedCable'
 import {
   activeHomeViewStorageKey,
-  feedIntroStorageKey,
   getInitialHomeView,
   getInitialTaskDraft,
   taskDraftStorageKey,
@@ -209,6 +208,7 @@ export function HomePage() {
     onLoaded: handleMyPageLoaded,
   })
   const isTaskActive = Boolean(activeTask)
+  const hasSeenFeedIntro = Boolean(completeProfile.feedIntroSeenAt)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const visibleFeedPosts = feedPosts
   const isViewingOwnProfile = profileUserId === completeProfile.id
@@ -709,7 +709,12 @@ export function HomePage() {
       const remainingSeconds =
         result.remaining_seconds ?? feedViewDurationSeconds
       startFeedTimer(remainingSeconds, result.feed_access_expires_at)
-      window.localStorage.setItem(feedIntroStorageKey, 'true')
+      const nextProfile = {
+        ...completeProfile,
+        feedIntroSeenAt: result.feed_intro_seen_at,
+      }
+      setCompleteProfile(nextProfile)
+      saveCompleteProfile(nextProfile)
       setIsFeedIntroOpen(false)
     } catch (caughtError) {
       setFeedError(
@@ -725,8 +730,7 @@ export function HomePage() {
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
-    const needsIntro =
-      isTaskComplete && !window.localStorage.getItem(feedIntroStorageKey)
+    const needsIntro = isTaskComplete && !hasSeenFeedIntro
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
     setIsFeedIntroOpen(needsIntro)
@@ -1113,6 +1117,7 @@ export function HomePage() {
       try {
         const user = await updateProfile({ avatarKey: selectedSettingsIconId })
         const nextProfile = {
+          ...completeProfile,
           id: user.id,
           name: user.name,
           email: user.email,
@@ -1135,7 +1140,7 @@ export function HomePage() {
         setIsProfileSaving(false)
       }
     },
-    [canSaveSettingsIcon, isProfileSaving, selectedSettingsIconId],
+    [canSaveSettingsIcon, completeProfile, isProfileSaving, selectedSettingsIconId],
   )
 
   useEffect(() => {
@@ -1244,6 +1249,7 @@ export function HomePage() {
     try {
       const user = await updateProfile({ name: trimmedDisplayNameDraft })
       const nextProfile = {
+        ...completeProfile,
         id: user.id,
         name: user.name,
         email: user.email,
@@ -1301,7 +1307,7 @@ export function HomePage() {
       setIsTaskComplete(false)
       setCompletedTaskReactions({ likes: 0, comments: [] })
       upsertOwnTaskPost(startedTask)
-      if (window.localStorage.getItem(feedIntroStorageKey)) {
+      if (hasSeenFeedIntro) {
         await loadFeed()
       }
     } catch (caughtError) {
@@ -1392,7 +1398,6 @@ export function HomePage() {
       const completedTask = await completeTask(
         activeTaskId,
         completeProfile.id,
-        !window.localStorage.getItem(feedIntroStorageKey),
       )
       upsertOwnTaskPost(completedTask)
       setCompletedTaskReactions({
@@ -1413,7 +1418,7 @@ export function HomePage() {
       })
       setIsTaskComplete(true)
       void refreshMyPageData(completeProfile.id)
-      if (window.localStorage.getItem(feedIntroStorageKey)) {
+      if (hasSeenFeedIntro) {
         await loadFeed()
       }
     } catch (caughtError) {

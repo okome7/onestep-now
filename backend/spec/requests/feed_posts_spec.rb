@@ -129,12 +129,12 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "PATCH /api/tasks/:id/complete" do
-    it "初回説明未確認ならフィード閲覧を開始待ちにする" do
+    it "初回説明未確認ならクライアント指定にかかわらずフィード閲覧を開始待ちにする" do
       task = user.tasks.create!(title: "初回説明を確認する", status: :active, started_at: 1.minute.ago)
       task.create_completion_post!(user: user, status: :doing, content: task.title)
 
       patch "/api/tasks/#{task.id}/complete",
-        params: { defer_feed_access: true },
+        params: { defer_feed_access: false },
         headers: authenticated_headers(user),
         as: :json
 
@@ -143,10 +143,30 @@ RSpec.describe "Feed posts", type: :request do
       expect(user.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
     end
 
+    it "初回説明確認済みならクライアント指定にかかわらず完了時から閲覧を開始する" do
+      fixed_time = Time.zone.local(2026, 9, 19, 12, 0, 0)
+
+      travel_to fixed_time do
+        user.update!(feed_intro_seen_at: 1.day.ago)
+        task = user.tasks.create!(title: "説明確認済みのタスク", status: :active, started_at: 1.minute.ago)
+        task.create_completion_post!(user: user, status: :doing, content: task.title)
+
+        patch "/api/tasks/#{task.id}/complete",
+          params: { defer_feed_access: true },
+          headers: authenticated_headers(user),
+          as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload.feed_access_pending).to be(false)
+        expect(user.feed_access_expires_at).to eq(fixed_time + 3.minutes)
+      end
+    end
+
     it "開始時の投稿をcompletedに更新し、新規投稿を作成しない" do
       fixed_time = Time.zone.local(2026, 9, 14, 12, 0, 0)
 
       travel_to fixed_time do
+        user.update!(feed_intro_seen_at: 1.day.ago)
         task = user.tasks.create!(title: "参考記事を1つ読む", status: :active, started_at: 1.minute.ago)
         completion_post = task.create_completion_post!(user: user, status: :doing, content: task.title)
         completion_post.completion_post_likes.create!(user: other_user)
@@ -354,15 +374,26 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "POST /api/feed/access" do
-    it "初回説明の開始待ちを消費して3分の閲覧時間を開始する" do
-      user.update!(feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+    it "初回説明の確認と開始待ち解除と閲覧期限を同時に確定する" do
+      fixed_time = Time.zone.local(2026, 9, 19, 12, 0, 0)
 
-      post "/api/feed/access", headers: authenticated_headers(user), as: :json
+      travel_to fixed_time do
+        user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
 
-      expect(response).to have_http_status(:ok)
-      expect(user.reload.feed_access_pending).to be(false)
-      expect(user.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
-      expect(JSON.parse(response.body)).to include("remaining_seconds" => 180)
+        post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload).to have_attributes(
+          feed_intro_seen_at: fixed_time,
+          feed_access_pending: false,
+          feed_access_expires_at: fixed_time + 3.minutes
+        )
+        expect(JSON.parse(response.body)).to include(
+          "remaining_seconds" => 180,
+          "feed_intro_seen_at" => fixed_time.iso8601(3),
+          "feed_access_expires_at" => (fixed_time + 3.minutes).iso8601(3)
+        )
+      end
     end
 
     it "開始待ちでなければ現在の閲覧時間を延長しない" do
@@ -379,13 +410,15 @@ RSpec.describe "Feed posts", type: :request do
       fixed_time = Time.zone.local(2026, 9, 15, 12, 0, 0)
 
       travel_to fixed_time do
-        user.update!(feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+        user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
 
         post "/api/feed/access", headers: authenticated_headers(user), as: :json
 
         expect(response).to have_http_status(:ok)
         first_expiration = user.reload.feed_access_expires_at
+        first_seen_at = user.feed_intro_seen_at
         expect(first_expiration).to eq(fixed_time + 3.minutes)
+        expect(first_seen_at).to eq(fixed_time)
 
         travel 60.seconds
 
@@ -401,23 +434,40 @@ RSpec.describe "Feed posts", type: :request do
         expect(response).to have_http_status(:ok)
         access_body = JSON.parse(response.body)
         expect(Time.zone.parse(access_body.fetch("feed_access_expires_at"))).to eq(first_expiration)
+        expect(Time.zone.parse(access_body.fetch("feed_intro_seen_at"))).to eq(first_seen_at)
         expect(access_body.fetch("remaining_seconds")).to eq(120)
         expect(user.reload.feed_access_expires_at).to eq(first_expiration)
+        expect(user.feed_intro_seen_at).to eq(first_seen_at)
+      end
+    end
+
+    it "保存失敗時は確認状態・開始待ち・閲覧期限のいずれも変更しない" do
+      fixed_time = Time.zone.local(2026, 9, 19, 12, 0, 0)
+
+      travel_to fixed_time do
+        original_expiration = 1.minute.from_now
+        user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: original_expiration)
+        relation = User.where(id: user.id, feed_access_pending: true)
+        allow(User).to receive(:where).and_call_original
+        allow(User).to receive(:where)
+          .with(id: user.id, feed_access_pending: true)
+          .and_return(relation)
+        allow(relation).to receive(:update_all).and_raise(ActiveRecord::StatementInvalid, "保存失敗")
+
+        expect {
+          post "/api/feed/access", headers: authenticated_headers(user), as: :json
+        }.to raise_error(ActiveRecord::StatementInvalid, "保存失敗")
+
+        expect(user.reload).to have_attributes(
+          feed_intro_seen_at: nil,
+          feed_access_pending: true,
+          feed_access_expires_at: original_expiration
+        )
       end
     end
 
     it "同一ユーザーへの並行リクエストでは最初に確定した期限を両方に返す" do
-      user.update!(feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
-      update_barrier = Concurrent::CyclicBarrier.new(2)
-
-      allow_any_instance_of(User).to receive(:update!).and_wrap_original do |method, *args|
-        attributes = args.first
-        if attributes.is_a?(Hash) && attributes[:feed_access_pending] == false
-          update_barrier.wait(5)
-        end
-        method.call(*args)
-      end
-
+      user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
       sessions = 2.times.map do
         _auth_session, session_token, csrf_token = AuthSession.issue_for(user)
         session = ActionDispatch::Integration::Session.new(Rails.application)
@@ -438,10 +488,13 @@ RSpec.describe "Feed posts", type: :request do
 
       expect(responses.map(&:first)).to all(eq(200))
       expirations = responses.map { |_status, body| body.fetch("feed_access_expires_at") }
+      seen_times = responses.map { |_status, body| body.fetch("feed_intro_seen_at") }
       expect(expirations.uniq.one?).to be(true)
+      expect(seen_times.uniq.one?).to be(true)
       expect(Time.zone.parse(expirations.first)).to be_within(2.seconds).of(3.minutes.from_now)
       expect(user.reload.feed_access_pending).to be(false)
       expect(user.feed_access_expires_at).to be_within(0.001.seconds).of(Time.zone.parse(expirations.first))
+      expect(user.feed_intro_seen_at).to be_within(0.001.seconds).of(Time.zone.parse(seen_times.first))
     end
   end
 

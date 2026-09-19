@@ -37,6 +37,7 @@ class FeedController < ApplicationController
     current_user.class
       .where(id: current_user.id, feed_access_pending: true)
       .update_all(
+        feed_intro_seen_at: started_at,
         feed_access_pending: false,
         feed_access_expires_at: started_at + 3.minutes,
         updated_at: started_at
@@ -47,6 +48,7 @@ class FeedController < ApplicationController
     render json: {
       status: "success",
       remaining_seconds: remaining_seconds,
+      feed_intro_seen_at: current_user.feed_intro_seen_at,
       feed_access_expires_at: current_user.feed_access_expires_at
     }, status: :ok
   end

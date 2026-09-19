@@ -167,6 +167,7 @@ export function SignupPage() {
         name: nextCompletedName,
         email: createdUser.email,
         avatarId: nextCompletedAvatarId,
+        feedIntroSeenAt: createdUser.feed_intro_seen_at,
       })
       setScreen('complete')
     } catch (caughtError) {

@@ -10,6 +10,7 @@ export type SessionUser = {
   name: string
   email: string
   avatar_key?: string
+  feed_intro_seen_at: string | null
 }
 
 type SessionResponse = {

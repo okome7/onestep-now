@@ -686,7 +686,7 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   });
 
   await page.clock.install();
-  await gotoHome(page);
+  await gotoHome(page, "/home", { feed_intro_seen_at: null });
   await page
     .getByRole("textbox", { name: "今できること" })
     .fill("初回説明を確認する");
@@ -753,7 +753,7 @@ test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行
   });
 
   await page.clock.install();
-  await gotoHome(page);
+  await gotoHome(page, "/home", { feed_intro_seen_at: null });
   await page
     .getByRole("textbox", { name: "今できること" })
     .fill("OKの連打を確認する");
@@ -777,6 +777,111 @@ test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行
 
   await expect(page.getByLabel("残り 03:00")).toBeVisible();
   expect(accessRequests).toBe(1);
+});
+
+test("同じブラウザでもアカウントごとの初回説明確認状態に従う", async ({
+  page,
+}) => {
+  const accounts = {
+    A: {
+      id: 1,
+      name: "未確認A",
+      email: "account-a@example.com",
+      avatar_key: "avatar-1",
+      feed_intro_seen_at: null as string | null,
+    },
+    B: {
+      id: 2,
+      name: "確認済みB",
+      email: "account-b@example.com",
+      avatar_key: "avatar-2",
+      feed_intro_seen_at: "2026-09-18T03:00:00.000Z" as string | null,
+    },
+  };
+  let currentAccount: keyof typeof accounts = "B";
+  let failNextStart = false;
+  const taskTitles: Record<keyof typeof accounts, string> = {
+    A: "Aの初回説明を確認する",
+    B: "Bの確認済み状態を確認する",
+  };
+
+  await page.route(/.*\/(?:api\/)?session$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: accounts[currentAccount],
+      }),
+    });
+  });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    if (failNextStart) {
+      failNextStart = false;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "error", errors: ["開始失敗"] }),
+      });
+      return;
+    }
+
+    const seenAt = new Date().toISOString();
+    accounts[currentAccount].feed_intro_seen_at = seenAt;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_intro_seen_at: seenAt,
+        feed_access_expires_at: new Date(Date.now() + 180_000).toISOString(),
+      }),
+    });
+  });
+  await page.evaluate(() => {
+    localStorage.setItem("onestep-feed-intro-seen", "true");
+  });
+
+  const completeTaskAndOpenFeed = async (account: keyof typeof accounts) => {
+    await page
+      .getByRole("textbox", { name: "今できること" })
+      .fill(taskTitles[account]);
+    await page.getByRole("button", { name: "始める" }).click();
+    await page.getByRole("button", { name: "できた！" }).click();
+    await page.getByRole("link", { name: "みんなを見る" }).click();
+  };
+
+  await page.goto("/home");
+  await completeTaskAndOpenFeed("B");
+  await expect(
+    page.getByRole("dialog", { name: "利用時間は3分限定！" }),
+  ).toHaveCount(0);
+
+  currentAccount = "A";
+  await page.evaluate(() => {
+    sessionStorage.removeItem("onestep-active-home-view");
+  });
+  await page.reload();
+  await completeTaskAndOpenFeed("A");
+
+  const introDialog = page.getByRole("dialog", {
+    name: "利用時間は3分限定！",
+  });
+  await expect(introDialog).toBeVisible();
+
+  failNextStart = true;
+  await introDialog.getByRole("button", { name: "OK" }).click();
+  await expect(introDialog).toBeVisible();
+  expect(accounts.A.feed_intro_seen_at).toBeNull();
+
+  await introDialog.getByRole("button", { name: "OK" }).click();
+  await expect(introDialog).toHaveCount(0);
+  expect(accounts.A.feed_intro_seen_at).not.toBeNull();
+  expect(accounts.B.feed_intro_seen_at).toBe("2026-09-18T03:00:00.000Z");
+
+  await page.getByRole("link", { name: "ホーム" }).click();
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(introDialog).toHaveCount(0);
 });
 
 test("再読み込み・再訪・再ログイン後も最初のフィード閲覧期限を引き継ぐ", async ({
