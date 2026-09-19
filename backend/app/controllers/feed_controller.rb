@@ -4,10 +4,10 @@ class FeedController < ApplicationController
   before_action :require_current_user
 
   def index
-    return render_feed_unavailable if current_user.feed_access_pending?
-    return render_feed_unavailable unless feed_accessible?
+    access_pending = current_user.feed_access_pending?
+    return render_feed_unavailable unless access_pending || feed_accessible?
 
-    page = [ params.fetch(:page, 1).to_i, 1 ].max
+    page = access_pending ? 1 : [ params.fetch(:page, 1).to_i, 1 ].max
     posts = CompletionPost
       .preload(:task, :user, :completion_post_likes)
       .order(created_at: :desc, id: :desc)
@@ -21,7 +21,9 @@ class FeedController < ApplicationController
 
     render json: {
       status: "success",
-      remaining_seconds: remaining_seconds,
+      access_allowed: !access_pending,
+      feed_access_pending: access_pending,
+      remaining_seconds: access_pending ? 0 : remaining_seconds,
       feed_access_expires_at: current_user.feed_access_expires_at,
       pagination: {
         page: page,

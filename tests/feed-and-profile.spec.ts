@@ -631,8 +631,10 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
       contentType: "application/json",
       body: JSON.stringify({
         status: "success",
-        remaining_seconds: 180,
-        feed_access_expires_at: new Date(Date.now() + 180_000).toISOString(),
+        access_allowed: false,
+        feed_access_pending: true,
+        remaining_seconds: 0,
+        pagination: { page: 1, per_page: 20, has_more: true },
         data: [
           {
             id: 91,
@@ -698,11 +700,40 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
     name: "利用時間は3分限定！",
   });
   await expect(introDialog).toBeVisible();
-  expect(feedRequests).toBe(0);
+  await expect.poll(() => feedRequests).toBe(1);
   expect(accessRequests).toBe(0);
   expect(cableTokenRequests).toBe(0);
-  await expect(page.getByText("初回説明後に見える投稿")).toHaveCount(0);
+  const feedList = page.locator(".feed-list");
+  const backgroundPost = page.getByText("初回説明後に見える投稿");
+  await expect(backgroundPost).toBeAttached();
+  await expect(feedList).toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).toHaveAttribute("inert", "");
+  await expect(feedList).toHaveCSS("filter", "blur(5px)");
+  await expect(page.locator(".feed-intro-backdrop")).toBeVisible();
   await expect(page.locator(".feed-countdown")).toHaveCount(0);
+  await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+  await expect(
+    page.locator(".feed-reaction").first().click({ trial: true, timeout: 500 }),
+  ).rejects.toThrow();
+  await page.keyboard.press("Tab");
+  expect(
+    await page.evaluate(() =>
+      Boolean(document.activeElement?.closest(".feed-list")),
+    ),
+  ).toBe(false);
+
+  const scrollY = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 1000);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+  expect(feedRequests).toBe(1);
+
+  await page.setViewportSize({ width: 375, height: 667 });
+  const modalBox = await introDialog.boundingBox();
+  expect(modalBox).not.toBeNull();
+  expect(modalBox!.x).toBeGreaterThanOrEqual(0);
+  expect(modalBox!.y).toBeGreaterThanOrEqual(0);
+  expect(modalBox!.x + modalBox!.width).toBeLessThanOrEqual(375);
+  expect(modalBox!.y + modalBox!.height).toBeLessThanOrEqual(667);
 
   await page.clock.fastForward(60_000);
   await expect(page.locator(".feed-countdown")).toHaveCount(0);
@@ -713,20 +744,26 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   await introDialog.getByRole("button", { name: "OK" }).click();
 
   expect(accessRequests).toBe(1);
-  expect(feedRequests).toBe(0);
+  expect(feedRequests).toBe(1);
   expect(cableTokenRequests).toBe(0);
   await expect(introDialog).toBeVisible();
   await expect(introDialog.getByRole("button", { name: "OK" })).toBeEnabled();
   await expect(page.getByLabel("残り 00:00")).toHaveCount(0);
-  await expect(page.getByText("初回説明後に見える投稿")).toHaveCount(0);
+  await expect(backgroundPost).toBeAttached();
+  await expect(feedList).toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).toHaveCSS("filter", "blur(5px)");
 
   await introDialog.getByRole("button", { name: "OK" }).click();
 
   expect(accessRequests).toBe(2);
-  await expect.poll(() => feedRequests).toBe(1);
+  expect(feedRequests).toBe(1);
   await expect.poll(() => cableTokenRequests).toBe(1);
   await expect(page.getByLabel("残り 03:00")).toBeVisible();
-  await expect(page.getByText("初回説明後に見える投稿")).toBeVisible();
+  await expect(backgroundPost).toBeVisible();
+  await expect(feedList).not.toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).not.toHaveAttribute("inert", "");
+  await expect(feedList).toHaveCSS("filter", "none");
+  await page.locator(".feed-reaction").first().click();
 });
 
 test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行する", async ({

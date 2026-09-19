@@ -413,7 +413,7 @@ export function HomePage() {
   }, [activeAchievement])
 
   useEffect(() => {
-    if (!isFeedExpired) {
+    if (!isFeedExpired && !isFeedIntroOpen) {
       return undefined
     }
 
@@ -427,7 +427,7 @@ export function HomePage() {
       document.body.style.overflow = previousBodyOverflow
       document.documentElement.style.overflow = previousDocumentOverflow
     }
-  }, [isFeedExpired])
+  }, [isFeedExpired, isFeedIntroOpen])
 
   const loadFeed = useCallback(async () => {
     setFeedError('')
@@ -443,7 +443,11 @@ export function HomePage() {
       setFeedPosts(result.posts)
       setFeedPage(result.page)
       setHasMoreFeedPosts(result.hasMore)
-      startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
+      if (result.feedAccessPending) {
+        resetFeedTimer()
+      } else {
+        startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
+      }
       setIsFeedAccessDenied(false)
 
     } catch (caughtError) {
@@ -469,7 +473,7 @@ export function HomePage() {
   }, [clearFeedTimeout, completeProfile.id, resetFeedTimer, startFeedTimer])
 
   const loadMoreFeed = useCallback(async () => {
-    if (isFeedLoadingMore || !hasMoreFeedPosts) {
+    if (isFeedIntroOpen || isFeedLoadingMore || !hasMoreFeedPosts) {
       return
     }
 
@@ -510,6 +514,7 @@ export function HomePage() {
     expireFeed,
     feedPage,
     hasMoreFeedPosts,
+    isFeedIntroOpen,
     isFeedLoadingMore,
   ])
 
@@ -518,6 +523,7 @@ export function HomePage() {
 
     if (
       !isFeedOpen ||
+      isFeedIntroOpen ||
       isFeedExpired ||
       !hasMoreFeedPosts ||
       feedLoadMoreError ||
@@ -541,6 +547,7 @@ export function HomePage() {
     feedLoadMoreError,
     hasMoreFeedPosts,
     isFeedExpired,
+    isFeedIntroOpen,
     isFeedOpen,
     loadMoreFeed,
   ])
@@ -616,16 +623,12 @@ export function HomePage() {
       return undefined
     }
 
-    if (isFeedIntroOpen) {
-      return undefined
-    }
-
     const timerId = window.setTimeout(() => {
       void loadFeed()
     }, 0)
 
     return () => window.clearTimeout(timerId)
-  }, [isFeedIntroOpen, isFeedOpen, loadFeed])
+  }, [isFeedOpen, loadFeed])
 
   useEffect(() => {
     if (
@@ -715,6 +718,7 @@ export function HomePage() {
       }
       setCompleteProfile(nextProfile)
       saveCompleteProfile(nextProfile)
+      setFeedError('')
       setIsFeedIntroOpen(false)
     } catch (caughtError) {
       setFeedError(
@@ -1781,7 +1785,7 @@ export function HomePage() {
         <AppHeader
           title="フィード"
           rightAction={
-            isFeedAccessDenied ? null : (
+            isFeedAccessDenied || isFeedIntroOpen ? null : (
               <FeedCountdown
                 remainingSeconds={feedRemainingSeconds}
                 handAngle={feedCountdownHandAngle}
@@ -1791,13 +1795,14 @@ export function HomePage() {
         />
 
         <section
-          className={`feed-list ${isFeedExpired ? 'feed-list-expired' : ''}`}
+          className={`feed-list ${isFeedExpired ? 'feed-list-expired' : ''} ${isFeedIntroOpen ? 'feed-list-intro' : ''}`}
           aria-label="みんなの投稿"
-          aria-hidden={isFeedExpired ? 'true' : undefined}
+          aria-hidden={isFeedExpired || isFeedIntroOpen ? 'true' : undefined}
+          inert={isFeedExpired || isFeedIntroOpen ? true : undefined}
         >
           {isFeedAccessDenied ? (
             <FeedStartGate onStart={openHome} />
-          ) : feedError ? (
+          ) : feedError && visibleFeedPosts.length === 0 ? (
             <p className="feed-error" role="alert">
               {feedError}
             </p>

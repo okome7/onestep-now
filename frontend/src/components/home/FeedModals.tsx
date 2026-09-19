@@ -12,7 +12,10 @@ type FeedExpiredModalProps = {
 
 export function FeedIntroModal({ isStarting, onClose }: FeedIntroModalProps) {
   return (
-    <div className="feed-expired-backdrop" role="presentation">
+    <div
+      className="feed-expired-backdrop feed-intro-backdrop"
+      role="presentation"
+    >
       <section
         className="feed-expired-modal feed-intro-modal"
         role="dialog"

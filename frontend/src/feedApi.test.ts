@@ -154,6 +154,35 @@ test('フィード閲覧時間外は閲覧不可エラーとして扱う', async
   ).rejects.toBeInstanceOf(FeedAccessDeniedError)
 })
 
+test('初回説明の開始待ち中は背景表示用フィードとして扱う', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          status: 'success',
+          access_allowed: false,
+          feed_access_pending: true,
+          remaining_seconds: 0,
+          pagination: { page: 1, per_page: 20, has_more: true },
+          data: [],
+        }),
+    }),
+  )
+
+  await expect(fetchFeed(1, 'http://localhost:3000/api')).resolves.toMatchObject(
+    {
+      feedAccessPending: true,
+      remainingSeconds: 0,
+      page: 1,
+      hasMore: true,
+    },
+  )
+})
+
 test('タスク開始前の認証エラーは認証必須エラーとして扱う', async () => {
   vi.stubGlobal(
     'fetch',

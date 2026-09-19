@@ -906,6 +906,12 @@
   user-select: none;
 }
 
+.feed-list-intro {
+  filter: blur(5px);
+  pointer-events: none;
+  user-select: none;
+}
+
 .feed-expired-backdrop {
   position: fixed;
   inset: 0;
@@ -914,6 +920,10 @@
   place-items: center;
   padding: 24px;
   background: rgb(17 24 39 / 8%);
+}
+
+.feed-intro-backdrop {
+  background: rgb(17 24 39 / 28%);
 }
 
 .feed-expired-modal {

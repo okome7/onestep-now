@@ -45,6 +45,7 @@ type FeedSuccessResponse = {
   status: 'success'
   data: ApiFeedPost[]
   access_allowed?: boolean
+  feed_access_pending?: boolean
   remaining_seconds?: number
   feed_access_expires_at?: string
   feed_intro_seen_at?: string
@@ -250,7 +251,7 @@ export async function fetchFeed(
 
   const success = result as FeedSuccessResponse
 
-  if (success.access_allowed === false) {
+  if (success.access_allowed === false && !success.feed_access_pending) {
     throw new FeedAccessDeniedError()
   }
 
@@ -269,6 +270,7 @@ export async function fetchFeed(
     posts: success.data.map((post) => mapFeedPost(post, userId)),
     remainingSeconds,
     feedAccessExpiresAt: success.feed_access_expires_at,
+    feedAccessPending: success.feed_access_pending === true,
     page: success.pagination?.page ?? page,
     hasMore: success.pagination?.has_more ?? false,
   }
