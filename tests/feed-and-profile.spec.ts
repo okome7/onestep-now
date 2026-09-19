@@ -620,13 +620,34 @@ test("フィード閲覧時間が終了するとモーダルからホームへ�
 test("初回説明のOK後にカウントダウンとフィード閲覧を開始する", async ({
   page,
 }) => {
-  let feedRequests = 0;
+  let initialFeedRequests = 0;
+  let loadMoreFeedRequests = 0;
   let accessRequests = 0;
   let cableTokenRequests = 0;
 
   await mockTaskAndFeedApi(page);
-  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
-    feedRequests += 1;
+  await page.route(/.*\/(?:api\/)?feed(?:\?[^#]*)?$/, async (route) => {
+    const pageNumber = new URL(route.request().url()).searchParams.get("page");
+    if (pageNumber && pageNumber !== "1") {
+      loadMoreFeedRequests += 1;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "success",
+          access_allowed: true,
+          feed_access_pending: false,
+          remaining_seconds: 180,
+          feed_access_expires_at: new Date(
+            Date.now() + 180_000,
+          ).toISOString(),
+          pagination: { page: Number(pageNumber), per_page: 20, has_more: false },
+          data: [],
+        }),
+      });
+      return;
+    }
+
+    initialFeedRequests += 1;
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -700,7 +721,8 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
     name: "利用時間は3分限定！",
   });
   await expect(introDialog).toBeVisible();
-  await expect.poll(() => feedRequests).toBe(1);
+  await expect.poll(() => initialFeedRequests).toBe(1);
+  expect(loadMoreFeedRequests).toBe(0);
   expect(accessRequests).toBe(0);
   expect(cableTokenRequests).toBe(0);
   const feedList = page.locator(".feed-list");
@@ -725,7 +747,8 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   const scrollY = await page.evaluate(() => window.scrollY);
   await page.mouse.wheel(0, 1000);
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
-  expect(feedRequests).toBe(1);
+  expect(initialFeedRequests).toBe(1);
+  expect(loadMoreFeedRequests).toBe(0);
 
   await page.setViewportSize({ width: 375, height: 667 });
   const modalBox = await introDialog.boundingBox();
@@ -744,7 +767,8 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   await introDialog.getByRole("button", { name: "OK" }).click();
 
   expect(accessRequests).toBe(1);
-  expect(feedRequests).toBe(1);
+  expect(initialFeedRequests).toBe(1);
+  expect(loadMoreFeedRequests).toBe(0);
   expect(cableTokenRequests).toBe(0);
   await expect(introDialog).toBeVisible();
   await expect(introDialog.getByRole("button", { name: "OK" })).toBeEnabled();
@@ -756,7 +780,7 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   await introDialog.getByRole("button", { name: "OK" }).click();
 
   expect(accessRequests).toBe(2);
-  expect(feedRequests).toBe(1);
+  expect(initialFeedRequests).toBe(1);
   await expect.poll(() => cableTokenRequests).toBe(1);
   await expect(
     page.getByLabel(/残り (?:03:00|02:5[89])/),
