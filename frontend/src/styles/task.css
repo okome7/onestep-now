@@ -912,6 +912,33 @@
   user-select: none;
 }
 
+.feed-intro-loading {
+  display: grid;
+  min-height: min(62dvh, 520px);
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 24px;
+  color: #667085;
+  text-align: center;
+}
+
+.feed-intro-loading p {
+  margin: 0;
+}
+
+.feed-intro-loading button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 24px;
+  background: #ea6f5a;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .feed-expired-backdrop {
   position: fixed;
   inset: 0;
