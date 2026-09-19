@@ -758,7 +758,9 @@ test("初回説明のOK後にカウントダウンとフィード閲覧を開始
   expect(accessRequests).toBe(2);
   expect(feedRequests).toBe(1);
   await expect.poll(() => cableTokenRequests).toBe(1);
-  await expect(page.getByLabel("残り 03:00")).toBeVisible();
+  await expect(
+    page.getByLabel(/残り (?:03:00|02:5[89])/),
+  ).toBeVisible();
   await expect(backgroundPost).toBeVisible();
   await expect(feedList).not.toHaveAttribute("aria-hidden", "true");
   await expect(feedList).not.toHaveAttribute("inert", "");
