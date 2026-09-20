@@ -1489,3 +1489,463 @@ test("再読み込み・再訪・再ログイン後も最初のフィード閲�
   expect(returnedExpirations.length).toBeGreaterThanOrEqual(4);
   expect(new Set(returnedExpirations)).toEqual(new Set([feedAccessExpiresAt]));
 });
+
+test("タブ復帰時に同じ絶対期限から残り時間を補正する", async ({ page }) => {
+  const fixedTime = new Date("2026-09-20T03:00:00.000Z");
+  const expiresAt = new Date(fixedTime.getTime() + 180_000).toISOString();
+  let feedRequests = 0;
+  let accessRequests = 0;
+  let cableTokenRequests = 0;
+  let serverRemainingSeconds = 180;
+  let releaseSync!: () => void;
+  const syncGate = new Promise<void>((resolve) => {
+    releaseSync = resolve;
+  });
+
+  await page.clock.install({ time: fixedTime });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    accessRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed(?:\?.*)?$/, async (route) => {
+    feedRequests += 1;
+    if (feedRequests > 1) {
+      await syncGate;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: true,
+        feed_access_pending: false,
+        remaining_seconds: serverRemainingSeconds,
+        feed_access_expires_at: expiresAt,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [
+          {
+            id: 211,
+            user_name: "同期確認ユーザー",
+            task_title: "復帰後も同じ期限を使う",
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            can_like: true,
+            can_comment: true,
+            likes_count: 0,
+            comments_count: 0,
+            liked_by_me: false,
+            comments: [],
+            created_at: fixedTime.toISOString(),
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?cable_token$/, async (route) => {
+    cableTokenRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", token: "fa-11-token" }),
+    });
+  });
+
+  await gotoHome(page, "/home", {
+    feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+  });
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(page.getByLabel("残り 03:00")).toBeVisible();
+  await expect.poll(() => cableTokenRequests).toBe(1);
+
+  await page.clock.runFor(60_000);
+  await expect(page.getByLabel("残り 02:00")).toBeVisible();
+
+  serverRemainingSeconds = 30;
+  await page.clock.fastForward(90_000);
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus"));
+  });
+
+  await expect.poll(() => feedRequests).toBe(2);
+  const feedList = page.locator(".feed-list");
+  await expect(feedList).toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).toHaveAttribute("inert", "");
+  expect(cableTokenRequests).toBe(1);
+
+  releaseSync();
+  await expect(page.getByLabel("残り 00:30")).toBeVisible();
+  await expect(feedList).not.toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).not.toHaveAttribute("inert", "");
+  await expect.poll(() => cableTokenRequests).toBe(2);
+  expect(feedRequests).toBe(2);
+  expect(accessRequests).toBe(1);
+});
+
+test("期限を超えてからタブへ復帰すると直ちに閲覧を終了する", async ({
+  page,
+}) => {
+  const fixedTime = new Date("2026-09-20T03:00:00.000Z");
+  const expiresAt = new Date(fixedTime.getTime() + 180_000).toISOString();
+  let feedRequests = 0;
+  let accessRequests = 0;
+  let cableTokenRequests = 0;
+  let likeRequests = 0;
+  let commentRequests = 0;
+
+  await page.clock.install({ time: fixedTime });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    accessRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed(?:\?.*)?$/, async (route) => {
+    feedRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: true,
+        feed_access_pending: false,
+        remaining_seconds: 180,
+        feed_access_expires_at: expiresAt,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [
+          {
+            id: 212,
+            user_name: "期限確認ユーザー",
+            task_title: "期限後は操作しない",
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            can_like: true,
+            can_comment: true,
+            likes_count: 0,
+            comments_count: 0,
+            liked_by_me: false,
+            comments: [],
+            created_at: fixedTime.toISOString(),
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?cable_token$/, async (route) => {
+    cableTokenRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", token: "fa-11-token" }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?completion_posts\/212\/likes$/, async (route) => {
+    likeRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success" }),
+    });
+  });
+  await page.route(
+    /.*\/(?:api\/)?completion_posts\/212\/comments(?:\?.*)?$/,
+    async (route) => {
+      commentRequests += 1;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "success",
+          pagination: { page: 1, per_page: 20, has_more: false },
+          data: [],
+        }),
+      });
+    },
+  );
+
+  await gotoHome(page, "/home", {
+    feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+  });
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(page.getByLabel("残り 03:00")).toBeVisible();
+  await expect.poll(() => cableTokenRequests).toBe(1);
+  const requestsBeforeResume = feedRequests;
+
+  await page.clock.fastForward(181_000);
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus"));
+  });
+
+  await expect(page.getByLabel("残り 00:00")).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "3分経過しました" }),
+  ).toBeVisible();
+  const feedList = page.locator(".feed-list");
+  await expect(feedList).toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).toHaveAttribute("inert", "");
+  await expect(
+    page.locator(".feed-reaction").first().click({ trial: true, timeout: 500 }),
+  ).rejects.toThrow();
+  await expect(
+    page
+      .getByRole("button", { name: "期限確認ユーザーさんのコメントを開く" })
+      .click({ trial: true, timeout: 500 }),
+  ).rejects.toThrow();
+  expect(feedRequests).toBe(requestsBeforeResume);
+  expect(likeRequests).toBe(0);
+  expect(commentRequests).toBe(0);
+  expect(cableTokenRequests).toBe(1);
+  expect(accessRequests).toBe(1);
+});
+
+test("タブ復帰時の同期失敗後は投稿を保持してGETだけを再試行する", async ({
+  page,
+}) => {
+  const fixedTime = new Date("2026-09-20T03:00:00.000Z");
+  const expiresAt = new Date(fixedTime.getTime() + 180_000).toISOString();
+  let feedRequests = 0;
+  let accessRequests = 0;
+  let cableTokenRequests = 0;
+
+  await page.clock.install({ time: fixedTime });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    accessRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed(?:\?.*)?$/, async (route) => {
+    feedRequests += 1;
+    if (feedRequests === 2) {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "error",
+          errors: ["一時的に同期できません"],
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: true,
+        feed_access_pending: false,
+        remaining_seconds: feedRequests === 1 ? 180 : 60,
+        feed_access_expires_at: expiresAt,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [
+          {
+            id: 213,
+            user_name: "同期再試行ユーザー",
+            task_title: "同期失敗後も投稿を残す",
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            can_like: true,
+            can_comment: true,
+            likes_count: 0,
+            comments_count: 0,
+            liked_by_me: false,
+            comments: [],
+            created_at: fixedTime.toISOString(),
+          },
+        ],
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?cable_token$/, async (route) => {
+    cableTokenRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", token: "fa-11-token" }),
+    });
+  });
+
+  await gotoHome(page, "/home", {
+    feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+  });
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(page.getByText("同期失敗後も投稿を残す")).toBeVisible();
+  await expect.poll(() => cableTokenRequests).toBe(1);
+
+  await page.clock.setSystemTime(
+    new Date(fixedTime.getTime() + 120_000),
+  );
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus"));
+  });
+
+  await expect(page.getByRole("alert")).toContainText("一時的に同期できません");
+  await expect(page.getByText("同期失敗後も投稿を残す")).toBeAttached();
+  const feedList = page.locator(".feed-list");
+  await expect(feedList).toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).toHaveAttribute("inert", "");
+  expect(feedRequests).toBe(2);
+  expect(accessRequests).toBe(1);
+  expect(cableTokenRequests).toBe(1);
+
+  await page.getByRole("button", { name: "再読み込み" }).click();
+  await expect(page.getByLabel("残り 01:00")).toBeVisible();
+  await expect(feedList).not.toHaveAttribute("aria-hidden", "true");
+  await expect(feedList).not.toHaveAttribute("inert", "");
+  await expect.poll(() => cableTokenRequests).toBe(2);
+  expect(feedRequests).toBe(3);
+  expect(accessRequests).toBe(1);
+});
+
+test("端末時刻を過去へ変更しても停止せず復帰時にサーバー残秒へ補正する", async ({
+  page,
+}) => {
+  const fixedTime = new Date("2026-09-20T03:00:00.000Z");
+  const expiresAt = new Date(fixedTime.getTime() + 180_000).toISOString();
+  let feedRequests = 0;
+  let accessRequests = 0;
+  let serverRemainingSeconds = 180;
+
+  await page.clock.install({ time: fixedTime });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    accessRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed(?:\?.*)?$/, async (route) => {
+    feedRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: true,
+        feed_access_pending: false,
+        remaining_seconds: serverRemainingSeconds,
+        feed_access_expires_at: expiresAt,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [],
+      }),
+    });
+  });
+
+  await gotoHome(page, "/home", {
+    feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+  });
+  await page.getByRole("link", { name: "投稿" }).click();
+  await page.clock.runFor(60_000);
+  await expect(page.getByLabel("残り 02:00")).toBeVisible();
+
+  await page.clock.setSystemTime(
+    new Date(fixedTime.getTime() - 5 * 60_000),
+  );
+  await page.clock.runFor(3_000);
+  await expect(page.getByLabel("残り 01:57")).toBeVisible();
+
+  serverRemainingSeconds = 110;
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect.poll(() => feedRequests).toBe(2);
+  await expect(page.getByLabel("残り 01:50")).toBeVisible();
+  await page.clock.runFor(2_000);
+  await expect(page.getByLabel("残り 01:48")).toBeVisible();
+  expect(accessRequests).toBe(1);
+  expect(expiresAt).toBe("2026-09-20T03:03:00.000Z");
+});
+
+test("端末時刻を未来へ変更してもサーバー確認前に早期終了しない", async ({
+  page,
+}) => {
+  const fixedTime = new Date("2026-09-20T03:00:00.000Z");
+  const expiresAt = new Date(fixedTime.getTime() + 180_000).toISOString();
+  let feedRequests = 0;
+  let accessRequests = 0;
+  let serverRemainingSeconds = 180;
+
+  await page.clock.install({ time: fixedTime });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    accessRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed(?:\?.*)?$/, async (route) => {
+    feedRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: true,
+        feed_access_pending: false,
+        remaining_seconds: serverRemainingSeconds,
+        feed_access_expires_at: expiresAt,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [],
+      }),
+    });
+  });
+
+  await gotoHome(page, "/home", {
+    feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+  });
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(page.getByLabel("残り 03:00")).toBeVisible();
+
+  await page.clock.setSystemTime(
+    new Date(fixedTime.getTime() + 10 * 60_000),
+  );
+  await page.clock.runFor(1_000);
+  await expect(
+    page.getByRole("dialog", { name: "3分経過しました" }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("残り 02:59")).toBeVisible();
+
+  serverRemainingSeconds = 170;
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  await expect.poll(() => feedRequests).toBe(2);
+  await expect(page.getByLabel("残り 02:50")).toBeVisible();
+  await page.clock.runFor(2_000);
+  await expect(page.getByLabel("残り 02:48")).toBeVisible();
+  expect(accessRequests).toBe(1);
+  expect(expiresAt).toBe("2026-09-20T03:03:00.000Z");
+});
