@@ -303,27 +303,45 @@ RSpec.describe "Feed posts", type: :request do
       end
     end
 
-    it "初回説明確認済みの開始待ち中は投稿を返さず状態を変更しない" do
+    it "初回説明確認済みの開始待ち中も状態を変更せず最初の投稿を返す" do
       fixed_time = Time.zone.local(2026, 9, 20, 12, 0, 0)
 
       travel_to fixed_time do
         seen_at = fixed_time - 1.day
         user.update!(feed_intro_seen_at: seen_at, feed_access_pending: true, feed_access_expires_at: nil)
-        create_completed_posts(user: other_user, count: 2)
+        create_completed_posts(user: other_user, count: 21)
 
         get "/api/feed", headers: authenticated_headers(user), as: :json
 
         expect(response).to have_http_status(:ok)
-        expect(JSON.parse(response.body)).to include(
+        first_page = JSON.parse(response.body)
+        expect(first_page).to include(
           "access_allowed" => false,
           "feed_access_pending" => true,
           "remaining_seconds" => 0,
-          "data" => []
+          "feed_access_expires_at" => nil
         )
+        expect(first_page.fetch("data").size).to eq(20)
+
+        travel 1.hour
+        get "/api/feed?page=2", headers: authenticated_headers(user), as: :json
+
+        repeated_page = JSON.parse(response.body)
+        expect(repeated_page.dig("pagination", "page")).to eq(1)
+        expect(repeated_page.fetch("data").pluck("id")).to eq(first_page.fetch("data").pluck("id"))
         expect(user.reload).to have_attributes(
           feed_intro_seen_at: seen_at,
           feed_access_pending: true,
           feed_access_expires_at: nil
+        )
+
+        post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload).to have_attributes(
+          feed_intro_seen_at: seen_at,
+          feed_access_pending: false,
+          feed_access_expires_at: fixed_time + 1.hour + 3.minutes
         )
       end
     end

@@ -6,7 +6,6 @@ class FeedController < ApplicationController
   def index
     access_pending = current_user.feed_access_pending?
     return render_feed_unavailable unless access_pending || feed_accessible?
-    return render_feed_pending unless current_user.feed_intro_seen_at.nil? || !access_pending
 
     page = access_pending ? 1 : [ params.fetch(:page, 1).to_i, 1 ].max
     posts = CompletionPost
@@ -76,22 +75,6 @@ class FeedController < ApplicationController
       access_allowed: false,
       remaining_seconds: 0,
       feed_access_expires_at: current_user.feed_access_expires_at,
-      data: []
-    }, status: :ok
-  end
-
-  def render_feed_pending
-    render json: {
-      status: "success",
-      access_allowed: false,
-      feed_access_pending: true,
-      remaining_seconds: 0,
-      feed_access_expires_at: nil,
-      pagination: {
-        page: 1,
-        per_page: POSTS_LIMIT,
-        has_more: false
-      },
       data: []
     }, status: :ok
   end
