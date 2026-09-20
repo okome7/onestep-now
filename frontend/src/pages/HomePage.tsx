@@ -78,6 +78,8 @@ export function HomePage() {
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
   const isFeedAccessStartingRef = useRef(false)
+  const isFeedResyncingRef = useRef(false)
+  const feedResyncRequestIdRef = useRef(0)
   const hasRequestedFeedPreparationRef = useRef(false)
   const prefetchedFeedRef = useRef<FeedSnapshot | null>(null)
   const feedPrefetchPromiseRef = useRef<Promise<FeedSnapshot | null> | null>(
@@ -122,6 +124,7 @@ export function HomePage() {
   const [postDeleteError, setPostDeleteError] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isAccountDeleteConfirmOpen, setIsAccountDeleteConfirmOpen] =
     useState(false)
   const [isAccountDeletedOpen, setIsAccountDeletedOpen] = useState(false)
@@ -168,6 +171,7 @@ export function HomePage() {
   )
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [isFeedAccessStarting, setIsFeedAccessStarting] = useState(false)
+  const [isFeedResyncing, setIsFeedResyncing] = useState(false)
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(
     null,
@@ -186,6 +190,7 @@ export function HomePage() {
     remainingSeconds: feedRemainingSeconds,
     reset: resetFeedTimer,
     start: startFeedTimer,
+    synchronize: synchronizeFeedTimer,
     touch: touchFeedNow,
   } = useFeedTimer({
     durationSeconds: feedViewDurationSeconds,
@@ -228,7 +233,9 @@ export function HomePage() {
   const isFeedInteractionBlocked =
     isFeedIntroOpen ||
     isFeedAccessStarting ||
+    isFeedResyncing ||
     (!isFeedAccessDenied && feedRemainingSeconds <= 0)
+  const hasFeedTimeRemaining = feedRemainingSeconds > 0
   const isTaskRunning = isTaskActive && !isTaskComplete
   const visibleFeedPosts = feedPosts
   const isViewingOwnProfile = profileUserId === completeProfile.id
@@ -580,6 +587,84 @@ export function HomePage() {
     }
   }, [completeProfile.id, loadFeed, resetFeedTimer, startFeedTimer])
 
+  const synchronizeFeedAfterResume = useCallback(
+    async (retry = false) => {
+      if (
+        isFeedResyncingRef.current ||
+        (!retry && isFeedResyncing) ||
+        !isFeedOpen ||
+        isFeedIntroPreparing ||
+        isFeedIntroOpen ||
+        isFeedAccessStarting ||
+        isFeedAccessDenied ||
+        isFeedExpired ||
+        isLoggingOut ||
+        feedRemainingSeconds <= 0
+      ) {
+        return
+      }
+
+      if (synchronizeFeedTimer() <= 0) {
+        return
+      }
+
+      isFeedResyncingRef.current = true
+      const requestId = ++feedResyncRequestIdRef.current
+      setIsFeedResyncing(true)
+      setFeedError('')
+
+      try {
+        const result = await fetchFeed(completeProfile.id)
+        if (requestId !== feedResyncRequestIdRef.current) return
+
+        if (result.feedAccessPending) {
+          setFeedError('フィードの閲覧状態を確認できませんでした。')
+          return
+        }
+
+        startFeedTimer(
+          result.remainingSeconds ?? feedViewDurationSeconds,
+          result.feedAccessExpiresAt,
+        )
+        setFeedError('')
+        setIsFeedResyncing(false)
+      } catch (caughtError) {
+        if (requestId !== feedResyncRequestIdRef.current) return
+
+        if (caughtError instanceof FeedAccessDeniedError) {
+          setIsFeedResyncing(false)
+          expireFeed()
+          return
+        }
+
+        setFeedError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : 'フィードの閲覧状態を確認できませんでした。',
+        )
+      } finally {
+        if (requestId === feedResyncRequestIdRef.current) {
+          isFeedResyncingRef.current = false
+        }
+      }
+    },
+    [
+      completeProfile.id,
+      expireFeed,
+      feedRemainingSeconds,
+      isFeedAccessDenied,
+      isFeedAccessStarting,
+      isFeedExpired,
+      isFeedIntroOpen,
+      isFeedIntroPreparing,
+      isFeedOpen,
+      isFeedResyncing,
+      isLoggingOut,
+      startFeedTimer,
+      synchronizeFeedTimer,
+    ],
+  )
+
   const prepareFeedForDisplay = useCallback(async () => {
     if (isFeedAccessStartingRef.current) {
       return
@@ -623,6 +708,7 @@ export function HomePage() {
       isFeedIntroPreparing ||
       isFeedIntroOpen ||
       isFeedAccessStarting ||
+      isFeedResyncing ||
       isFeedLoadingMore ||
       !hasMoreFeedPosts
     ) {
@@ -669,6 +755,7 @@ export function HomePage() {
     isFeedIntroOpen,
     isFeedIntroPreparing,
     isFeedAccessStarting,
+    isFeedResyncing,
     isFeedLoadingMore,
   ])
 
@@ -680,6 +767,7 @@ export function HomePage() {
       isFeedIntroPreparing ||
       isFeedIntroOpen ||
       isFeedExpired ||
+      isFeedResyncing ||
       !hasMoreFeedPosts ||
       feedLoadMoreError ||
       !target
@@ -705,6 +793,7 @@ export function HomePage() {
     isFeedIntroOpen,
     isFeedIntroPreparing,
     isFeedOpen,
+    isFeedResyncing,
     loadMoreFeed,
   ])
 
@@ -791,6 +880,8 @@ export function HomePage() {
   useEffect(() => {
     if (!isFeedOpen) {
       hasRequestedFeedPreparationRef.current = false
+      feedResyncRequestIdRef.current += 1
+      isFeedResyncingRef.current = false
       return undefined
     }
 
@@ -803,13 +894,30 @@ export function HomePage() {
   }, [isFeedOpen, prepareFeedForDisplay])
 
   useEffect(() => {
+    const synchronizeVisibleFeed = () => {
+      if (document.visibilityState === 'visible') {
+        void synchronizeFeedAfterResume()
+      }
+    }
+
+    document.addEventListener('visibilitychange', synchronizeVisibleFeed)
+    window.addEventListener('focus', synchronizeVisibleFeed)
+
+    return () => {
+      document.removeEventListener('visibilitychange', synchronizeVisibleFeed)
+      window.removeEventListener('focus', synchronizeVisibleFeed)
+    }
+  }, [synchronizeFeedAfterResume])
+
+  useEffect(() => {
     if (
       !isFeedOpen ||
       isFeedIntroPreparing ||
       isFeedIntroOpen ||
       isFeedAccessStarting ||
+      isFeedResyncing ||
       isFeedAccessDenied ||
-      feedRemainingSeconds <= 0 ||
+      !hasFeedTimeRemaining ||
       isFeedExpired ||
       !completeProfile.id
     ) {
@@ -858,8 +966,9 @@ export function HomePage() {
     isFeedIntroOpen,
     isFeedIntroPreparing,
     isFeedAccessStarting,
+    isFeedResyncing,
     isFeedOpen,
-    feedRemainingSeconds,
+    hasFeedTimeRemaining,
     loadFeed,
   ])
 
@@ -917,6 +1026,9 @@ export function HomePage() {
     const needsPreparation = !hasKnownFeedAccess
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
+    if (!isFeedResyncingRef.current) {
+      setIsFeedResyncing(false)
+    }
     setIsFeedIntroPreparing(needsPreparation && !prefetchedFeed)
     setIsFeedIntroOpen(Boolean(prefetchedFeed && !hasSeenFeedIntro))
     setIsProfileOpen(false)
@@ -1029,6 +1141,7 @@ export function HomePage() {
   function returnToFeedFromProfile() {
     setIsProfileOpen(false)
     setIsFeedOpen(true)
+    setIsFeedResyncing(false)
     window.scrollTo({ top: 0, left: 0 })
   }
 
@@ -1166,6 +1279,7 @@ export function HomePage() {
   }
 
   async function confirmLogout() {
+    setIsLoggingOut(true)
     try {
       await logoutSession()
       clearMyPageCache()
@@ -1175,6 +1289,7 @@ export function HomePage() {
       window.sessionStorage.removeItem(taskDraftStorageKey)
       window.location.href = '/login'
     } catch {
+      setIsLoggingOut(false)
       setIsLogoutConfirmOpen(false)
     }
   }
@@ -1636,6 +1751,10 @@ export function HomePage() {
   }
 
   async function togglePostLike(postId: string) {
+    if (isFeedInteractionBlocked) {
+      return
+    }
+
     const targetPost = feedPosts.find((post) => post.id === postId)
 
     if (!targetPost?.canLike) {
@@ -1683,7 +1802,7 @@ export function HomePage() {
   }
 
   async function loadPostComments(postId: string, page: number) {
-    if (isCommentsLoading) {
+    if (isFeedInteractionBlocked || isCommentsLoading) {
       return
     }
 
@@ -1746,6 +1865,10 @@ export function HomePage() {
   }
 
   function openCommentPanel(postId: string) {
+    if (isFeedInteractionBlocked) {
+      return
+    }
+
     setActiveCommentPostId(postId)
     setCommentPage(1)
     setHasMoreComments(false)
@@ -1764,6 +1887,10 @@ export function HomePage() {
   }
 
   async function addPostComment(postId: string) {
+    if (isFeedInteractionBlocked) {
+      return
+    }
+
     const targetPost = feedPosts.find((post) => post.id === postId)
 
     if (!targetPost?.canComment) {
@@ -2054,7 +2181,16 @@ export function HomePage() {
             <p className="feed-error" role="alert">
               {feedError}
             </p>
-            <button type="button" onClick={prepareFeedForDisplay}>
+            <button
+              type="button"
+              onClick={() => {
+                if (isFeedResyncing) {
+                  void synchronizeFeedAfterResume(true)
+                } else {
+                  prepareFeedForDisplay()
+                }
+              }}
+            >
               再読み込み
             </button>
           </section>
