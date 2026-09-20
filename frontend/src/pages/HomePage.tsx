@@ -71,12 +71,18 @@ import { fetchCableToken, logoutSession } from '../sessionApi'
 import { deleteCompletionPost } from '../mypageApi'
 import { updateProfile } from '../profileApi'
 
+type FeedSnapshot = Awaited<ReturnType<typeof fetchFeed>>
+
 export function HomePage() {
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
   const isFeedAccessStartingRef = useRef(false)
   const hasRequestedFeedPreparationRef = useRef(false)
+  const prefetchedFeedRef = useRef<FeedSnapshot | null>(null)
+  const feedPrefetchPromiseRef = useRef<Promise<FeedSnapshot | null> | null>(
+    null,
+  )
   const deletedFeedPostIdsRef = useRef(new Set<string>())
   const latestLikeEventTimesRef = useRef(new Map<string, number>())
   const [taskText, setTaskText] = useState(getInitialTaskDraft)
@@ -188,7 +194,8 @@ export function HomePage() {
       !isFeedAccessDenied &&
       !isFeedLoading &&
       !isFeedIntroPreparing &&
-      !isFeedIntroOpen,
+      !isFeedIntroOpen &&
+      !isFeedAccessStarting,
     isFeedOpen,
   })
   const redirectToLoginForAuthRequired = useCallback(() => {
@@ -218,6 +225,10 @@ export function HomePage() {
   })
   const isTaskActive = Boolean(activeTask)
   const hasSeenFeedIntro = Boolean(completeProfile.feedIntroSeenAt)
+  const isFeedInteractionBlocked =
+    isFeedIntroOpen ||
+    isFeedAccessStarting ||
+    (!isFeedAccessDenied && feedRemainingSeconds <= 0)
   const isTaskRunning = isTaskActive && !isTaskComplete
   const visibleFeedPosts = feedPosts
   const isViewingOwnProfile = profileUserId === completeProfile.id
@@ -438,6 +449,33 @@ export function HomePage() {
     }
   }, [isFeedExpired, isFeedIntroOpen])
 
+  const applyFeedSnapshot = useCallback((result: FeedSnapshot) => {
+    deletedFeedPostIdsRef.current.clear()
+    setFeedPosts(result.posts)
+    setFeedPage(result.page)
+    setHasMoreFeedPosts(result.hasMore)
+  }, [])
+
+  const prefetchFeed = useCallback(() => {
+    if (feedPrefetchPromiseRef.current) {
+      return feedPrefetchPromiseRef.current
+    }
+
+    const request = fetchFeed(completeProfile.id)
+      .then((result) => {
+        prefetchedFeedRef.current = result
+        applyFeedSnapshot(result)
+        return result
+      })
+      .catch(() => null)
+      .finally(() => {
+        feedPrefetchPromiseRef.current = null
+      })
+
+    feedPrefetchPromiseRef.current = request
+    return request
+  }, [applyFeedSnapshot, completeProfile.id])
+
   const loadFeed = useCallback(async () => {
     setFeedError('')
     setFeedLoadMoreError('')
@@ -448,7 +486,6 @@ export function HomePage() {
       const result = await fetchFeed(completeProfile.id)
       const nextRemainingSeconds =
         result.remainingSeconds ?? feedViewDurationSeconds
-      deletedFeedPostIdsRef.current.clear()
       if (result.feedAccessPending) {
         resetFeedTimer()
         if (hasSeenFeedIntro) {
@@ -456,16 +493,12 @@ export function HomePage() {
           setFeedPage(1)
           setHasMoreFeedPosts(false)
         } else {
-          setFeedPosts(result.posts)
-          setFeedPage(result.page)
-          setHasMoreFeedPosts(result.hasMore)
+          applyFeedSnapshot(result)
           setIsFeedIntroPreparing(false)
           setIsFeedIntroOpen(true)
         }
       } else {
-        setFeedPosts(result.posts)
-        setFeedPage(result.page)
-        setHasMoreFeedPosts(result.hasMore)
+        applyFeedSnapshot(result)
         setIsFeedIntroPreparing(false)
         startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
       }
@@ -496,18 +529,19 @@ export function HomePage() {
     clearFeedTimeout,
     completeProfile.id,
     hasSeenFeedIntro,
+    applyFeedSnapshot,
     resetFeedTimer,
     startFeedTimer,
   ])
 
-  const startConfirmedFeedAccess = useCallback(async () => {
+  const startConfirmedFeedAccess = useCallback(async (reusePrefetchedPosts = false) => {
     if (isFeedAccessStartingRef.current) {
       return
     }
 
     isFeedAccessStartingRef.current = true
     setIsFeedAccessStarting(true)
-    setIsFeedIntroPreparing(true)
+    setIsFeedIntroPreparing(!reusePrefetchedPosts)
     setFeedError('')
 
     try {
@@ -516,7 +550,11 @@ export function HomePage() {
         result.remaining_seconds ?? feedViewDurationSeconds
       startFeedTimer(remainingSeconds, result.feed_access_expires_at)
       setIsFeedAccessDenied(false)
-      await loadFeed()
+      if (reusePrefetchedPosts) {
+        setIsFeedIntroPreparing(false)
+      } else {
+        await loadFeed()
+      }
     } catch (caughtError) {
       if (caughtError instanceof FeedAccessDeniedError) {
         setFeedPosts([])
@@ -533,13 +571,16 @@ export function HomePage() {
           ? caughtError.message
           : 'フィードを開始できませんでした。',
       )
+      if (reusePrefetchedPosts) {
+        setIsFeedIntroPreparing(false)
+      }
     } finally {
       isFeedAccessStartingRef.current = false
       setIsFeedAccessStarting(false)
     }
   }, [completeProfile.id, loadFeed, resetFeedTimer, startFeedTimer])
 
-  const prepareFeedForDisplay = useCallback(() => {
+  const prepareFeedForDisplay = useCallback(async () => {
     if (isFeedAccessStartingRef.current) {
       return
     }
@@ -549,8 +590,22 @@ export function HomePage() {
       return
     }
 
+    const prefetchedFeed =
+      prefetchedFeedRef.current ?? (await feedPrefetchPromiseRef.current)
+    if (prefetchedFeed) {
+      applyFeedSnapshot(prefetchedFeed)
+      setIsFeedIntroPreparing(false)
+
+      if (hasSeenFeedIntro) {
+        void startConfirmedFeedAccess(true)
+      } else {
+        setIsFeedIntroOpen(true)
+      }
+      return
+    }
+
     if (hasSeenFeedIntro) {
-      void startConfirmedFeedAccess()
+      void startConfirmedFeedAccess(false)
       return
     }
 
@@ -558,6 +613,7 @@ export function HomePage() {
   }, [
     hasActiveFeedAccess,
     hasSeenFeedIntro,
+    applyFeedSnapshot,
     loadFeed,
     startConfirmedFeedAccess,
   ])
@@ -566,6 +622,7 @@ export function HomePage() {
     if (
       isFeedIntroPreparing ||
       isFeedIntroOpen ||
+      isFeedAccessStarting ||
       isFeedLoadingMore ||
       !hasMoreFeedPosts
     ) {
@@ -611,6 +668,7 @@ export function HomePage() {
     hasMoreFeedPosts,
     isFeedIntroOpen,
     isFeedIntroPreparing,
+    isFeedAccessStarting,
     isFeedLoadingMore,
   ])
 
@@ -722,6 +780,8 @@ export function HomePage() {
     }
 
     feedUserIdRef.current = completeProfile.id
+    prefetchedFeedRef.current = null
+    feedPrefetchPromiseRef.current = null
     setFeedPosts([])
     setIsFeedIntroOpen(false)
     setIsFeedAccessDenied(false)
@@ -747,7 +807,9 @@ export function HomePage() {
       !isFeedOpen ||
       isFeedIntroPreparing ||
       isFeedIntroOpen ||
+      isFeedAccessStarting ||
       isFeedAccessDenied ||
+      feedRemainingSeconds <= 0 ||
       isFeedExpired ||
       !completeProfile.id
     ) {
@@ -795,7 +857,9 @@ export function HomePage() {
     isFeedExpired,
     isFeedIntroOpen,
     isFeedIntroPreparing,
+    isFeedAccessStarting,
     isFeedOpen,
+    feedRemainingSeconds,
     loadFeed,
   ])
 
@@ -849,11 +913,12 @@ export function HomePage() {
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
     const hasKnownFeedAccess = hasActiveFeedAccess()
+    const prefetchedFeed = prefetchedFeedRef.current
     const needsPreparation = !hasKnownFeedAccess
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
-    setIsFeedIntroPreparing(needsPreparation)
-    setIsFeedIntroOpen(false)
+    setIsFeedIntroPreparing(needsPreparation && !prefetchedFeed)
+    setIsFeedIntroOpen(Boolean(prefetchedFeed && !hasSeenFeedIntro))
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
     setActiveAchievementId(null)
@@ -865,7 +930,9 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    if (!hasKnownFeedAccess) {
+    if (prefetchedFeed) {
+      applyFeedSnapshot(prefetchedFeed)
+    } else if (!hasKnownFeedAccess) {
       setFeedPosts([])
       resetFeedTimer()
     }
@@ -1536,6 +1603,10 @@ export function HomePage() {
       })
       setIsTaskComplete(true)
       void refreshMyPageData(completeProfile.id)
+      resetFeedTimer()
+      setIsFeedAccessDenied(false)
+      prefetchedFeedRef.current = null
+      void prefetchFeed()
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
@@ -1898,7 +1969,9 @@ export function HomePage() {
           rightAction={
             isFeedAccessDenied ||
             isFeedIntroPreparing ||
-            isFeedIntroOpen ? null : (
+            isFeedIntroOpen ||
+            isFeedAccessStarting ||
+            (feedRemainingSeconds <= 0 && !isFeedExpired) ? null : (
               <FeedCountdown
                 remainingSeconds={feedRemainingSeconds}
                 handAngle={feedCountdownHandAngle}
@@ -1930,8 +2003,10 @@ export function HomePage() {
           <section
             className={`feed-list ${isFeedExpired ? 'feed-list-expired' : ''} ${isFeedIntroOpen ? 'feed-list-intro' : ''}`}
             aria-label="みんなの投稿"
-            aria-hidden={isFeedExpired || isFeedIntroOpen ? 'true' : undefined}
-            inert={isFeedExpired || isFeedIntroOpen ? true : undefined}
+            aria-hidden={
+              isFeedExpired || isFeedInteractionBlocked ? 'true' : undefined
+            }
+            inert={isFeedExpired || isFeedInteractionBlocked ? true : undefined}
           >
             {isFeedAccessDenied ? (
               <FeedStartGate onStart={openHome} />
@@ -1971,6 +2046,20 @@ export function HomePage() {
           </section>
         )}
 
+        {!isFeedIntroPreparing &&
+        !isFeedIntroOpen &&
+        feedError &&
+        visibleFeedPosts.length > 0 ? (
+          <section className="feed-intro-loading" aria-live="polite">
+            <p className="feed-error" role="alert">
+              {feedError}
+            </p>
+            <button type="button" onClick={prepareFeedForDisplay}>
+              再読み込み
+            </button>
+          </section>
+        ) : null}
+
         {isFeedIntroOpen ? (
           <FeedIntroModal
             isStarting={isFeedAccessStarting}
@@ -1988,7 +2077,7 @@ export function HomePage() {
           onFeedClick={openFeed}
           onProfileClick={openProfile}
         />
-        {activeCommentPost && !isFeedExpired ? (
+        {activeCommentPost && !isFeedExpired && !isFeedInteractionBlocked ? (
           <FeedCommentPanel
             post={activeCommentPost}
             draft={commentDrafts[activeCommentPost.id] ?? ''}
