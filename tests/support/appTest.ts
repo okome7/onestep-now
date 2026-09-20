@@ -112,6 +112,18 @@ async function mockAuthenticatedBackgroundApis(page: Page) {
       body: JSON.stringify({ status: "success", token: "e2e-cable-token" }),
     });
   });
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString();
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 3 * 60,
+        feed_intro_seen_at: defaultFeedIntroSeenAt,
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
 }
 
 async function gotoHome(

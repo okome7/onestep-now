@@ -405,6 +405,13 @@ test("フィードのアイコンから他のユーザーのマイページを�
 });
 
 test("フィード閲覧時間外は案内画面からホームへ戻れる", async ({ page }) => {
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: "application/json",
+      body: JSON.stringify({ status: "error", errors: ["Forbidden"] }),
+    });
+  });
   await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -871,6 +878,217 @@ test("初回説明のOKを連打しても閲覧開始処理を一度だけ実行
   expect(accessRequests).toBe(1);
 });
 
+test("確認済みユーザーはフィードを開いた時点から閲覧を開始する", async ({
+  page,
+}) => {
+  const fixedTime = new Date("2026-09-20T03:00:00.000Z");
+  let releaseStart!: () => void;
+  const startGate = new Promise<void>((resolve) => {
+    releaseStart = resolve;
+  });
+  let accessRequests = 0;
+  let feedRequests = 0;
+  let cableTokenRequests = 0;
+  let accessStarted = false;
+  let expiresAt = "";
+
+  await page.clock.install({ time: fixedTime });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    accessRequests += 1;
+    await startGate;
+    accessStarted = true;
+    expiresAt = new Date(Date.now() + 180_000).toISOString();
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 180,
+        feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed(?:\?.*)?$/, async (route) => {
+    feedRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: accessStarted,
+        feed_access_pending: !accessStarted,
+        remaining_seconds: accessStarted ? 180 : 0,
+        feed_access_expires_at: accessStarted ? expiresAt : null,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: accessStarted
+          ? [
+              {
+                id: 108,
+                user_name: "確認済みユーザー",
+                task_title: "開いた時点から開始する",
+                status: "completed",
+                status_label: "できた",
+                card_variant: "completed",
+                likes_count: 0,
+                comments_count: 0,
+                liked_by_me: false,
+                comments: [],
+                created_at: new Date().toISOString(),
+              },
+            ]
+          : [],
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?cable_token$/, async (route) => {
+    cableTokenRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", token: "fa-08-token" }),
+    });
+  });
+
+  await gotoHome(page, "/home", {
+    feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+  });
+  await page
+    .getByRole("textbox", { name: "今できること" })
+    .fill("開いた時点から開始する");
+  await page.getByRole("button", { name: "始める" }).click();
+  await page.getByRole("button", { name: "できた！" }).click();
+
+  await page.clock.runFor(60_000);
+  expect(accessRequests).toBe(0);
+  expect(feedRequests).toBe(0);
+  expect(cableTokenRequests).toBe(0);
+  await expect(page.locator(".feed-countdown")).toHaveCount(0);
+
+  await page.getByRole("link", { name: "みんなを見る" }).click();
+  await expect.poll(() => accessRequests).toBe(1);
+  await expect(page.getByText("読み込んでいます…")).toBeVisible();
+  await expect(page.getByText("開いた時点から開始する")).toHaveCount(0);
+  await expect(page.locator(".feed-countdown")).toHaveCount(0);
+  await expect(
+    page.getByRole("dialog", { name: "利用時間は3分限定！" }),
+  ).toHaveCount(0);
+  expect(feedRequests).toBe(0);
+  expect(cableTokenRequests).toBe(0);
+
+  await page.getByRole("link", { name: "投稿" }).click();
+  await page.getByRole("link", { name: "投稿" }).click();
+  expect(accessRequests).toBe(1);
+
+  releaseStart();
+  await expect(page.getByText("開いた時点から開始する")).toBeVisible();
+  await expect(page.getByLabel(/残り (?:03:00|02:59)/)).toBeVisible();
+  await expect.poll(() => cableTokenRequests).toBe(1);
+  expect(accessRequests).toBe(1);
+  expect(feedRequests).toBe(1);
+});
+
+test("確認済みユーザーは開始失敗と投稿取得失敗から期限を延長せず再試行できる", async ({
+  page,
+}) => {
+  const fixedTime = new Date("2026-09-20T03:00:00.000Z");
+  let accessRequests = 0;
+  let feedRequests = 0;
+  let cableTokenRequests = 0;
+  let expiresAt = "";
+  let remainingSeconds = 180;
+
+  await page.clock.install({ time: fixedTime });
+  await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    accessRequests += 1;
+    if (accessRequests === 1) {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "error", errors: ["開始失敗"] }),
+      });
+      return;
+    }
+
+    expiresAt ||= new Date(fixedTime.getTime() + 180_000).toISOString();
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: remainingSeconds,
+        feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed(?:\?.*)?$/, async (route) => {
+    feedRequests += 1;
+    if (feedRequests === 1) {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "error", errors: ["取得失敗"] }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: true,
+        feed_access_pending: false,
+        remaining_seconds: remainingSeconds,
+        feed_access_expires_at: expiresAt,
+        pagination: { page: 1, per_page: 20, has_more: false },
+        data: [],
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?cable_token$/, async (route) => {
+    cableTokenRequests += 1;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ status: "success", token: "fa-08-retry-token" }),
+    });
+  });
+
+  await gotoHome(page, "/home", {
+    feed_intro_seen_at: "2026-09-19T03:00:00.000Z",
+  });
+  await page
+    .getByRole("textbox", { name: "今できること" })
+    .fill("失敗後に再試行する");
+  await page.getByRole("button", { name: "始める" }).click();
+  await page.getByRole("button", { name: "できた！" }).click();
+  await page.getByRole("link", { name: "みんなを見る" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("開始失敗");
+  expect(accessRequests).toBe(1);
+  expect(feedRequests).toBe(0);
+  expect(cableTokenRequests).toBe(0);
+  await expect(page.locator(".feed-countdown")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "再読み込み" }).click();
+  await expect(page.getByRole("alert")).toContainText("取得失敗");
+  expect(accessRequests).toBe(2);
+  expect(feedRequests).toBe(1);
+  expect(cableTokenRequests).toBe(0);
+  const firstExpiration = expiresAt;
+
+  await page.clock.runFor(60_000);
+  remainingSeconds = 120;
+  await page.getByRole("button", { name: "再読み込み" }).click();
+
+  await expect(page.getByLabel("残り 02:00")).toBeVisible();
+  await expect.poll(() => cableTokenRequests).toBe(1);
+  expect(accessRequests).toBe(2);
+  expect(feedRequests).toBe(2);
+  expect(expiresAt).toBe(firstExpiration);
+  await expect(
+    page.getByRole("dialog", { name: "利用時間は3分限定！" }),
+  ).toHaveCount(0);
+});
+
 test("初回説明の背景取得に失敗しても再試行後にモーダルを表示する", async ({
   page,
 }) => {
@@ -1043,8 +1261,9 @@ test("同じブラウザでもアカウントごとの初回説明確認状態�
       return;
     }
 
-    const seenAt = new Date().toISOString();
-    accounts[currentAccount].feed_intro_seen_at = seenAt;
+    const seenAt =
+      accounts[currentAccount].feed_intro_seen_at ?? new Date().toISOString();
+    accounts[currentAccount].feed_intro_seen_at ??= seenAt;
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -1113,6 +1332,17 @@ test("再読み込み・再訪・再ログイン後も最初のフィード閲�
 
   await page.clock.install({ time: fixedTime });
   await mockTaskAndFeedApi(page);
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: serverRemainingSeconds,
+        feed_intro_seen_at: "2026-09-01T00:00:00.000Z",
+        feed_access_expires_at: feedAccessExpiresAt,
+      }),
+    });
+  });
   await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
     returnedExpirations.push(feedAccessExpiresAt);
     await route.fulfill({

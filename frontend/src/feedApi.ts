@@ -380,6 +380,7 @@ export async function startFeedAccess(userId?: number) {
     headers: userHeaders(userId),
   })
   if (response.status === 401) throw new AuthRequiredError()
+  if (response.status === 403) throw new FeedAccessDeniedError()
   const result = await readJsonResponse<FeedSuccessResponse | ErrorResponse>(
     response,
   )
