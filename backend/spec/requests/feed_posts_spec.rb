@@ -129,7 +129,7 @@ RSpec.describe "Feed posts", type: :request do
   end
 
   describe "PATCH /api/tasks/:id/complete" do
-    it "初回説明未確認ならクライアント指定にかかわらずフィード閲覧を開始待ちにする" do
+    it "初回説明未確認なら期限を開始せず未使用の閲覧権利を付与する" do
       task = user.tasks.create!(title: "初回説明を確認する", status: :active, started_at: 1.minute.ago)
       task.create_completion_post!(user: user, status: :doing, content: task.title)
 
@@ -140,10 +140,10 @@ RSpec.describe "Feed posts", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(user.reload.feed_access_pending).to be(true)
-      expect(user.feed_access_expires_at).to be_within(2.seconds).of(3.minutes.from_now)
+      expect(user.feed_access_expires_at).to be_nil
     end
 
-    it "初回説明確認済みならクライアント指定にかかわらず完了時から閲覧を開始する" do
+    it "初回説明確認済みでも期限を開始せず未使用の閲覧権利を付与する" do
       fixed_time = Time.zone.local(2026, 9, 19, 12, 0, 0)
 
       travel_to fixed_time do
@@ -157,8 +157,42 @@ RSpec.describe "Feed posts", type: :request do
           as: :json
 
         expect(response).to have_http_status(:ok)
-        expect(user.reload.feed_access_pending).to be(false)
-        expect(user.feed_access_expires_at).to eq(fixed_time + 3.minutes)
+        expect(user.reload.feed_access_pending).to be(true)
+        expect(user.feed_access_expires_at).to be_nil
+      end
+    end
+
+    it "未使用権利を時間経過や追加のタスク完了で蓄積せず1回分だけ保持する" do
+      fixed_time = Time.zone.local(2026, 9, 19, 12, 0, 0)
+
+      travel_to fixed_time do
+        user.update!(feed_intro_seen_at: 1.day.ago)
+        first_task = user.tasks.create!(title: "最初の権利", status: :active, started_at: 1.minute.ago)
+        first_task.create_completion_post!(user: user, status: :doing, content: first_task.title)
+        patch "/api/tasks/#{first_task.id}/complete", headers: authenticated_headers(user), as: :json
+
+        travel 10.minutes
+        expect(user.reload).to have_attributes(feed_access_pending: true, feed_access_expires_at: nil)
+
+        second_task = user.tasks.create!(title: "次の権利", status: :active, started_at: Time.current)
+        second_task.create_completion_post!(user: user, status: :doing, content: second_task.title)
+        patch "/api/tasks/#{second_task.id}/complete", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload).to have_attributes(feed_access_pending: true, feed_access_expires_at: nil)
+      end
+    end
+
+    it "閲覧中または期限切れでも新しいタスク完了で未使用権利へ置き換える" do
+      [ 2.minutes.from_now, 1.minute.ago ].each_with_index do |expiration, index|
+        user.update!(feed_access_pending: false, feed_access_expires_at: expiration)
+        task = user.tasks.create!(title: "置き換え#{index}", status: :active, started_at: 1.minute.ago)
+        task.create_completion_post!(user: user, status: :doing, content: task.title)
+
+        patch "/api/tasks/#{task.id}/complete", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload).to have_attributes(feed_access_pending: true, feed_access_expires_at: nil)
       end
     end
 
@@ -181,8 +215,8 @@ RSpec.describe "Feed posts", type: :request do
         expect(task.completed_at).to be_present
         expect(completion_post.reload).to be_completed
         expect(completion_post.completed_at.to_i).to eq(task.completed_at.to_i)
-        expect(user.reload.feed_access_expires_at).to eq(fixed_time + 3.minutes)
-        expect(user.feed_access_pending).to be(false)
+        expect(user.reload.feed_access_expires_at).to be_nil
+        expect(user.feed_access_pending).to be(true)
         body = JSON.parse(response.body)
         expect(body.dig("data", "completion_post")).to include(
           "id" => completion_post.id,
@@ -232,11 +266,10 @@ RSpec.describe "Feed posts", type: :request do
       fixed_time = Time.zone.local(2026, 9, 20, 12, 0, 0)
 
       travel_to fixed_time do
-        original_expiration = fixed_time + 1.minute
         user.update!(
           feed_intro_seen_at: nil,
           feed_access_pending: true,
-          feed_access_expires_at: original_expiration
+          feed_access_expires_at: nil
         )
         create_completed_posts(user: other_user, count: 21)
 
@@ -265,7 +298,32 @@ RSpec.describe "Feed posts", type: :request do
         expect(user.reload).to have_attributes(
           feed_intro_seen_at: nil,
           feed_access_pending: true,
-          feed_access_expires_at: original_expiration
+          feed_access_expires_at: nil
+        )
+      end
+    end
+
+    it "初回説明確認済みの開始待ち中は投稿を返さず状態を変更しない" do
+      fixed_time = Time.zone.local(2026, 9, 20, 12, 0, 0)
+
+      travel_to fixed_time do
+        seen_at = fixed_time - 1.day
+        user.update!(feed_intro_seen_at: seen_at, feed_access_pending: true, feed_access_expires_at: nil)
+        create_completed_posts(user: other_user, count: 2)
+
+        get "/api/feed", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)).to include(
+          "access_allowed" => false,
+          "feed_access_pending" => true,
+          "remaining_seconds" => 0,
+          "data" => []
+        )
+        expect(user.reload).to have_attributes(
+          feed_intro_seen_at: seen_at,
+          feed_access_pending: true,
+          feed_access_expires_at: nil
         )
       end
     end
@@ -405,7 +463,7 @@ RSpec.describe "Feed posts", type: :request do
       fixed_time = Time.zone.local(2026, 9, 19, 12, 0, 0)
 
       travel_to fixed_time do
-        user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+        user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: nil)
 
         post "/api/feed/access", headers: authenticated_headers(user), as: :json
 
@@ -423,6 +481,42 @@ RSpec.describe "Feed posts", type: :request do
       end
     end
 
+    it "初回説明確認済みなら確認日時を維持して開始時に初めて期限を確定する" do
+      fixed_time = Time.zone.local(2026, 9, 19, 12, 0, 0)
+      seen_at = fixed_time - 1.day
+
+      travel_to fixed_time do
+        user.update!(feed_intro_seen_at: seen_at, feed_access_pending: true, feed_access_expires_at: nil)
+
+        post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(user.reload).to have_attributes(
+          feed_intro_seen_at: seen_at,
+          feed_access_pending: false,
+          feed_access_expires_at: fixed_time + 3.minutes
+        )
+        expect(JSON.parse(response.body)).to include(
+          "feed_intro_seen_at" => seen_at.iso8601(3),
+          "feed_access_expires_at" => (fixed_time + 3.minutes).iso8601(3),
+          "remaining_seconds" => 180
+        )
+      end
+    end
+
+    it "利用権利なしと期限切れ状態では開始を拒否する" do
+      travel_to(Time.zone.local(2026, 9, 19, 12, 0, 0)) do
+        [ nil, 1.minute.ago ].each do |expiration|
+          user.update!(feed_access_pending: false, feed_access_expires_at: expiration)
+
+          post "/api/feed/access", headers: authenticated_headers(user), as: :json
+
+          expect(response).to have_http_status(:forbidden)
+          expect(user.reload).to have_attributes(feed_access_pending: false, feed_access_expires_at: expiration)
+        end
+      end
+    end
+
     it "開始待ちでなければ現在の閲覧時間を延長しない" do
       original_expiration = 1.minute.from_now
       user.update!(feed_access_pending: false, feed_access_expires_at: original_expiration)
@@ -437,7 +531,7 @@ RSpec.describe "Feed posts", type: :request do
       fixed_time = Time.zone.local(2026, 9, 15, 12, 0, 0)
 
       travel_to fixed_time do
-        user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+        user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: nil)
 
         post "/api/feed/access", headers: authenticated_headers(user), as: :json
 
@@ -472,7 +566,7 @@ RSpec.describe "Feed posts", type: :request do
       fixed_time = Time.zone.local(2026, 9, 19, 12, 0, 0)
 
       travel_to fixed_time do
-        original_expiration = 1.minute.from_now
+        original_expiration = nil
         user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: original_expiration)
         relation = User.where(id: user.id, feed_access_pending: true)
         allow(User).to receive(:where).and_call_original
@@ -494,7 +588,7 @@ RSpec.describe "Feed posts", type: :request do
     end
 
     it "同一ユーザーへの並行リクエストでは最初に確定した期限を両方に返す" do
-      user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: 1.minute.from_now)
+      user.update!(feed_intro_seen_at: nil, feed_access_pending: true, feed_access_expires_at: nil)
       sessions = 2.times.map do
         _auth_session, session_token, csrf_token = AuthSession.issue_for(user)
         session = ActionDispatch::Integration::Session.new(Rails.application)

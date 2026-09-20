@@ -76,6 +76,7 @@ export function HomePage() {
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
   const isFeedAccessStartingRef = useRef(false)
+  const hasRequestedFeedPreparationRef = useRef(false)
   const deletedFeedPostIdsRef = useRef(new Set<string>())
   const latestLikeEventTimesRef = useRef(new Map<string, number>())
   const [taskText, setTaskText] = useState(getInitialTaskDraft)
@@ -131,6 +132,7 @@ export function HomePage() {
   const [completeProfile, setCompleteProfile] = useState(() =>
     getInitialCompleteProfile(),
   )
+  const feedUserIdRef = useRef(completeProfile.id)
   const [profileUserId, setProfileUserId] = useState(completeProfile.id)
   const [displayNameDraft, setDisplayNameDraft] = useState(
     completeProfile.name || 'おこめ',
@@ -156,7 +158,7 @@ export function HomePage() {
   const [feedLoadMoreError, setFeedLoadMoreError] = useState('')
   const [feedError, setFeedError] = useState('')
   const [isFeedIntroPreparing, setIsFeedIntroPreparing] = useState(
-    initialHomeView === 'feed' && !completeProfile.feedIntroSeenAt,
+    initialHomeView === 'feed',
   )
   const [isFeedIntroOpen, setIsFeedIntroOpen] = useState(false)
   const [isFeedAccessStarting, setIsFeedAccessStarting] = useState(false)
@@ -447,14 +449,23 @@ export function HomePage() {
       const nextRemainingSeconds =
         result.remainingSeconds ?? feedViewDurationSeconds
       deletedFeedPostIdsRef.current.clear()
-      setFeedPosts(result.posts)
-      setFeedPage(result.page)
-      setHasMoreFeedPosts(result.hasMore)
       if (result.feedAccessPending) {
         resetFeedTimer()
-        setIsFeedIntroPreparing(false)
-        setIsFeedIntroOpen(true)
+        if (hasSeenFeedIntro) {
+          setFeedPosts([])
+          setFeedPage(1)
+          setHasMoreFeedPosts(false)
+        } else {
+          setFeedPosts(result.posts)
+          setFeedPage(result.page)
+          setHasMoreFeedPosts(result.hasMore)
+          setIsFeedIntroPreparing(false)
+          setIsFeedIntroOpen(true)
+        }
       } else {
+        setFeedPosts(result.posts)
+        setFeedPage(result.page)
+        setHasMoreFeedPosts(result.hasMore)
         setIsFeedIntroPreparing(false)
         startFeedTimer(nextRemainingSeconds, result.feedAccessExpiresAt)
       }
@@ -481,7 +492,75 @@ export function HomePage() {
     } finally {
       setIsFeedLoading(false)
     }
-  }, [clearFeedTimeout, completeProfile.id, resetFeedTimer, startFeedTimer])
+  }, [
+    clearFeedTimeout,
+    completeProfile.id,
+    hasSeenFeedIntro,
+    resetFeedTimer,
+    startFeedTimer,
+  ])
+
+  const startConfirmedFeedAccess = useCallback(async () => {
+    if (isFeedAccessStartingRef.current) {
+      return
+    }
+
+    isFeedAccessStartingRef.current = true
+    setIsFeedAccessStarting(true)
+    setIsFeedIntroPreparing(true)
+    setFeedError('')
+
+    try {
+      const result = await startFeedAccess(completeProfile.id)
+      const remainingSeconds =
+        result.remaining_seconds ?? feedViewDurationSeconds
+      startFeedTimer(remainingSeconds, result.feed_access_expires_at)
+      setIsFeedAccessDenied(false)
+      await loadFeed()
+    } catch (caughtError) {
+      if (caughtError instanceof FeedAccessDeniedError) {
+        setFeedPosts([])
+        setFeedPage(1)
+        setHasMoreFeedPosts(false)
+        resetFeedTimer()
+        setIsFeedIntroPreparing(false)
+        setIsFeedAccessDenied(true)
+        return
+      }
+
+      setFeedError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'フィードを開始できませんでした。',
+      )
+    } finally {
+      isFeedAccessStartingRef.current = false
+      setIsFeedAccessStarting(false)
+    }
+  }, [completeProfile.id, loadFeed, resetFeedTimer, startFeedTimer])
+
+  const prepareFeedForDisplay = useCallback(() => {
+    if (isFeedAccessStartingRef.current) {
+      return
+    }
+
+    if (hasActiveFeedAccess()) {
+      void loadFeed()
+      return
+    }
+
+    if (hasSeenFeedIntro) {
+      void startConfirmedFeedAccess()
+      return
+    }
+
+    void loadFeed()
+  }, [
+    hasActiveFeedAccess,
+    hasSeenFeedIntro,
+    loadFeed,
+    startConfirmedFeedAccess,
+  ])
 
   const loadMoreFeed = useCallback(async () => {
     if (
@@ -638,16 +717,30 @@ export function HomePage() {
   }, [completeProfile.id, selectMyPageUser])
 
   useEffect(() => {
+    if (feedUserIdRef.current === completeProfile.id) {
+      return
+    }
+
+    feedUserIdRef.current = completeProfile.id
+    setFeedPosts([])
+    setIsFeedIntroOpen(false)
+    setIsFeedAccessDenied(false)
+    resetFeedTimer()
+  }, [completeProfile.id, resetFeedTimer])
+
+  useEffect(() => {
     if (!isFeedOpen) {
+      hasRequestedFeedPreparationRef.current = false
       return undefined
     }
 
-    const timerId = window.setTimeout(() => {
-      void loadFeed()
-    }, 0)
-
-    return () => window.clearTimeout(timerId)
-  }, [isFeedOpen, loadFeed])
+    if (hasRequestedFeedPreparationRef.current) {
+      return undefined
+    }
+    hasRequestedFeedPreparationRef.current = true
+    prepareFeedForDisplay()
+    return undefined
+  }, [isFeedOpen, prepareFeedForDisplay])
 
   useEffect(() => {
     if (
@@ -755,10 +848,11 @@ export function HomePage() {
 
   function openFeed(event?: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) {
     event?.preventDefault()
-    const needsIntro = isTaskComplete && !hasSeenFeedIntro
+    const hasKnownFeedAccess = hasActiveFeedAccess()
+    const needsPreparation = !hasKnownFeedAccess
     window.sessionStorage.setItem(activeHomeViewStorageKey, 'feed')
     setIsFeedOpen(true)
-    setIsFeedIntroPreparing(needsIntro)
+    setIsFeedIntroPreparing(needsPreparation)
     setIsFeedIntroOpen(false)
     setIsProfileOpen(false)
     setIsAchievementsOpen(false)
@@ -771,16 +865,15 @@ export function HomePage() {
     setIsIconEditOpen(false)
     setIsNameDiscardConfirmOpen(false)
     setIsIconDiscardConfirmOpen(false)
-    const hasKnownFeedAccess = hasActiveFeedAccess()
-    if (!hasKnownFeedAccess || needsIntro) {
+    if (!hasKnownFeedAccess) {
       setFeedPosts([])
       resetFeedTimer()
     }
     setFeedError('')
-    setIsFeedAccessDenied(needsIntro ? false : !hasKnownFeedAccess)
+    setIsFeedAccessDenied(false)
     clearFeedTimeout()
-    if (isFeedOpen && !needsIntro) {
-      void loadFeed()
+    if (isFeedOpen) {
+      prepareFeedForDisplay()
     }
     window.scrollTo({ top: 0, left: 0 })
   }
@@ -1335,9 +1428,6 @@ export function HomePage() {
       setIsTaskComplete(false)
       setCompletedTaskReactions({ likes: 0, comments: [] })
       upsertOwnTaskPost(startedTask)
-      if (hasSeenFeedIntro) {
-        await loadFeed()
-      }
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
@@ -1446,9 +1536,6 @@ export function HomePage() {
       })
       setIsTaskComplete(true)
       void refreshMyPageData(completeProfile.id)
-      if (hasSeenFeedIntro) {
-        await loadFeed()
-      }
     } catch (caughtError) {
       if (caughtError instanceof AuthRequiredError) {
         redirectToLoginForAuthRequired()
@@ -1831,7 +1918,7 @@ export function HomePage() {
                 <p className="feed-error" role="alert">
                   {feedError}
                 </p>
-                <button type="button" onClick={() => void loadFeed()}>
+                <button type="button" onClick={prepareFeedForDisplay}>
                   再読み込み
                 </button>
               </>

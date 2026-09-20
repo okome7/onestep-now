@@ -31,6 +31,22 @@ test('初回説明を閉じるとフィード閲覧時間を開始する', async
   expect(result.remaining_seconds).toBe(180)
 })
 
+test('利用権利がない状態ではフィード閲覧を開始できない', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () => Promise.resolve({ status: 'error', errors: ['Forbidden'] }),
+    }),
+  )
+
+  await expect(startFeedAccess(1)).rejects.toBeInstanceOf(
+    FeedAccessDeniedError,
+  )
+})
+
 test('コメントを20件ずつ取得する', async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
