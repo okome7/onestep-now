@@ -95,7 +95,7 @@ test("スマホでタスク入力中も入力領域の位置を固定する", as
   const initialInputBox = await taskInput.boundingBox();
   const initialFooterBox = await footer.boundingBox();
 
-  await expect(homeStart).toHaveCSS("position", "fixed");
+  await expect(homeStart).toHaveCSS("position", "absolute");
   await expect(footer).toHaveCSS("position", "absolute");
   await taskInput.fill("あ");
   await page.setViewportSize({ width: 375, height: 430 });

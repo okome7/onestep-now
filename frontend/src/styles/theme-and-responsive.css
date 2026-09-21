@@ -509,14 +509,12 @@ body,
   }
 
   .home-start {
-    position: fixed;
+    position: absolute;
     top: 190px;
     right: 0;
     bottom: 72px;
     left: 0;
-    overflow-y: auto;
     padding-top: 30px;
-    overscroll-behavior: contain;
   }
 
   .home-page:has(.home-header-brand) .home-bottom-nav {
