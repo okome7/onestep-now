@@ -35,6 +35,7 @@ export type ApiFeedPost = {
   liked_by_me: boolean
   commented_by_me?: boolean
   created_at: string
+  completed_at?: string | null
   comments?: ApiComment[]
   user_name?: string
   avatar_key?: string
@@ -171,7 +172,11 @@ export function mapFeedPost(
     likes: post.likes_count,
     commentsCount: post.comments_count,
     comments,
-    createdAt: toTimestamp(post.created_at),
+    createdAt: toTimestamp(
+      post.card_variant === 'completed' && post.completed_at
+        ? post.completed_at
+        : post.created_at,
+    ),
     liked: post.liked_by_me,
     commented: post.commented_by_me ?? false,
     isOwnPost: post.is_mine || post.user_id === currentUserId,
