@@ -6,11 +6,52 @@ import {
   fetchActiveTask,
   fetchComments,
   fetchFeed,
+  mapFeedPost,
   startFeedAccess,
 } from './feedApi'
 
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+test('完了済み投稿の表示時刻には完了時刻を使う', () => {
+  const createdAt = '2026-08-01T00:00:00Z'
+  const completedAt = '2026-08-01T00:30:00Z'
+
+  const post = mapFeedPost({
+    id: 1,
+    task_title: '完了時刻を表示する',
+    card_variant: 'completed',
+    is_mine: false,
+    can_like: true,
+    can_comment: true,
+    likes_count: 0,
+    comments_count: 0,
+    liked_by_me: false,
+    created_at: createdAt,
+    completed_at: completedAt,
+  })
+
+  expect(post.createdAt).toBe(new Date(completedAt).getTime())
+})
+
+test('進行中投稿の表示時刻には投稿時刻を使う', () => {
+  const createdAt = '2026-08-01T00:00:00Z'
+
+  const post = mapFeedPost({
+    id: 1,
+    task_title: '投稿時刻を表示する',
+    card_variant: 'doing',
+    is_mine: false,
+    can_like: true,
+    can_comment: true,
+    likes_count: 0,
+    comments_count: 0,
+    liked_by_me: false,
+    created_at: createdAt,
+  })
+
+  expect(post.createdAt).toBe(new Date(createdAt).getTime())
 })
 
 test('初回説明を閉じるとフィード閲覧時間を開始する', async () => {

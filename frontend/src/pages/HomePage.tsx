@@ -306,6 +306,7 @@ export function HomePage() {
         created_at: string
       }>
       created_at: string
+      completed_at?: string | null
     } | null
   }) {
     const completionPost = task.completion_post
@@ -340,8 +341,13 @@ export function HomePage() {
               : 'doing',
           createdAt: new Date(comment.created_at).getTime(),
         })) ?? [],
-      createdAt: completionPost?.created_at
-        ? new Date(completionPost.created_at).getTime()
+      createdAt: completionPost
+        ? new Date(
+            completionPost.card_variant === 'completed' &&
+              completionPost.completed_at
+              ? completionPost.completed_at
+              : completionPost.created_at,
+          ).getTime()
         : Date.now(),
       liked: completionPost?.liked_by_me ?? false,
       commented: false,
