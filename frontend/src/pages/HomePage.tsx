@@ -247,8 +247,8 @@ export function HomePage() {
     ? getCompleteAvatarSrc(completeProfile)
     : getAvatarSrc(visibleMyPageData?.user.avatarId ?? 'avatar-1')
   const profileName = isViewingOwnProfile
-    ? completeProfile.name || 'おこめ'
-    : visibleMyPageData?.user.name || 'おこめ'
+    ? completeProfile.name || 'ユーザー'
+    : visibleMyPageData?.user.name || 'ユーザー'
   const trimmedDisplayNameDraft = displayNameDraft.trim()
   const hasDisplayNameDraftChanged = displayNameDraft !== profileName
   const canSaveDisplayName =
