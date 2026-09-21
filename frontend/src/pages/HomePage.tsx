@@ -78,7 +78,6 @@ export function HomePage() {
     width: window.innerWidth,
     height: window.innerHeight,
   }))
-  const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
   const isFeedAccessStartingRef = useRef(false)
@@ -159,8 +158,6 @@ export function HomePage() {
       : '',
   )
   const [isSettingsAvatarGridOpen, setIsSettingsAvatarGridOpen] =
-    useState(false)
-  const [isSettingsCameraAvailable, setIsSettingsCameraAvailable] =
     useState(false)
   const [feedPosts, setFeedPosts] = useState<FeedPost[]>([])
   const [isFeedAccessDenied, setIsFeedAccessDenied] = useState(false)
@@ -437,19 +434,6 @@ export function HomePage() {
 
     return () => window.clearInterval(timerId)
   }, [activeTaskStartedAt, isTaskRunning])
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 639px)')
-    const updateCameraAvailability = () => {
-      setIsSettingsCameraAvailable(mediaQuery.matches)
-    }
-
-    updateCameraAvailability()
-    mediaQuery.addEventListener('change', updateCameraAvailability)
-
-    return () =>
-      mediaQuery.removeEventListener('change', updateCameraAvailability)
-  }, [])
 
   useEffect(() => {
     if (!isTaskComplete) {
@@ -2010,7 +1994,6 @@ export function HomePage() {
   if (isSettingsOpen && isIconEditOpen) {
     return (
       <ProfileIconEditPage
-        cameraInputRef={settingsCameraInputRef}
         photoInputRef={settingsPhotoInputRef}
         previewSrc={settingsIconPreviewSrc}
         selectedIconId={selectedSettingsIconId}
@@ -2019,7 +2002,6 @@ export function HomePage() {
         isSaving={isProfileSaving}
         saveError={profileSaveError}
         isAvatarGridOpen={isSettingsAvatarGridOpen}
-        isCameraAvailable={isSettingsCameraAvailable}
         isDiscardConfirmOpen={isIconDiscardConfirmOpen}
         onBack={closeIconEdit}
         onSubmit={saveSettingsIcon}

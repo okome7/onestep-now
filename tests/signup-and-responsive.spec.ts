@@ -59,7 +59,7 @@ test("登録済みメールアドレスは新規登録時にエラーを表示�
   expect(signupRequests).toHaveLength(0);
 });
 
-test("スマホでは写真の選び方を下に並べて表示する", async ({ page }) => {
+test("スマホでは写真を選ぶボタンだけを表示する", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockSignupEmailCheck(page);
   await page.route(/.*\/(?:api\/)?signup$/, async (route) => {
@@ -87,7 +87,7 @@ test("スマホでは写真の選び方を下に並べて表示する", async ({
   await expect(page.getByRole("radio", { name: "写真未選択" })).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "カメラで撮影" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "写真を選ぶ" })).toBeVisible();
 });
 
@@ -122,7 +122,7 @@ test("スマホで写真の選択肢を表示しても決定ボタンの位置�
   const beforeOpenBox = await submitButton.boundingBox();
   await expect(
     page.getByRole("button", { name: "カメラで撮影" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   const afterOpenBox = await submitButton.boundingBox();
 
   expect(afterOpenBox?.y).toBeCloseTo(beforeOpenBox?.y ?? 0, 0);

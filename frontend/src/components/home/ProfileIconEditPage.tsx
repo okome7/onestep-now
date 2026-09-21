@@ -1,11 +1,9 @@
 import type { ChangeEvent, FormEvent, RefObject } from 'react'
 import { avatarOptions, customPhotoIconId } from '../../appConstants'
-import cameraIcon from '../../assets/icons/camera.svg'
 import iconGridIcon from '../../assets/icons/icon-grid.svg'
 import { AppHeader, BackIcon, UnsavedChangesModal } from '../../sharedComponents'
 
 type ProfileIconEditPageProps = {
-  cameraInputRef: RefObject<HTMLInputElement | null>
   photoInputRef: RefObject<HTMLInputElement | null>
   previewSrc: string
   selectedIconId: string
@@ -14,7 +12,6 @@ type ProfileIconEditPageProps = {
   isSaving: boolean
   saveError: string
   isAvatarGridOpen: boolean
-  isCameraAvailable: boolean
   isDiscardConfirmOpen: boolean
   onBack: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -27,7 +24,6 @@ type ProfileIconEditPageProps = {
 }
 
 export function ProfileIconEditPage({
-  cameraInputRef,
   photoInputRef,
   previewSrc,
   selectedIconId,
@@ -36,7 +32,6 @@ export function ProfileIconEditPage({
   isSaving,
   saveError,
   isAvatarGridOpen,
-  isCameraAvailable,
   isDiscardConfirmOpen,
   onBack,
   onSubmit,
@@ -106,29 +101,6 @@ export function ProfileIconEditPage({
             />
             <span className="icon-edit-action-text-grid">アイコンを選択</span>
           </button>
-
-          {isCameraAvailable ? (
-            <label
-              className="icon-edit-action icon-edit-camera-action"
-              role="button"
-              tabIndex={0}
-              htmlFor="settings-camera-input"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  cameraInputRef.current?.click()
-                }
-              }}
-            >
-              <img
-                className="icon-edit-action-icon icon-edit-action-icon-camera"
-                src={cameraIcon}
-                alt=""
-                aria-hidden="true"
-              />
-              <span>カメラで撮影</span>
-            </label>
-          ) : null}
 
           <button
             className="icon-edit-action"
@@ -203,16 +175,6 @@ export function ProfileIconEditPage({
           </div>
         ) : null}
 
-        <input
-          id="settings-camera-input"
-          ref={cameraInputRef}
-          className="photo-input"
-          type="file"
-          accept="image/*"
-          capture="user"
-          aria-label="撮影する写真"
-          onChange={onPhotoChange}
-        />
         <input
           ref={photoInputRef}
           className="photo-input"
