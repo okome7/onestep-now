@@ -74,7 +74,10 @@ import { updateProfile } from '../profileApi'
 type FeedSnapshot = Awaited<ReturnType<typeof fetchFeed>>
 
 export function HomePage() {
-  const [initialHomeViewportHeight] = useState(() => window.innerHeight)
+  const [homeViewportSize, setHomeViewportSize] = useState(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }))
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
@@ -181,6 +184,28 @@ export function HomePage() {
   const [hasMoreComments, setHasMoreComments] = useState(false)
   const [isCommentsLoading, setIsCommentsLoading] = useState(false)
   const [commentsLoadError, setCommentsLoadError] = useState('')
+
+  useEffect(() => {
+    function preserveHomeViewportHeight() {
+      setHomeViewportSize((currentSize) => {
+        const width = window.innerWidth
+        const height = window.innerHeight
+
+        if (width !== currentSize.width) {
+          return { width, height }
+        }
+
+        if (height > currentSize.height) {
+          return { ...currentSize, height }
+        }
+
+        return currentSize
+      })
+    }
+
+    window.addEventListener('resize', preserveHomeViewportHeight)
+    return () => window.removeEventListener('resize', preserveHomeViewportHeight)
+  }, [])
   const {
     clearTimeout: clearFeedTimeout,
     expire: expireFeed,
@@ -2250,7 +2275,7 @@ export function HomePage() {
       className={`home-page ${isTaskActive ? 'task-active' : ''}`}
       style={
         {
-          '--home-initial-viewport-height': `${initialHomeViewportHeight}px`,
+          '--home-initial-viewport-height': `${homeViewportSize.height}px`,
         } as CSSProperties
       }
     >

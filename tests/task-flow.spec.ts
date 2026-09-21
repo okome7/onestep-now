@@ -109,6 +109,11 @@ test("スマホでタスク入力中も入力領域の位置を固定する", as
   await expect
     .poll(async () => (await footer.boundingBox())?.y)
     .toBe(initialFooterBox?.y);
+
+  await page.setViewportSize({ width: 375, height: 700 });
+  await expect
+    .poll(async () => (await footer.boundingBox())?.y)
+    .toBe(626);
 });
 
 test("ホーム画面は末尾スラッシュ付きでも表示される", async ({ page }) => {
