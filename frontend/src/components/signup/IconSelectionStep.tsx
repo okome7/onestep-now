@@ -1,9 +1,7 @@
 import type { ChangeEvent, RefObject } from 'react'
 import { avatarOptions, customPhotoIconId } from '../../appConstants'
-import cameraIcon from '../../assets/icons/camera.svg'
 
 type IconSelectionStepProps = {
-  cameraInputRef: RefObject<HTMLInputElement | null>
   photoInputRef: RefObject<HTMLInputElement | null>
   selectedIconId: string
   customPhotoUrl: string
@@ -16,7 +14,6 @@ type IconSelectionStepProps = {
 }
 
 export function IconSelectionStep({
-  cameraInputRef,
   photoInputRef,
   selectedIconId,
   customPhotoUrl,
@@ -68,26 +65,6 @@ export function IconSelectionStep({
       </div>
 
       <div className="icon-edit-action-list signup-photo-action-list">
-        <label
-          className="icon-edit-action icon-edit-camera-action"
-          role="button"
-          tabIndex={0}
-          htmlFor="signup-camera-input"
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault()
-              cameraInputRef.current?.click()
-            }
-          }}
-        >
-          <img
-            className="icon-edit-action-icon icon-edit-action-icon-camera"
-            src={cameraIcon}
-            alt=""
-            aria-hidden="true"
-          />
-          <span>カメラで撮影</span>
-        </label>
         <button
           className="icon-edit-action"
           type="button"
@@ -101,16 +78,6 @@ export function IconSelectionStep({
         </button>
       </div>
 
-      <input
-        id="signup-camera-input"
-        ref={cameraInputRef}
-        className="photo-input"
-        type="file"
-        accept="image/*"
-        capture="user"
-        aria-label="撮影する写真"
-        onChange={onPhotoChange}
-      />
       <input
         ref={photoInputRef}
         className="photo-input"

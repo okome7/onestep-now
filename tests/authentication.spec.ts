@@ -414,14 +414,6 @@ test("登録後にアイコン選択画面へ進む", async ({ page }) => {
     0,
   );
   await expect(page.getByRole("button", { name: "写真を選択" })).toHaveCount(0);
-  await expect(page.getByLabel("撮影する写真")).toHaveAttribute(
-    "accept",
-    "image/*",
-  );
-  await expect(page.getByLabel("撮影する写真")).toHaveAttribute(
-    "capture",
-    "user",
-  );
   await expect(page.getByLabel("選択する写真")).toHaveAttribute(
     "accept",
     "image/*",

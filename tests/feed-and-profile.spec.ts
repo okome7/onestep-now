@@ -114,6 +114,10 @@ test("名前とアイコンの変更をリロードせずプロフィールと�
 
   await page.getByRole("button", { name: "設定" }).click();
   await page.getByRole("button", { name: "アイコン変更" }).click();
+  await expect(
+    page.getByRole("button", { name: "カメラで撮影" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "写真を選ぶ" })).toBeVisible();
   await page.getByRole("button", { name: "アイコンを選択" }).click();
   await page.getByRole("radio", { name: "アイコン2" }).click();
   await page.getByRole("button", { name: "閉じる" }).click();
