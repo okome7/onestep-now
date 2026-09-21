@@ -237,13 +237,18 @@ export function HomePage() {
     (!isFeedAccessDenied && feedRemainingSeconds <= 0)
   const hasFeedTimeRemaining = feedRemainingSeconds > 0
   const isTaskRunning = isTaskActive && !isTaskComplete
-  const visibleFeedPosts = feedPosts
+  const visibleFeedPosts = feedPosts.map((post) =>
+    post.isOwnPost
+      ? { ...post, userName: 'あなた', avatarId: completeProfile.avatarId }
+      : post,
+  )
   const isViewingOwnProfile = profileUserId === completeProfile.id
-  const profileAvatarSrc = visibleMyPageData
-    ? getAvatarSrc(visibleMyPageData.user.avatarId)
-    : getCompleteAvatarSrc(completeProfile)
-  const profileName =
-    visibleMyPageData?.user.name || completeProfile.name || 'おこめ'
+  const profileAvatarSrc = isViewingOwnProfile
+    ? getCompleteAvatarSrc(completeProfile)
+    : getAvatarSrc(visibleMyPageData?.user.avatarId ?? 'avatar-1')
+  const profileName = isViewingOwnProfile
+    ? completeProfile.name || 'ユーザー'
+    : visibleMyPageData?.user.name || 'ユーザー'
   const trimmedDisplayNameDraft = displayNameDraft.trim()
   const hasDisplayNameDraftChanged = displayNameDraft !== profileName
   const canSaveDisplayName =

@@ -11,6 +11,128 @@ import {
 
 test.beforeEach(async ({ page }) => prepareAppTest(page));
 
+test("名前とアイコンの変更をリロードせずプロフィールとフィードへ反映する", async ({
+  page,
+}) => {
+  let currentName = "おこめ";
+  let currentAvatarKey = "avatar-1";
+
+  await page.unroute(myPageRoute);
+  await page.route(myPageRoute, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          user: {
+            id: 1,
+            name: "おこめ",
+            avatar_key: "avatar-1",
+          },
+          level: 1,
+          next_level: 2,
+          remaining_to_next_level: 10,
+          progress_percent: 0,
+          achievements_count: 0,
+          streak_days: 0,
+          likes_count: 0,
+          comments_count: 0,
+          recent_achievements: [],
+          all_achievements: [],
+        },
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?profile$/, async (route) => {
+    const body = route.request().postDataJSON() as {
+      user?: { name?: string; avatar_key?: string };
+    };
+    currentName = body.user?.name ?? currentName;
+    currentAvatarKey = body.user?.avatar_key ?? currentAvatarKey;
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        data: {
+          id: 1,
+          name: currentName,
+          email: "okome@example.com",
+          avatar_key: currentAvatarKey,
+        },
+      }),
+    });
+  });
+  await page.route(/.*\/(?:api\/)?feed$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        access_allowed: true,
+        remaining_seconds: 180,
+        data: [
+          {
+            id: 1,
+            user_id: 1,
+            user_name: "おこめ",
+            avatar_key: "avatar-1",
+            level: 1,
+            task_title: "自分の投稿",
+            status: "completed",
+            status_label: "できた",
+            card_variant: "completed",
+            is_mine: true,
+            can_like: true,
+            can_comment: true,
+            likes_count: 0,
+            comments_count: 0,
+            liked_by_me: false,
+            comments: [],
+            created_at: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+          },
+        ],
+      }),
+    });
+  });
+
+  await gotoHome(page);
+  await page.getByRole("link", { name: "投稿" }).click();
+  const initialFeedAvatarSrc = await page
+    .locator(".feed-avatar")
+    .getAttribute("src");
+  await page.getByRole("link", { name: "プロフィール" }).click();
+  const initialAvatarSrc = await page
+    .locator(".profile-avatar-large")
+    .getAttribute("src");
+  await page.getByRole("button", { name: "設定" }).click();
+  await page.getByRole("button", { name: "表示名変更" }).click();
+  await page.getByRole("textbox", { name: "表示名" }).fill("変更後の名前");
+  await page.getByRole("button", { name: "完了" }).click();
+  await page.getByRole("button", { name: "マイページに戻る" }).click();
+
+  await expect(page.getByText("変更後の名前", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "設定" }).click();
+  await page.getByRole("button", { name: "アイコン変更" }).click();
+  await page.getByRole("button", { name: "アイコンを選択" }).click();
+  await page.getByRole("radio", { name: "アイコン2" }).click();
+  await page.getByRole("button", { name: "閉じる" }).click();
+  await page.getByRole("button", { name: "完了" }).click();
+  await page.getByRole("button", { name: "マイページに戻る" }).click();
+
+  await expect(page.locator(".profile-avatar-large")).not.toHaveAttribute(
+    "src",
+    initialAvatarSrc ?? "",
+  );
+
+  await page.getByRole("link", { name: "投稿" }).click();
+  await expect(page.locator(".feed-avatar")).not.toHaveAttribute(
+    "src",
+    initialFeedAvatarSrc ?? "",
+  );
+  await expect(page.getByText("あなた", { exact: true })).toBeVisible();
+});
+
 test("タスク完了後にマイページの達成と集計を再取得して即時表示する", async ({
   page,
 }) => {
