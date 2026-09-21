@@ -83,6 +83,34 @@ test("スマホの主要コンテンツに左右の余白を表示する", async
   expect(signupNameBox?.width).toBeCloseTo(taskInputBox?.width ?? 0, 0);
 });
 
+test("スマホでタスク入力中も入力領域の位置を固定する", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await gotoHome(page);
+
+  const homeStart = page.locator(".home-start");
+  const heading = page.getByRole("heading", { name: "今できることから" });
+  const taskInput = page.getByRole("textbox", { name: "今できること" });
+  const footer = page.getByRole("navigation", { name: "ホームメニュー" });
+  const initialHeadingBox = await heading.boundingBox();
+  const initialInputBox = await taskInput.boundingBox();
+  const initialFooterBox = await footer.boundingBox();
+
+  await expect(homeStart).toHaveCSS("position", "fixed");
+  await expect(footer).toHaveCSS("position", "absolute");
+  await taskInput.fill("あ");
+  await page.setViewportSize({ width: 375, height: 430 });
+
+  await expect
+    .poll(async () => (await heading.boundingBox())?.y)
+    .toBe(initialHeadingBox?.y);
+  await expect
+    .poll(async () => (await taskInput.boundingBox())?.y)
+    .toBe(initialInputBox?.y);
+  await expect
+    .poll(async () => (await footer.boundingBox())?.y)
+    .toBe(initialFooterBox?.y);
+});
+
 test("ホーム画面は末尾スラッシュ付きでも表示される", async ({ page }) => {
   await gotoHome(page, "/home/");
 

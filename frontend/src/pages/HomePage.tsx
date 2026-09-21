@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { ChangeEvent, FormEvent, MouseEvent } from 'react'
+import type { CSSProperties, ChangeEvent, FormEvent, MouseEvent } from 'react'
 import { deleteAccount } from '../accountApi'
 import {
   customPhotoIconId,
@@ -74,6 +74,7 @@ import { updateProfile } from '../profileApi'
 type FeedSnapshot = Awaited<ReturnType<typeof fetchFeed>>
 
 export function HomePage() {
+  const [initialHomeViewportHeight] = useState(() => window.innerHeight)
   const settingsCameraInputRef = useRef<HTMLInputElement>(null)
   const settingsPhotoInputRef = useRef<HTMLInputElement>(null)
   const feedLoadMoreRef = useRef<HTMLDivElement>(null)
@@ -2245,7 +2246,14 @@ export function HomePage() {
   }
 
   return (
-    <main className={`home-page ${isTaskActive ? 'task-active' : ''}`}>
+    <main
+      className={`home-page ${isTaskActive ? 'task-active' : ''}`}
+      style={
+        {
+          '--home-initial-viewport-height': `${initialHomeViewportHeight}px`,
+        } as CSSProperties
+      }
+    >
       {isTaskActive ? null : <AppHeader />}
 
       {isTaskComplete ? (

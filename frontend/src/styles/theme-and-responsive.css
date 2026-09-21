@@ -472,6 +472,8 @@ body,
 
 @media (max-width: 600px) {
   .home-page:has(.home-header-brand) {
+    height: var(--home-initial-viewport-height, 100svh);
+    min-height: var(--home-initial-viewport-height, 100svh);
     padding-top: 190px;
     padding-bottom: 72px;
   }
@@ -507,7 +509,18 @@ body,
   }
 
   .home-start {
+    position: fixed;
+    top: 190px;
+    right: 0;
+    bottom: 72px;
+    left: 0;
+    overflow-y: auto;
     padding-top: 30px;
+    overscroll-behavior: contain;
+  }
+
+  .home-page:has(.home-header-brand) .home-bottom-nav {
+    position: absolute;
   }
 
   .home-task-input-wrap {
