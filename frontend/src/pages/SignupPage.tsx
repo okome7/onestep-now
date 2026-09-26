@@ -41,7 +41,6 @@ function getInitialScreen(): SignupScreen {
 }
 
 export function SignupPage() {
-  const cameraInputRef = useRef<HTMLInputElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [screen, setScreen] = useState<SignupScreen>(getInitialScreen)
   const [form, setForm] = useState<SignupForm>(() =>
@@ -167,6 +166,7 @@ export function SignupPage() {
         name: nextCompletedName,
         email: createdUser.email,
         avatarId: nextCompletedAvatarId,
+        feedIntroSeenAt: createdUser.feed_intro_seen_at,
       })
       setScreen('complete')
     } catch (caughtError) {
@@ -236,7 +236,6 @@ export function SignupPage() {
         />
       ) : screen === 'icon' ? (
         <IconSelectionStep
-          cameraInputRef={cameraInputRef}
           photoInputRef={photoInputRef}
           selectedIconId={selectedIconId}
           customPhotoUrl={customPhotoUrl}

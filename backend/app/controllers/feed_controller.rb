@@ -4,9 +4,10 @@ class FeedController < ApplicationController
   before_action :require_current_user
 
   def index
-    return render_feed_unavailable unless feed_accessible?
+    access_pending = current_user.feed_access_pending?
+    return render_feed_unavailable unless access_pending || feed_accessible?
 
-    page = [ params.fetch(:page, 1).to_i, 1 ].max
+    page = access_pending ? 1 : [ params.fetch(:page, 1).to_i, 1 ].max
     posts = CompletionPost
       .preload(:task, :user, :completion_post_likes)
       .order(created_at: :desc, id: :desc)
@@ -20,7 +21,9 @@ class FeedController < ApplicationController
 
     render json: {
       status: "success",
-      remaining_seconds: remaining_seconds,
+      access_allowed: !access_pending,
+      feed_access_pending: access_pending,
+      remaining_seconds: access_pending ? 0 : remaining_seconds,
       feed_access_expires_at: current_user.feed_access_expires_at,
       pagination: {
         page: page,
@@ -32,14 +35,24 @@ class FeedController < ApplicationController
   end
 
   def start_access
-    if current_user.feed_access_pending?
-      current_user.update!(feed_access_pending: false, feed_access_expires_at: 3.minutes.from_now)
-    end
-    return render_feed_unavailable unless feed_accessible?
+    started_at = Time.current
+    updates = {
+      feed_access_pending: false,
+      feed_access_expires_at: started_at + 3.minutes,
+      updated_at: started_at
+    }
+    updates[:feed_intro_seen_at] = started_at if current_user.feed_intro_seen_at.nil?
+
+    current_user.class
+      .where(id: current_user.id, feed_access_pending: true)
+      .update_all(updates)
+    current_user.reload
+    return render_forbidden unless feed_accessible?
 
     render json: {
       status: "success",
       remaining_seconds: remaining_seconds,
+      feed_intro_seen_at: current_user.feed_intro_seen_at,
       feed_access_expires_at: current_user.feed_access_expires_at
     }, status: :ok
   end

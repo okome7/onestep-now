@@ -61,7 +61,8 @@ export function formatFeedRemainingTime(totalSeconds: number) {
 }
 
 export function formatFeedPostAge(createdAt: number, now: number) {
-  const elapsedMinutes = Math.max(1, Math.floor((now - createdAt) / 60000))
+  const elapsedSeconds = Math.max(0, Math.floor((now - createdAt) / 1000))
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60)
 
   if (elapsedMinutes < 60) {
     return `${elapsedMinutes}分前`
@@ -332,6 +333,7 @@ export function getInitialCompleteProfile(): CompleteProfile {
       name: parsedProfile.name ?? '',
       email: parsedProfile.email ?? '',
       avatarId: parsedProfile.avatarId ?? avatarOptions[0].id,
+      feedIntroSeenAt: parsedProfile.feedIntroSeenAt ?? null,
     }
   } catch {
     return { name: '', avatarId: avatarOptions[0].id }

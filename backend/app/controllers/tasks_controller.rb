@@ -44,8 +44,8 @@ class TasksController < ApplicationController
       post = @task.completion_post || @task.create_completion_post!(user: current_user, status: :doing, content: @task.title)
       post.update!(status: :completed, completed_at: completed_at)
       current_user.update!(
-        feed_access_expires_at: 3.minutes.from_now,
-        feed_access_pending: ActiveModel::Type::Boolean.new.cast(params[:defer_feed_access]) == true
+        feed_access_expires_at: nil,
+        feed_access_pending: true
       )
     end
 

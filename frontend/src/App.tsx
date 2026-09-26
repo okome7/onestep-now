@@ -87,6 +87,7 @@ function App() {
           name: user.name,
           email: user.email,
           avatarId: user.avatar_key ?? avatarOptions[0].id,
+          feedIntroSeenAt: user.feed_intro_seen_at,
         })
       } else {
         clearAuthSession()

@@ -8,7 +8,21 @@ const myPageRoute = /.*\/(?:api\/)?mypage(?:\?[^#]*)?$/;
 const cableTokenRoute = /.*\/(?:api\/)?cable_token$/;
 const activeTaskRoute = /.*\/(?:api\/)?tasks\/active$/;
 
-async function mockSession(page: Page, authenticated: boolean) {
+type SessionUserOverrides = Partial<{
+  id: number;
+  name: string;
+  email: string;
+  avatar_key: string;
+  feed_intro_seen_at: string | null;
+}>;
+
+const defaultFeedIntroSeenAt = "2026-09-01T00:00:00.000Z";
+
+async function mockSession(
+  page: Page,
+  authenticated: boolean,
+  userOverrides: SessionUserOverrides = {},
+) {
   await page.unroute(sessionRoute);
   await page.route(sessionRoute, async (route) => {
     await route.fulfill({
@@ -23,6 +37,8 @@ async function mockSession(page: Page, authenticated: boolean) {
                 name: "おこめ",
                 email: "okome@example.com",
                 avatar_key: "avatar-1",
+                feed_intro_seen_at: defaultFeedIntroSeenAt,
+                ...userOverrides,
               },
             }
           : { status: "error", errors: ["認証が必要です"] },
@@ -38,10 +54,17 @@ async function mockSession(page: Page, authenticated: boolean) {
   });
 }
 
-async function markLoggedIn(page: Page) {
-  await mockSession(page, true);
+async function markLoggedIn(
+  page: Page,
+  userOverrides: SessionUserOverrides = {},
+) {
+  await mockSession(page, true, userOverrides);
+  const feedIntroSeenAt =
+    userOverrides.feed_intro_seen_at === undefined
+      ? defaultFeedIntroSeenAt
+      : userOverrides.feed_intro_seen_at;
   await page.evaluate(
-    ({ authKey, profileKey }) => {
+    ({ authKey, profileKey, introSeenAt }) => {
       localStorage.setItem(authKey, "active");
       localStorage.setItem(
         profileKey,
@@ -50,12 +73,14 @@ async function markLoggedIn(page: Page) {
           name: "おこめ",
           email: "okome@example.com",
           avatarId: "avatar-1",
+          feedIntroSeenAt: introSeenAt,
         }),
       );
     },
     {
       authKey: authSessionStorageKey,
       profileKey: signupCompleteStorageKey,
+      introSeenAt: feedIntroSeenAt,
     },
   );
 }
@@ -87,10 +112,26 @@ async function mockAuthenticatedBackgroundApis(page: Page) {
       body: JSON.stringify({ status: "success", token: "e2e-cable-token" }),
     });
   });
+  await page.route(/.*\/(?:api\/)?feed\/access$/, async (route) => {
+    const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString();
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "success",
+        remaining_seconds: 3 * 60,
+        feed_intro_seen_at: defaultFeedIntroSeenAt,
+        feed_access_expires_at: expiresAt,
+      }),
+    });
+  });
 }
 
-async function gotoHome(page: Page, path = "/home") {
-  await markLoggedIn(page);
+async function gotoHome(
+  page: Page,
+  path = "/home",
+  userOverrides: SessionUserOverrides = {},
+) {
+  await markLoggedIn(page, userOverrides);
   await page.goto(path);
 }
 
@@ -295,6 +336,7 @@ async function mockTaskAndFeedApi(page: Page) {
       body: JSON.stringify({
         status: "success",
         remaining_seconds: 3 * 60,
+        feed_intro_seen_at: new Date().toISOString(),
         feed_access_expires_at: new Date(
           Date.now() + 3 * 60 * 1000,
         ).toISOString(),
@@ -330,6 +372,7 @@ async function mockTaskAndFeedApi(page: Page) {
       body: JSON.stringify({
         status: "success",
         remaining_seconds: 3 * 60,
+        feed_intro_seen_at: new Date().toISOString(),
         feed_access_expires_at: new Date(
           Date.now() + 3 * 60 * 1000,
         ).toISOString(),

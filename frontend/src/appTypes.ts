@@ -71,6 +71,7 @@ export type CompleteProfile = {
   name: string
   email?: string
   avatarId: string
+  feedIntroSeenAt?: string | null
 }
 
 export type MyPageData = {

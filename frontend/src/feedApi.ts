@@ -35,6 +35,7 @@ export type ApiFeedPost = {
   liked_by_me: boolean
   commented_by_me?: boolean
   created_at: string
+  completed_at?: string | null
   comments?: ApiComment[]
   user_name?: string
   avatar_key?: string
@@ -45,8 +46,10 @@ type FeedSuccessResponse = {
   status: 'success'
   data: ApiFeedPost[]
   access_allowed?: boolean
+  feed_access_pending?: boolean
   remaining_seconds?: number
   feed_access_expires_at?: string
+  feed_intro_seen_at?: string
   pagination?: {
     page: number
     per_page: number
@@ -169,7 +172,11 @@ export function mapFeedPost(
     likes: post.likes_count,
     commentsCount: post.comments_count,
     comments,
-    createdAt: toTimestamp(post.created_at),
+    createdAt: toTimestamp(
+      post.card_variant === 'completed' && post.completed_at
+        ? post.completed_at
+        : post.created_at,
+    ),
     liked: post.liked_by_me,
     commented: post.commented_by_me ?? false,
     isOwnPost: post.is_mine || post.user_id === currentUserId,
@@ -249,7 +256,7 @@ export async function fetchFeed(
 
   const success = result as FeedSuccessResponse
 
-  if (success.access_allowed === false) {
+  if (success.access_allowed === false && !success.feed_access_pending) {
     throw new FeedAccessDeniedError()
   }
 
@@ -268,6 +275,7 @@ export async function fetchFeed(
     posts: success.data.map((post) => mapFeedPost(post, userId)),
     remainingSeconds,
     feedAccessExpiresAt: success.feed_access_expires_at,
+    feedAccessPending: success.feed_access_pending === true,
     page: success.pagination?.page ?? page,
     hasMore: success.pagination?.has_more ?? false,
   }
@@ -347,14 +355,12 @@ export async function startTask(taskId: number, userId?: number) {
 export async function completeTask(
   taskId: number,
   userId?: number,
-  deferFeedAccess = false,
 ) {
   const response = await apiFetch(
     apiUrl(defaultApiBaseUrl, `/tasks/${taskId}/complete`),
     {
       method: 'PATCH',
       headers: userHeaders(userId),
-      body: JSON.stringify({ defer_feed_access: deferFeedAccess }),
     },
   )
 
@@ -379,6 +385,7 @@ export async function startFeedAccess(userId?: number) {
     headers: userHeaders(userId),
   })
   if (response.status === 401) throw new AuthRequiredError()
+  if (response.status === 403) throw new FeedAccessDeniedError()
   const result = await readJsonResponse<FeedSuccessResponse | ErrorResponse>(
     response,
   )

@@ -1,4 +1,3 @@
-export const feedIntroStorageKey = 'onestep-feed-intro-seen'
 export const activeHomeViewStorageKey = 'onestep-active-home-view'
 export const taskDraftStorageKey = 'onestep-task-draft'
 

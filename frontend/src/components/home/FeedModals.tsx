@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react'
 import feedExpiredClockIcon from '../../assets/icons/feed-expired-clock.svg'
 
 type FeedIntroModalProps = {
+  isStarting: boolean
   onClose: () => void
 }
 
@@ -9,9 +10,12 @@ type FeedExpiredModalProps = {
   onStart: (event: MouseEvent<HTMLButtonElement>) => void
 }
 
-export function FeedIntroModal({ onClose }: FeedIntroModalProps) {
+export function FeedIntroModal({ isStarting, onClose }: FeedIntroModalProps) {
   return (
-    <div className="feed-expired-backdrop" role="presentation">
+    <div
+      className="feed-expired-backdrop feed-intro-backdrop"
+      role="presentation"
+    >
       <section
         className="feed-expired-modal feed-intro-modal"
         role="dialog"
@@ -27,6 +31,7 @@ export function FeedIntroModal({ onClose }: FeedIntroModalProps) {
         <button
           className="feed-expired-start-button"
           type="button"
+          disabled={isStarting}
           onClick={onClose}
         >
           OK

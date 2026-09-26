@@ -61,6 +61,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         name: user.name,
         email: user.email,
         avatarId: user.avatar_key ?? avatarOptions[0].id,
+        feedIntroSeenAt: user.feed_intro_seen_at,
       })
       shouldResetSubmitting = false
       onLoginSuccess()
